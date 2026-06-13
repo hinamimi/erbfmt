@@ -2,7 +2,7 @@ use std::fmt;
 
 use crate::{
     html::{self, HtmlTag, HtmlToken},
-    lexer::{ErbBlockKind, Token},
+    lexer::{ErbBlockKind, ErbBranchKind, Token},
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -35,12 +35,24 @@ pub enum Node {
         kind: ErbBlockKind,
         code: String,
         children: Vec<Node>,
+        branches: Vec<ErbBranch>,
     },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ErbBranch {
+    pub kind: ErbBranchKind,
+    pub code: String,
+    pub children: Vec<Node>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ParseError {
     UnexpectedErbBlockEnd {
+        token_index: usize,
+        code: String,
+    },
+    UnexpectedErbBranch {
         token_index: usize,
         code: String,
     },
@@ -71,6 +83,9 @@ impl fmt::Display for ParseError {
                     f,
                     "unexpected ERB block end `{code}` at token {token_index}"
                 )
+            }
+            Self::UnexpectedErbBranch { token_index, code } => {
+                write!(f, "unexpected ERB branch `{code}` at token {token_index}")
             }
             Self::UnclosedErbBlock { token_index, code } => {
                 write!(f, "unclosed ERB block `{code}` at token {token_index}")
@@ -128,6 +143,7 @@ impl Parser {
                     .push(Frame::erb(*kind, code.clone(), token_index));
                 Ok(())
             }
+            Token::ErbBranch { kind, code } => self.add_erb_branch(token_index, *kind, code),
             Token::ErbBlockEnd(code) => self.close_erb_block(token_index, code),
         }
     }
@@ -187,6 +203,9 @@ impl Parser {
                         token_index,
                     },
                     children: frame.children,
+                    initial_children: frame.initial_children,
+                    branches: frame.branches,
+                    active_branch: frame.active_branch,
                 });
                 Err(ParseError::UnexpectedHtmlCloseTag {
                     name: tag.name,
@@ -201,6 +220,9 @@ impl Parser {
                             raw,
                         },
                         children: frame.children,
+                        initial_children: frame.initial_children,
+                        branches: frame.branches,
+                        active_branch: frame.active_branch,
                     });
                     return Err(ParseError::MismatchedHtmlCloseTag {
                         expected: name,
@@ -243,19 +265,50 @@ impl Parser {
                         raw: raw.clone(),
                     },
                     children: frame.children,
+                    initial_children: frame.initial_children,
+                    branches: frame.branches,
+                    active_branch: frame.active_branch,
                 });
                 Err(ParseError::UnclosedHtmlTag { name, raw })
             }
-            FrameKind::Erb {
-                kind,
-                code: block_code,
-                ..
-            } => {
+            FrameKind::Erb { kind, ref code, .. } => {
+                let block_code = code.clone();
+                let (children, branches) = frame.finish_erb_branches();
                 self.push_node(Node::ErbBlock {
                     kind,
                     code: block_code,
-                    children: frame.children,
+                    children,
+                    branches,
                 });
+                Ok(())
+            }
+        }
+    }
+
+    fn add_erb_branch(
+        &mut self,
+        token_index: usize,
+        kind: ErbBranchKind,
+        code: &str,
+    ) -> Result<(), ParseError> {
+        let Some(frame) = self.stack.last_mut() else {
+            return Err(ParseError::UnexpectedErbBranch {
+                token_index,
+                code: code.to_string(),
+            });
+        };
+
+        match frame.kind {
+            FrameKind::Root => Err(ParseError::UnexpectedErbBranch {
+                token_index,
+                code: code.to_string(),
+            }),
+            FrameKind::Html { ref name, ref raw } => Err(ParseError::UnclosedHtmlTag {
+                name: name.clone(),
+                raw: raw.clone(),
+            }),
+            FrameKind::Erb { .. } => {
+                frame.start_erb_branch(kind, code.to_string());
                 Ok(())
             }
         }
@@ -291,6 +344,9 @@ impl Parser {
 struct Frame {
     kind: FrameKind,
     children: Vec<Node>,
+    initial_children: Option<Vec<Node>>,
+    branches: Vec<ErbBranch>,
+    active_branch: Option<ErbBranchHeader>,
 }
 
 impl Frame {
@@ -298,6 +354,9 @@ impl Frame {
         Self {
             kind: FrameKind::Root,
             children: Vec::new(),
+            initial_children: None,
+            branches: Vec::new(),
+            active_branch: None,
         }
     }
 
@@ -308,6 +367,9 @@ impl Frame {
                 raw: tag.raw,
             },
             children: Vec::new(),
+            initial_children: None,
+            branches: Vec::new(),
+            active_branch: None,
         }
     }
 
@@ -319,8 +381,45 @@ impl Frame {
                 token_index,
             },
             children: Vec::new(),
+            initial_children: None,
+            branches: Vec::new(),
+            active_branch: None,
         }
     }
+
+    fn start_erb_branch(&mut self, kind: ErbBranchKind, code: String) {
+        if let Some(active_branch) = self.active_branch.take() {
+            self.branches.push(ErbBranch {
+                kind: active_branch.kind,
+                code: active_branch.code,
+                children: std::mem::take(&mut self.children),
+            });
+        } else {
+            self.initial_children = Some(std::mem::take(&mut self.children));
+        }
+
+        self.active_branch = Some(ErbBranchHeader { kind, code });
+    }
+
+    fn finish_erb_branches(mut self) -> (Vec<Node>, Vec<ErbBranch>) {
+        if let Some(active_branch) = self.active_branch.take() {
+            self.branches.push(ErbBranch {
+                kind: active_branch.kind,
+                code: active_branch.code,
+                children: std::mem::take(&mut self.children),
+            });
+        }
+
+        (
+            self.initial_children.unwrap_or(self.children),
+            self.branches,
+        )
+    }
+}
+
+struct ErbBranchHeader {
+    kind: ErbBranchKind,
+    code: String,
 }
 
 enum FrameKind {
@@ -406,7 +505,94 @@ mod tests {
                             close: "</li>".to_string(),
                             children: vec![Node::HtmlText("Hello".to_string())]
                         }]
-                    }]
+                    }],
+                    branches: vec![]
+                }]
+            }
+        );
+    }
+
+    #[test]
+    fn keeps_erb_branches_with_children() {
+        let tokens =
+            tokenize("<% if admin? %><p>Admin</p><% elsif user? %><p>User</p><% else %><p>Guest</p><% end %>")
+                .unwrap();
+        let document = parse(&tokens).unwrap();
+
+        assert_eq!(
+            document,
+            Document {
+                children: vec![Node::ErbBlock {
+                    kind: ErbBlockKind::If,
+                    code: "if admin?".to_string(),
+                    children: vec![Node::HtmlElement {
+                        name: "p".to_string(),
+                        open: "<p>".to_string(),
+                        close: "</p>".to_string(),
+                        children: vec![Node::HtmlText("Admin".to_string())]
+                    }],
+                    branches: vec![
+                        ErbBranch {
+                            kind: ErbBranchKind::Elsif,
+                            code: "elsif user?".to_string(),
+                            children: vec![Node::HtmlElement {
+                                name: "p".to_string(),
+                                open: "<p>".to_string(),
+                                close: "</p>".to_string(),
+                                children: vec![Node::HtmlText("User".to_string())]
+                            }]
+                        },
+                        ErbBranch {
+                            kind: ErbBranchKind::Else,
+                            code: "else".to_string(),
+                            children: vec![Node::HtmlElement {
+                                name: "p".to_string(),
+                                open: "<p>".to_string(),
+                                close: "</p>".to_string(),
+                                children: vec![Node::HtmlText("Guest".to_string())]
+                            }]
+                        }
+                    ]
+                }]
+            }
+        );
+    }
+
+    #[test]
+    fn keeps_case_when_branches() {
+        let tokens = tokenize("<% case role %><% when \"admin\" %><p>Admin</p><% when \"user\" %><p>User</p><% end %>")
+            .unwrap();
+        let document = parse(&tokens).unwrap();
+
+        assert_eq!(
+            document,
+            Document {
+                children: vec![Node::ErbBlock {
+                    kind: ErbBlockKind::Case,
+                    code: "case role".to_string(),
+                    children: vec![],
+                    branches: vec![
+                        ErbBranch {
+                            kind: ErbBranchKind::When,
+                            code: "when \"admin\"".to_string(),
+                            children: vec![Node::HtmlElement {
+                                name: "p".to_string(),
+                                open: "<p>".to_string(),
+                                close: "</p>".to_string(),
+                                children: vec![Node::HtmlText("Admin".to_string())]
+                            }]
+                        },
+                        ErbBranch {
+                            kind: ErbBranchKind::When,
+                            code: "when \"user\"".to_string(),
+                            children: vec![Node::HtmlElement {
+                                name: "p".to_string(),
+                                open: "<p>".to_string(),
+                                close: "</p>".to_string(),
+                                children: vec![Node::HtmlText("User".to_string())]
+                            }]
+                        }
+                    ]
                 }]
             }
         );

@@ -1,4 +1,4 @@
-use crate::mixed_parser::{Document, Node};
+use crate::mixed_parser::{Document, ErbBranch, Node};
 
 const INDENT: &str = "  ";
 
@@ -63,11 +63,24 @@ impl Formatter {
             Node::ErbOutput(code) => {
                 self.write_indented_line(depth, &format!("<%= {} %>", code.trim()));
             }
-            Node::ErbBlock { code, children, .. } => {
+            Node::ErbBlock {
+                code,
+                children,
+                branches,
+                ..
+            } => {
                 self.write_indented_line(depth, &format!("<% {code} %>"));
                 self.format_nodes(children, depth + 1);
+                self.format_erb_branches(branches, depth);
                 self.write_indented_line(depth, "<% end %>");
             }
+        }
+    }
+
+    fn format_erb_branches(&mut self, branches: &[ErbBranch], depth: usize) {
+        for branch in branches {
+            self.write_indented_line(depth, &format!("<% {} %>", branch.code));
+            self.format_nodes(&branch.children, depth + 1);
         }
     }
 
@@ -215,6 +228,26 @@ mod tests {
     }
 
     #[test]
+    fn formats_if_elsif_else_branches() {
+        assert_eq!(
+            format(
+                "<% if admin? %>\n<p>Admin</p>\n<% elsif user? %>\n<p>User</p>\n<% else %>\n<p>Guest</p>\n<% end %>\n"
+            ),
+            "<% if admin? %>\n  <p>Admin</p>\n<% elsif user? %>\n  <p>User</p>\n<% else %>\n  <p>Guest</p>\n<% end %>\n"
+        );
+    }
+
+    #[test]
+    fn formats_case_when_branches() {
+        assert_eq!(
+            format(
+                "<% case role %>\n<% when \"admin\" %>\n<p>Admin</p>\n<% when \"user\" %>\n<p>User</p>\n<% end %>\n"
+            ),
+            "<% case role %>\n<% when \"admin\" %>\n  <p>Admin</p>\n<% when \"user\" %>\n  <p>User</p>\n<% end %>\n"
+        );
+    }
+
+    #[test]
     fn snapshots_default_html_indentation() {
         insta::assert_snapshot!(
             "default_html_indentation",
@@ -230,6 +263,16 @@ mod tests {
             "without_html_indentation",
             format_without_html_indent(
                 "<div>\n<h1><%= page_title %></h1>\n<% if user %>\n<p>Hello, <%= user.name %></p>\n<ul>\n<% Objects.map do |obj| %>\n<li><%= obj.name %></li>\n<% end %>\n</ul>\n<% end %>\n</div>\n"
+            )
+        );
+    }
+
+    #[test]
+    fn snapshots_branch_formatting() {
+        insta::assert_snapshot!(
+            "branch_formatting",
+            format(
+                "<% if admin? %>\n<p>Admin</p>\n<% elsif user? %>\n<p>User</p>\n<% else %>\n<p>Guest</p>\n<% end %>\n<% case role %>\n<% when \"admin\" %>\n<p>Admin tools</p>\n<% when \"user\" %>\n<p>User dashboard</p>\n<% end %>\n"
             )
         );
     }

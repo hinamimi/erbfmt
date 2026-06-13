@@ -6,6 +6,7 @@ pub enum Token {
     ErbCode(String),
     ErbOutput(String),
     ErbBlockStart { kind: ErbBlockKind, code: String },
+    ErbBranch { kind: ErbBranchKind, code: String },
     ErbBlockEnd(String),
 }
 
@@ -16,6 +17,13 @@ pub enum ErbBlockKind {
     Case,
     Do,
     Begin,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ErbBranchKind {
+    Else,
+    Elsif,
+    When,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -101,6 +109,21 @@ fn classify_code(code: String) -> Token {
     } else if starts_with_keyword(&code, "begin") {
         Token::ErbBlockStart {
             kind: ErbBlockKind::Begin,
+            code,
+        }
+    } else if starts_with_keyword(&code, "else") {
+        Token::ErbBranch {
+            kind: ErbBranchKind::Else,
+            code,
+        }
+    } else if starts_with_keyword(&code, "elsif") {
+        Token::ErbBranch {
+            kind: ErbBranchKind::Elsif,
+            code,
+        }
+    } else if starts_with_keyword(&code, "when") {
+        Token::ErbBranch {
+            kind: ErbBranchKind::When,
             code,
         }
     } else if starts_with_keyword(&code, "end") {
@@ -226,6 +249,29 @@ mod tests {
         let tokens = tokenize("<% end %>").unwrap();
 
         assert_eq!(tokens, vec![Token::ErbBlockEnd("end".to_string())]);
+    }
+
+    #[test]
+    fn tokenizes_erb_branch_tags() {
+        let cases = [
+            ("<% else %>", ErbBranchKind::Else, "else"),
+            ("<% elsif admin? %>", ErbBranchKind::Elsif, "elsif admin?"),
+            (
+                "<% when \"admin\" %>",
+                ErbBranchKind::When,
+                "when \"admin\"",
+            ),
+        ];
+
+        for (input, kind, code) in cases {
+            assert_eq!(
+                tokenize(input).unwrap(),
+                vec![Token::ErbBranch {
+                    kind,
+                    code: code.to_string()
+                }]
+            );
+        }
     }
 
     #[test]

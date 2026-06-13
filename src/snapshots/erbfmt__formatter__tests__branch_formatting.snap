@@ -1,0 +1,17 @@
+---
+source: src/formatter.rs
+expression: "format(\"<% if admin? %>\\n<p>Admin</p>\\n<% elsif user? %>\\n<p>User</p>\\n<% else %>\\n<p>Guest</p>\\n<% end %>\\n<% case role %>\\n<% when \\\"admin\\\" %>\\n<p>Admin tools</p>\\n<% when \\\"user\\\" %>\\n<p>User dashboard</p>\\n<% end %>\\n\")"
+---
+<% if admin? %>
+  <p>Admin</p>
+<% elsif user? %>
+  <p>User</p>
+<% else %>
+  <p>Guest</p>
+<% end %>
+<% case role %>
+<% when "admin" %>
+  <p>Admin tools</p>
+<% when "user" %>
+  <p>User dashboard</p>
+<% end %>

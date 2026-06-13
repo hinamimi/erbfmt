@@ -43,14 +43,26 @@ fn lint_nodes(nodes: &[Node], diagnostics: &mut Vec<Diagnostic>) {
 fn lint_node(node: &Node, diagnostics: &mut Vec<Diagnostic>) {
     match node {
         Node::ErbCode(code) => lint_erb_code(code, diagnostics),
-        Node::ErbBlock { code, children, .. } => {
-            if !children.iter().any(is_meaningful_node) {
+        Node::ErbBlock {
+            code,
+            children,
+            branches,
+            ..
+        } => {
+            if !children.iter().any(is_meaningful_node)
+                && !branches
+                    .iter()
+                    .any(|branch| branch.children.iter().any(is_meaningful_node))
+            {
                 diagnostics.push(Diagnostic {
                     message: format!("empty ERB control block `<% {code} %>`"),
                 });
             }
 
             lint_nodes(children, diagnostics);
+            for branch in branches {
+                lint_nodes(&branch.children, diagnostics);
+            }
         }
         Node::HtmlElement { children, .. } => lint_nodes(children, diagnostics),
         Node::HtmlText(_)
@@ -63,18 +75,10 @@ fn lint_node(node: &Node, diagnostics: &mut Vec<Diagnostic>) {
 }
 
 fn lint_erb_code(code: &str, diagnostics: &mut Vec<Diagnostic>) {
-    match first_keyword(code) {
-        Some("else" | "elsif" | "when") => {
-            diagnostics.push(Diagnostic {
-                message: format!("unsupported ERB branch `<% {} %>`", code.trim()),
-            });
-        }
-        Some("while" | "for" | "until") => {
-            diagnostics.push(Diagnostic {
-                message: format!("unsupported ERB block starter `<% {} %>`", code.trim()),
-            });
-        }
-        _ => {}
+    if let Some("while" | "for" | "until") = first_keyword(code) {
+        diagnostics.push(Diagnostic {
+            message: format!("unsupported ERB block starter `<% {} %>`", code.trim()),
+        });
     }
 }
 
@@ -168,16 +172,11 @@ mod tests {
     }
 
     #[test]
-    fn reports_unsupported_erb_branches() {
+    fn does_not_report_supported_erb_branches() {
         let diagnostics =
             lint("<% if current_user %>\n<% else %>\n<p>Please sign in</p>\n<% end %>");
 
-        assert_eq!(
-            diagnostics,
-            vec![Diagnostic {
-                message: "unsupported ERB branch `<% else %>`".to_string()
-            }]
-        );
+        assert_eq!(diagnostics, Vec::new());
     }
 
     #[test]

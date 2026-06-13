@@ -67,6 +67,10 @@ fn parse_nodes(
                 nodes.push(Node::ErbCode(code.clone()));
                 *cursor += 1;
             }
+            Token::ErbBranch { code, .. } => {
+                nodes.push(Node::ErbCode(code.clone()));
+                *cursor += 1;
+            }
             Token::ErbOutput(code) => {
                 nodes.push(Node::ErbOutput(code.clone()));
                 *cursor += 1;

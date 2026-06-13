@@ -43,11 +43,13 @@ MVP開発中
 - AST Parser
 - 混合ASTベースのFormatter
 - ERB制御構文のインデント
+- `else`、`elsif`、`when` のERB分岐整形
+- `case` / `when` ブロックの整形
 - HTMLタグ階層のインデント
 - `--write` によるファイルの直接整形
 - VSCode workspace の保存時整形設定
 - Lexer / Parser / HTMLタグ対応診断を使った基本的なLinter
-- 空のERBブロックと未対応ERB制御キーワード向けの構文lint
+- 空のERBブロックと残りの未対応ERBブロック開始キーワード向けの構文lint
 - `--check` による整形済みチェック
 - ファイル名付きのCLI診断
 - 複数ファイルのlint、check、write
@@ -99,6 +101,16 @@ cargo run -- --check samples/sample.html.erb samples/lint-next.html.erb
         <li><%= obj.name %></li>
       <% end %>
     </ul>
+  <% elsif guest? %>
+    <p>Guest</p>
+  <% else %>
+    <p>Please sign in</p>
+  <% end %>
+  <% case role %>
+  <% when "admin" %>
+    <p>Admin</p>
+  <% when "user" %>
+    <p>User</p>
   <% end %>
 </div>
 ```

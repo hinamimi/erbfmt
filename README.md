@@ -24,11 +24,13 @@ Early development.
 - AST parser
 - Mixed AST-driven formatter
 - ERB block indentation
+- ERB branch formatting for `else`, `elsif`, and `when`
+- Case block formatting with `when` branches
 - HTML tag indentation by default
 - In-place formatting with `--write`
 - VSCode workspace format-on-save setup
 - Basic linter with lexer, parser, and HTML balance diagnostics
-- Syntax lint rules for empty ERB blocks and unsupported ERB control keywords
+- Syntax lint rules for empty ERB blocks and remaining unsupported ERB block starters
 - Format checking with `--check`
 - File-scoped CLI diagnostics
 - Multi-file lint, check, and write modes
@@ -49,6 +51,16 @@ Early development.
 <p>Hello</p>
 <% end %>
 </ul>
+<% elsif guest? %>
+<p>Guest</p>
+<% else %>
+<p>Please sign in</p>
+<% end %>
+<% case role %>
+<% when "admin" %>
+<p>Admin</p>
+<% when "user" %>
+<p>User</p>
 <% end %>
 </div>
 ```
@@ -63,6 +75,16 @@ Early development.
         <p>Hello</p>
       <% end %>
     </ul>
+  <% elsif guest? %>
+    <p>Guest</p>
+  <% else %>
+    <p>Please sign in</p>
+  <% end %>
+  <% case role %>
+  <% when "admin" %>
+    <p>Admin</p>
+  <% when "user" %>
+    <p>User</p>
   <% end %>
 </div>
 ```
