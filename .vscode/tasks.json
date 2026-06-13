@@ -1,0 +1,55 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "cargo fmt",
+      "type": "shell",
+      "command": "cargo",
+      "args": ["fmt"],
+      "problemMatcher": []
+    },
+    {
+      "label": "cargo check --all-targets",
+      "type": "shell",
+      "command": "cargo",
+      "args": ["check", "--all-targets"],
+      "group": "build",
+      "problemMatcher": ["$rustc"]
+    },
+    {
+      "label": "cargo clippy",
+      "type": "shell",
+      "command": "cargo",
+      "args": ["clippy"],
+      "group": "build",
+      "problemMatcher": ["$rustc"]
+    },
+    {
+      "label": "cargo test",
+      "type": "shell",
+      "command": "cargo",
+      "args": ["test"],
+      "group": "test",
+      "problemMatcher": ["$rustc"]
+    },
+    {
+      "label": "cargo run sample",
+      "type": "shell",
+      "command": "cargo",
+      "args": ["run", "--", "samples/sample.erb"],
+      "problemMatcher": ["$rustc"]
+    },
+    {
+      "label": "erbfmt: verify",
+      "dependsOrder": "sequence",
+      "dependsOn": [
+        "cargo fmt",
+        "cargo check --all-targets",
+        "cargo clippy",
+        "cargo test",
+        "cargo run sample"
+      ],
+      "problemMatcher": []
+    }
+  ]
+}
