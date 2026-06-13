@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<div class="page <%= page_class %>">
+<!-- profile card -->
+<img src="<%= avatar_url %>" alt="<%= user.name %>">
+<input type="checkbox" checked="<%= checked %>">
+<% if user %>
+<section>
+<a href="/users/<%= user.id %>"><%= user.name %></a>
+<br>
+<% unless notifications.empty? %>
+<ul>
+<% notifications.each do |notification| %>
+<li><%= notification.title %></li>
+<% end %>
+</ul>
+<% end %>
+</section>
+<% else %>
+<p>Please sign in</p>
+<% end %>
+</div>

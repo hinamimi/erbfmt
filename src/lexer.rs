@@ -52,9 +52,15 @@ impl std::error::Error for LexError {}
 pub fn tokenize(input: &str) -> Result<Vec<Token>, LexError> {
     let mut tokens = Vec::new();
     let mut cursor = 0;
+    let mut search_cursor = 0;
 
-    while let Some(relative_start) = input[cursor..].find("<%") {
-        let start = cursor + relative_start;
+    while let Some(relative_start) = input[search_cursor..].find("<%") {
+        let start = search_cursor + relative_start;
+
+        if is_inside_html_tag(input, start) {
+            search_cursor = start + "<%".len();
+            continue;
+        }
 
         if start > cursor {
             tokens.push(Token::Html(input[cursor..start].to_string()));
@@ -81,6 +87,7 @@ pub fn tokenize(input: &str) -> Result<Vec<Token>, LexError> {
 
         tokens.push(token);
         cursor = code_end + "%>".len();
+        search_cursor = cursor;
     }
 
     if cursor < input.len() {
@@ -88,6 +95,63 @@ pub fn tokenize(input: &str) -> Result<Vec<Token>, LexError> {
     }
 
     Ok(tokens)
+}
+
+fn is_inside_html_tag(input: &str, position: usize) -> bool {
+    let mut cursor = 0;
+    let mut inside_tag = false;
+    let mut quote = None;
+
+    while cursor < position {
+        if input[cursor..].starts_with("<%") {
+            let Some(relative_end) = input[cursor + "<%".len()..].find("%>") else {
+                return inside_tag;
+            };
+            cursor += "<%".len() + relative_end + "%>".len();
+            continue;
+        }
+
+        if !inside_tag && input[cursor..].starts_with("<!--") {
+            let Some(relative_end) = input[cursor + "<!--".len()..].find("-->") else {
+                return false;
+            };
+            cursor += "<!--".len() + relative_end + "-->".len();
+            continue;
+        }
+
+        let ch = input[cursor..]
+            .chars()
+            .next()
+            .expect("cursor is inside input");
+
+        if inside_tag {
+            match quote {
+                Some(active_quote) if ch == active_quote => quote = None,
+                Some(_) => {}
+                None if ch == '"' || ch == '\'' => quote = Some(ch),
+                None if ch == '>' => inside_tag = false,
+                None => {}
+            }
+        } else if ch == '<' && starts_html_tag_like(input, cursor) {
+            inside_tag = true;
+        }
+
+        cursor += ch.len_utf8();
+    }
+
+    inside_tag
+}
+
+fn starts_html_tag_like(input: &str, position: usize) -> bool {
+    let Some(rest) = input[position..].strip_prefix('<') else {
+        return false;
+    };
+
+    rest.starts_with("!--")
+        || rest
+            .chars()
+            .next()
+            .is_some_and(|ch| ch.is_ascii_alphabetic() || matches!(ch, '/' | '!' | '?'))
 }
 
 fn classify_code(code: String) -> Token {
@@ -216,6 +280,38 @@ mod tests {
                 Token::Html("<p>Hello ".to_string()),
                 Token::ErbOutput("user.name".to_string()),
                 Token::Html("</p>".to_string())
+            ]
+        );
+    }
+
+    #[test]
+    fn keeps_erb_output_inside_html_tag_attributes_as_html() {
+        let tokens = tokenize(
+            r#"<a href="/users/<%= user.id %>" aria-label="<%= user.name %>"><%= user.name %></a>"#,
+        )
+        .unwrap();
+
+        assert_eq!(
+            tokens,
+            vec![
+                Token::Html(
+                    r#"<a href="/users/<%= user.id %>" aria-label="<%= user.name %>">"#.to_string()
+                ),
+                Token::ErbOutput("user.name".to_string()),
+                Token::Html("</a>".to_string())
+            ]
+        );
+    }
+
+    #[test]
+    fn tokenizes_erb_after_non_tag_less_than_sign() {
+        let tokens = tokenize("2 < 3 <%= result %>").unwrap();
+
+        assert_eq!(
+            tokens,
+            vec![
+                Token::Html("2 < 3 ".to_string()),
+                Token::ErbOutput("result".to_string())
             ]
         );
     }

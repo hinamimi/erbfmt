@@ -38,12 +38,23 @@ pub fn tokenize(input: &str) -> Vec<HtmlToken> {
             continue;
         }
 
-        let Some(relative_end) = input[start..].find('>') else {
+        if input[start..].starts_with("<%") {
+            let Some(relative_end) = input[start + "<%".len()..].find("%>") else {
+                tokens.push(HtmlToken::Text(input[start..].to_string()));
+                return tokens;
+            };
+
+            let end = start + "<%".len() + relative_end + "%>".len();
+            tokens.push(HtmlToken::Text(input[start..end].to_string()));
+            cursor = end;
+            continue;
+        }
+
+        let Some(end) = find_tag_end(input, start) else {
             tokens.push(HtmlToken::Text(input[start..].to_string()));
             return tokens;
         };
 
-        let end = start + relative_end + '>'.len_utf8();
         let raw = &input[start..end];
         let body = input[start + '<'.len_utf8()..end - '>'.len_utf8()].trim();
 
@@ -87,6 +98,37 @@ pub fn tokenize(input: &str) -> Vec<HtmlToken> {
     }
 
     tokens
+}
+
+fn find_tag_end(input: &str, start: usize) -> Option<usize> {
+    let mut cursor = start + '<'.len_utf8();
+    let mut quote = None;
+
+    while cursor < input.len() {
+        if input[cursor..].starts_with("<%") {
+            let erb_code_start = cursor + "<%".len();
+            let relative_erb_end = input[erb_code_start..].find("%>")?;
+            cursor = erb_code_start + relative_erb_end + "%>".len();
+            continue;
+        }
+
+        let ch = input[cursor..]
+            .chars()
+            .next()
+            .expect("cursor is inside input");
+
+        match quote {
+            Some(active_quote) if ch == active_quote => quote = None,
+            Some(_) => {}
+            None if ch == '"' || ch == '\'' => quote = Some(ch),
+            None if ch == '>' => return Some(cursor + ch.len_utf8()),
+            None => {}
+        }
+
+        cursor += ch.len_utf8();
+    }
+
+    None
 }
 
 fn tag_name(body: &str) -> &str {
@@ -156,6 +198,26 @@ mod tests {
                 name: "article".to_string(),
                 raw: r#"<article class="card" data-id="1">"#.to_string()
             })]
+        );
+    }
+
+    #[test]
+    fn tokenizes_attributes_with_erb_output() {
+        let tokens = tokenize(r#"<a href="/users/<%= user.id %>">Profile</a>"#);
+
+        assert_eq!(
+            tokens,
+            vec![
+                HtmlToken::OpenTag(HtmlTag {
+                    name: "a".to_string(),
+                    raw: r#"<a href="/users/<%= user.id %>">"#.to_string()
+                }),
+                HtmlToken::Text("Profile".to_string()),
+                HtmlToken::CloseTag(HtmlTag {
+                    name: "a".to_string(),
+                    raw: "</a>".to_string()
+                })
+            ]
         );
     }
 

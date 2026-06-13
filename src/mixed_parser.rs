@@ -485,6 +485,24 @@ mod tests {
     }
 
     #[test]
+    fn preserves_erb_output_inside_html_attributes() {
+        let tokens = tokenize(r#"<a href="/users/<%= user.id %>"><%= user.name %></a>"#).unwrap();
+        let document = parse(&tokens).unwrap();
+
+        assert_eq!(
+            document,
+            Document {
+                children: vec![Node::HtmlElement {
+                    name: "a".to_string(),
+                    open: r#"<a href="/users/<%= user.id %>">"#.to_string(),
+                    close: "</a>".to_string(),
+                    children: vec![Node::ErbOutput("user.name".to_string())]
+                }]
+            }
+        );
+    }
+
+    #[test]
     fn keeps_erb_blocks_with_html_children() {
         let tokens = tokenize("<% if user %><ul><li>Hello</li></ul><% end %>").unwrap();
         let document = parse(&tokens).unwrap();

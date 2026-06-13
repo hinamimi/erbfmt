@@ -276,4 +276,21 @@ mod tests {
             )
         );
     }
+
+    #[test]
+    fn snapshots_stability_fixture() {
+        insta::assert_snapshot!("stability_fixture", format(stability_fixture()));
+    }
+
+    #[test]
+    fn snapshots_stability_fixture_without_html_indentation() {
+        insta::assert_snapshot!(
+            "stability_fixture_without_html_indentation",
+            format_without_html_indent(stability_fixture())
+        );
+    }
+
+    fn stability_fixture() -> &'static str {
+        "<!DOCTYPE html>\n<div class=\"page <%= page_class %>\">\n<!-- profile card -->\n<img src=\"<%= avatar_url %>\" alt=\"<%= user.name %>\">\n<input type=\"checkbox\" checked=\"<%= checked %>\">\n<% if user %>\n<section>\n<a href=\"/users/<%= user.id %>\"><%= user.name %></a>\n<br>\n<% unless notifications.empty? %>\n<ul>\n<% notifications.each do |notification| %>\n<li><%= notification.title %></li>\n<% end %>\n</ul>\n<% end %>\n</section>\n<% else %>\n<p>Please sign in</p>\n<% end %>\n</div>\n"
+    }
 }

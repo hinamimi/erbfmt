@@ -26,6 +26,7 @@ Early development.
 - ERB block indentation
 - ERB branch formatting for `else`, `elsif`, and `when`
 - Case block formatting with `when` branches
+- ERB output inside HTML tag attributes
 - HTML tag indentation by default
 - In-place formatting with `--write`
 - VSCode workspace format-on-save setup

@@ -45,6 +45,7 @@ MVP開発中
 - ERB制御構文のインデント
 - `else`、`elsif`、`when` のERB分岐整形
 - `case` / `when` ブロックの整形
+- HTMLタグ属性内のERB output
 - HTMLタグ階層のインデント
 - `--write` によるファイルの直接整形
 - VSCode workspace の保存時整形設定
