@@ -25,10 +25,11 @@ Early development.
 - HTML tag indentation by default
 - In-place formatting with `--write`
 - VSCode workspace format-on-save setup
+- Basic linter with lexer and parser diagnostics
 
 ### Planned
 
-- Linter
+- More lint rules
 
 ## Example
 
@@ -72,6 +73,12 @@ Format a file in place:
 
 ```bash
 cargo run -- --write samples/sample.html.erb
+```
+
+Lint a file:
+
+```bash
+cargo run -- --lint samples/sample.html.erb
 ```
 
 By default, erbfmt indents both ERB control-flow blocks and HTML tag nesting.

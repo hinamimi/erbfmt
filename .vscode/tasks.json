@@ -47,6 +47,13 @@
       "problemMatcher": ["$rustc"]
     },
     {
+      "label": "cargo run lint sample",
+      "type": "shell",
+      "command": "cargo",
+      "args": ["run", "--", "--lint", "samples/sample.html.erb"],
+      "problemMatcher": ["$rustc"]
+    },
+    {
       "label": "erbfmt: verify",
       "dependsOrder": "sequence",
       "dependsOn": [
@@ -54,7 +61,8 @@
         "cargo check --all-targets",
         "cargo clippy",
         "cargo test",
-        "cargo run sample"
+        "cargo run sample",
+        "cargo run lint sample"
       ],
       "problemMatcher": []
     }

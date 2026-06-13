@@ -1,10 +1,12 @@
 mod formatter;
 mod lexer;
+mod linter;
 mod parser;
 
 use anyhow::Result;
 use clap::Parser;
 use std::fs;
+use std::process::ExitCode;
 
 #[derive(Parser)]
 struct Args {
@@ -15,12 +17,30 @@ struct Args {
 
     #[arg(long)]
     write: bool,
+
+    #[arg(long)]
+    lint: bool,
 }
 
-fn main() -> Result<()> {
+fn main() -> Result<ExitCode> {
     let args = Args::parse();
 
     let content = fs::read_to_string(&args.file)?;
+
+    if args.lint {
+        let diagnostics = linter::lint(&content);
+
+        if diagnostics.is_empty() {
+            println!("No lint issues found.");
+            return Ok(ExitCode::SUCCESS);
+        }
+
+        for diagnostic in diagnostics {
+            eprintln!("{}", diagnostic.message);
+        }
+
+        return Ok(ExitCode::FAILURE);
+    }
 
     let tokens = lexer::tokenize(&content)?;
     let document = parser::parse(&tokens)?;
@@ -39,5 +59,5 @@ fn main() -> Result<()> {
         print!("{formatted}");
     }
 
-    Ok(())
+    Ok(ExitCode::SUCCESS)
 }

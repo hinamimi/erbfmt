@@ -44,6 +44,7 @@ MVP開発中
 - HTMLタグ階層のインデント
 - `--write` によるファイルの直接整形
 - VSCode workspace の保存時整形設定
+- Lexer / Parser 診断を使った基本的なLinter
 
 ## CLI
 
@@ -57,6 +58,12 @@ cargo run -- samples/sample.html.erb
 
 ```bash
 cargo run -- --write samples/sample.html.erb
+```
+
+ファイルをlintする場合は `--lint` を指定します。
+
+```bash
+cargo run -- --lint samples/sample.html.erb
 ```
 
 デフォルトでは、ERB制御構文のネストとHTMLタグ階層の両方をインデントします。
@@ -92,6 +99,6 @@ cargo run --quiet -- --write "${file}"
 
 ## 将来構想
 
-- Linter
+- Lintルールの拡充
 - npm package
 - Ruby Gem
