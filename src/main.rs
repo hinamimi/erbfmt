@@ -18,6 +18,9 @@ struct Args {
     #[arg(long)]
     write: bool,
 
+    #[arg(long, conflicts_with = "write")]
+    check: bool,
+
     #[arg(long)]
     lint: bool,
 }
@@ -55,6 +58,13 @@ fn main() -> Result<ExitCode> {
 
     if args.write {
         fs::write(&args.file, formatted)?;
+    } else if args.check {
+        if formatted == content {
+            println!("File is formatted.");
+        } else {
+            eprintln!("File is not formatted.");
+            return Ok(ExitCode::FAILURE);
+        }
     } else {
         print!("{formatted}");
     }

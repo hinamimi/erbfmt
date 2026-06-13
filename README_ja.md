@@ -45,6 +45,7 @@ MVP開発中
 - `--write` によるファイルの直接整形
 - VSCode workspace の保存時整形設定
 - Lexer / Parser 診断を使った基本的なLinter
+- `--check` による整形済みチェック
 
 ## CLI
 
@@ -64,6 +65,12 @@ cargo run -- --write samples/sample.html.erb
 
 ```bash
 cargo run -- --lint samples/sample.html.erb
+```
+
+ファイルが整形済みかどうかだけを確認する場合は `--check` を指定します。
+
+```bash
+cargo run -- --check samples/sample.html.erb
 ```
 
 デフォルトでは、ERB制御構文のネストとHTMLタグ階層の両方をインデントします。

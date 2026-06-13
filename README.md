@@ -26,6 +26,7 @@ Early development.
 - In-place formatting with `--write`
 - VSCode workspace format-on-save setup
 - Basic linter with lexer and parser diagnostics
+- Format checking with `--check`
 
 ### Planned
 
@@ -79,6 +80,12 @@ Lint a file:
 
 ```bash
 cargo run -- --lint samples/sample.html.erb
+```
+
+Check whether a file is already formatted:
+
+```bash
+cargo run -- --check samples/sample.html.erb
 ```
 
 By default, erbfmt indents both ERB control-flow blocks and HTML tag nesting.

@@ -54,6 +54,13 @@
       "problemMatcher": ["$rustc"]
     },
     {
+      "label": "cargo run check sample",
+      "type": "shell",
+      "command": "cargo",
+      "args": ["run", "--", "--check", "samples/sample.html.erb"],
+      "problemMatcher": ["$rustc"]
+    },
+    {
       "label": "erbfmt: verify",
       "dependsOrder": "sequence",
       "dependsOn": [
