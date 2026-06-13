@@ -1,4 +1,5 @@
 mod formatter;
+mod html;
 mod lexer;
 mod linter;
 mod parser;

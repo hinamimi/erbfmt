@@ -38,6 +38,7 @@ MVP開発中
 - ファイル読み込み
 - Token定義
 - ERB Lexer
+- 軽量HTML Tokenizer
 - AST Parser
 - 基本的なFormatter
 - ERB制御構文のインデント

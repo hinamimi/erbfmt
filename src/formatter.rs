@@ -1,4 +1,7 @@
-use crate::parser::{Document, Node};
+use crate::{
+    html::{self, HtmlToken},
+    parser::{Document, Node},
+};
 
 const INDENT: &str = "  ";
 
@@ -138,76 +141,34 @@ impl Formatter {
 }
 
 fn leading_close_count(text: &str) -> usize {
-    let trimmed = text.trim_start();
+    for token in html::tokenize(text) {
+        match token {
+            HtmlToken::Text(text) if text.trim().is_empty() => {}
+            HtmlToken::CloseTag(_) => return 1,
+            _ => return 0,
+        }
+    }
 
-    if trimmed.starts_with("</") { 1 } else { 0 }
+    0
 }
 
 fn html_tag_delta(line: &str) -> (usize, usize) {
     let mut opens = 0;
     let mut closes = 0;
-    let mut rest = line;
 
-    while let Some(start) = rest.find('<') {
-        rest = &rest[start + '<'.len_utf8()..];
-
-        let Some(end) = rest.find('>') else {
-            break;
-        };
-
-        let tag = rest[..end].trim();
-        rest = &rest[end + '>'.len_utf8()..];
-
-        if should_ignore_tag(tag) {
-            continue;
-        }
-
-        if tag.starts_with('/') {
-            closes += 1;
-            continue;
-        }
-
-        if !tag.ends_with('/') && !is_void_tag(tag_name(tag)) {
-            opens += 1;
+    for token in html::tokenize(line) {
+        match token {
+            HtmlToken::OpenTag(_) => opens += 1,
+            HtmlToken::CloseTag(_) => closes += 1,
+            HtmlToken::Text(_)
+            | HtmlToken::SelfClosingTag(_)
+            | HtmlToken::VoidTag(_)
+            | HtmlToken::Comment(_)
+            | HtmlToken::Doctype(_) => {}
         }
     }
 
     (opens, closes)
-}
-
-fn should_ignore_tag(tag: &str) -> bool {
-    tag.is_empty()
-        || tag.starts_with('%')
-        || tag.starts_with('!')
-        || tag.starts_with('?')
-        || tag.starts_with("!--")
-}
-
-fn tag_name(tag: &str) -> &str {
-    tag.trim_start_matches('/')
-        .split(|c: char| c.is_whitespace() || c == '/')
-        .next()
-        .unwrap_or("")
-}
-
-fn is_void_tag(name: &str) -> bool {
-    matches!(
-        name.to_ascii_lowercase().as_str(),
-        "area"
-            | "base"
-            | "br"
-            | "col"
-            | "embed"
-            | "hr"
-            | "img"
-            | "input"
-            | "link"
-            | "meta"
-            | "param"
-            | "source"
-            | "track"
-            | "wbr"
-    )
 }
 
 #[cfg(test)]

@@ -19,6 +19,7 @@ Early development.
 - CLI scaffold
 - File input
 - ERB lexer
+- Lightweight HTML tokenizer
 - AST parser
 - Basic formatter
 - ERB block indentation
