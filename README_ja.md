@@ -47,6 +47,7 @@ MVP開発中
 - `--write` によるファイルの直接整形
 - VSCode workspace の保存時整形設定
 - Lexer / Parser / HTMLタグ対応診断を使った基本的なLinter
+- 空のERBブロックと未対応ERB制御キーワード向けの構文lint
 - `--check` による整形済みチェック
 - ファイル名付きのCLI診断
 

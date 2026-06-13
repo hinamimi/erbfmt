@@ -28,12 +28,13 @@ Early development.
 - In-place formatting with `--write`
 - VSCode workspace format-on-save setup
 - Basic linter with lexer, parser, and HTML balance diagnostics
+- Syntax lint rules for empty ERB blocks and unsupported ERB control keywords
 - Format checking with `--check`
 - File-scoped CLI diagnostics
 
 ### Planned
 
-- More lint rules
+- Multi-file CLI
 
 ## Example
 

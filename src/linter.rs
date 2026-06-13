@@ -1,4 +1,7 @@
-use crate::{lexer, mixed_parser};
+use crate::{
+    lexer,
+    mixed_parser::{self, Document, Node},
+};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Diagnostic {
@@ -16,12 +19,80 @@ pub fn lint(input: &str) -> Vec<Diagnostic> {
     };
 
     match mixed_parser::parse(&tokens) {
-        Ok(_) => Vec::new(),
+        Ok(document) => lint_document(&document),
         Err(error) => {
             vec![Diagnostic {
                 message: error.to_string(),
             }]
         }
+    }
+}
+
+fn lint_document(document: &Document) -> Vec<Diagnostic> {
+    let mut diagnostics = Vec::new();
+    lint_nodes(&document.children, &mut diagnostics);
+    diagnostics
+}
+
+fn lint_nodes(nodes: &[Node], diagnostics: &mut Vec<Diagnostic>) {
+    for node in nodes {
+        lint_node(node, diagnostics);
+    }
+}
+
+fn lint_node(node: &Node, diagnostics: &mut Vec<Diagnostic>) {
+    match node {
+        Node::ErbCode(code) => lint_erb_code(code, diagnostics),
+        Node::ErbBlock { code, children, .. } => {
+            if !children.iter().any(is_meaningful_node) {
+                diagnostics.push(Diagnostic {
+                    message: format!("empty ERB control block `<% {code} %>`"),
+                });
+            }
+
+            lint_nodes(children, diagnostics);
+        }
+        Node::HtmlElement { children, .. } => lint_nodes(children, diagnostics),
+        Node::HtmlText(_)
+        | Node::HtmlSelfClosing { .. }
+        | Node::HtmlVoid { .. }
+        | Node::HtmlComment(_)
+        | Node::HtmlDoctype(_)
+        | Node::ErbOutput(_) => {}
+    }
+}
+
+fn lint_erb_code(code: &str, diagnostics: &mut Vec<Diagnostic>) {
+    match first_keyword(code) {
+        Some("else" | "elsif" | "when") => {
+            diagnostics.push(Diagnostic {
+                message: format!("unsupported ERB branch `<% {} %>`", code.trim()),
+            });
+        }
+        Some("while" | "for" | "until") => {
+            diagnostics.push(Diagnostic {
+                message: format!("unsupported ERB block starter `<% {} %>`", code.trim()),
+            });
+        }
+        _ => {}
+    }
+}
+
+fn first_keyword(code: &str) -> Option<&str> {
+    code.split_whitespace().next()
+}
+
+fn is_meaningful_node(node: &Node) -> bool {
+    match node {
+        Node::HtmlText(text) => !text.trim().is_empty(),
+        Node::HtmlComment(_) => false,
+        Node::HtmlElement { .. }
+        | Node::HtmlSelfClosing { .. }
+        | Node::HtmlVoid { .. }
+        | Node::HtmlDoctype(_)
+        | Node::ErbCode(_)
+        | Node::ErbOutput(_)
+        | Node::ErbBlock { .. } => true,
     }
 }
 
@@ -80,6 +151,43 @@ mod tests {
             diagnostics,
             vec![Diagnostic {
                 message: "mismatched HTML close tag `</div>`, expected closing tag for `span`, found `div`".to_string()
+            }]
+        );
+    }
+
+    #[test]
+    fn reports_empty_erb_control_blocks() {
+        let diagnostics = lint("<% if show_empty_state %>\n<% end %>\n");
+
+        assert_eq!(
+            diagnostics,
+            vec![Diagnostic {
+                message: "empty ERB control block `<% if show_empty_state %>`".to_string()
+            }]
+        );
+    }
+
+    #[test]
+    fn reports_unsupported_erb_branches() {
+        let diagnostics =
+            lint("<% if current_user %>\n<% else %>\n<p>Please sign in</p>\n<% end %>");
+
+        assert_eq!(
+            diagnostics,
+            vec![Diagnostic {
+                message: "unsupported ERB branch `<% else %>`".to_string()
+            }]
+        );
+    }
+
+    #[test]
+    fn reports_unsupported_erb_block_starters() {
+        let diagnostics = lint("<% while job.running? %>\n<p>Waiting</p>\n");
+
+        assert_eq!(
+            diagnostics,
+            vec![Diagnostic {
+                message: "unsupported ERB block starter `<% while job.running? %>`".to_string()
             }]
         );
     }
