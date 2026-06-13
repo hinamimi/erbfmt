@@ -1,4 +1,5 @@
 mod lexer;
+mod parser;
 
 use anyhow::Result;
 use clap::Parser;
@@ -15,8 +16,9 @@ fn main() -> Result<()> {
     let content = fs::read_to_string(args.file)?;
 
     let tokens = lexer::tokenize(&content)?;
+    let document = parser::parse(&tokens)?;
 
-    println!("{tokens:#?}");
+    println!("{document:#?}");
 
     Ok(())
 }
