@@ -48,6 +48,7 @@ MVP開発中
 - VSCode workspace の保存時整形設定
 - Lexer / Parser / HTMLタグ対応診断を使った基本的なLinter
 - `--check` による整形済みチェック
+- ファイル名付きのCLI診断
 
 ## CLI
 
@@ -74,6 +75,8 @@ cargo run -- --lint samples/sample.html.erb
 ```bash
 cargo run -- --check samples/sample.html.erb
 ```
+
+`--write`、`--check`、`--lint` は同時に指定できません。`--no-html-indent` は整形やチェックでは使えますが、lintでは使えません。
 
 デフォルトでは、ERB制御構文のネストとHTMLタグ階層の両方をインデントします。
 
