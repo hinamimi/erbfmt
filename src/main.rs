@@ -14,7 +14,7 @@ fn main() -> Result<()> {
 
     let content = fs::read_to_string(args.file)?;
 
-    let tokens = lexer::tokenize(&content);
+    let tokens = lexer::tokenize(&content)?;
 
     println!("{tokens:#?}");
 
