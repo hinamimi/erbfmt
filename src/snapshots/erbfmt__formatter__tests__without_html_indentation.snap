@@ -1,0 +1,15 @@
+---
+source: src/formatter.rs
+expression: "format_without_html_indent(\"<div>\\n<h1><%= page_title %></h1>\\n<% if user %>\\n<p>Hello, <%= user.name %></p>\\n<ul>\\n<% Objects.map do |obj| %>\\n<li><%= obj.name %></li>\\n<% end %>\\n</ul>\\n<% end %>\\n</div>\\n\")"
+---
+<div>
+<h1><%= page_title %></h1>
+<% if user %>
+  <p>Hello, <%= user.name %></p>
+  <ul>
+  <% Objects.map do |obj| %>
+    <li><%= obj.name %></li>
+  <% end %>
+  </ul>
+<% end %>
+</div>

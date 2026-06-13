@@ -272,4 +272,24 @@ mod tests {
             "<% if user %>\n  <ul>\n  <% Objects.map do |obj| %>\n    <li><%= obj.name %></li>\n  <% end %>\n  </ul>\n<% end %>\n"
         );
     }
+
+    #[test]
+    fn snapshots_default_html_indentation() {
+        insta::assert_snapshot!(
+            "default_html_indentation",
+            format(
+                "<div>\n<h1><%= page_title %></h1>\n<% if user %>\n<p>Hello, <%= user.name %></p>\n<ul>\n<% Objects.map do |obj| %>\n<li><%= obj.name %></li>\n<% end %>\n</ul>\n<% end %>\n</div>\n"
+            )
+        );
+    }
+
+    #[test]
+    fn snapshots_without_html_indentation() {
+        insta::assert_snapshot!(
+            "without_html_indentation",
+            format_without_html_indent(
+                "<div>\n<h1><%= page_title %></h1>\n<% if user %>\n<p>Hello, <%= user.name %></p>\n<ul>\n<% Objects.map do |obj| %>\n<li><%= obj.name %></li>\n<% end %>\n</ul>\n<% end %>\n</div>\n"
+            )
+        );
+    }
 }
