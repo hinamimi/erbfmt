@@ -18,14 +18,14 @@ Early development.
 
 - CLI scaffold
 - File input
-- Token abstraction
-- Lexer scaffold
+- ERB lexer
+- AST parser
+- Basic formatter
+- ERB block indentation
+- HTML tag indentation by default
 
 ### Planned
 
-- ERB lexer
-- AST parser
-- Formatter
 - Snapshot testing
 - VSCode integration
 
@@ -36,7 +36,11 @@ Early development.
 ```erb
 <div>
 <% if user %>
+<ul>
+<% Objects.map do |obj| %>
 <p>Hello</p>
+<% end %>
+</ul>
 <% end %>
 </div>
 ```
@@ -46,14 +50,36 @@ Early development.
 ```erb
 <div>
   <% if user %>
-    <p>Hello</p>
+    <ul>
+      <% Objects.map do |obj| %>
+        <p>Hello</p>
+      <% end %>
+    </ul>
   <% end %>
 </div>
+```
+
+## CLI
+
+Format a file:
+
+```bash
+cargo run -- samples/sample.erb
+```
+
+By default, erbfmt indents both ERB control-flow blocks and HTML tag nesting.
+Use `--no-html-indent` to keep HTML indentation unchanged and only indent ERB blocks:
+
+```bash
+cargo run -- --no-html-indent samples/sample.erb
 ```
 
 ## Development
 
 ```bash
-cargo run samples/sample.erb
+cargo fmt
+cargo check --all-targets
+cargo clippy
 cargo test
+cargo run -- samples/sample.erb
 ```

@@ -37,11 +37,44 @@ MVP開発中
 - CLI
 - ファイル読み込み
 - Token定義
-- Lexer雛形
+- ERB Lexer
+- AST Parser
+- 基本的なFormatter
+- ERB制御構文のインデント
+- HTMLタグ階層のインデント
+
+## CLI
+
+ファイルを整形します。
+
+```bash
+cargo run -- samples/sample.erb
+```
+
+デフォルトでは、ERB制御構文のネストとHTMLタグ階層の両方をインデントします。
+
+例:
+
+```erb
+<div>
+  <% if user %>
+    <ul>
+      <% Objects.map do |obj| %>
+        <li><%= obj.name %></li>
+      <% end %>
+    </ul>
+  <% end %>
+</div>
+```
+
+HTMLタグ階層によるインデントを無効にし、ERB制御構文だけをインデントしたい場合は `--no-html-indent` を指定します。
+
+```bash
+cargo run -- --no-html-indent samples/sample.erb
+```
 
 ## 将来構想
 
-- Formatter
 - Linter
 - VSCode拡張
 - npm package
