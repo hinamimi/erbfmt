@@ -1,0 +1,20 @@
+<section class="lint-next">
+  <!--
+    This file intentionally passes the current linter.
+    Milestone 13 should add syntax-level lint rules that flag these patterns.
+  -->
+
+  <h1>Future lint examples</h1>
+
+  <% if show_empty_state %>
+  <% end %>
+
+  <% if current_user %>
+    <p>Welcome, <%= current_user.name %></p>
+    <% else %>
+    <p>Please sign in</p>
+  <% end %>
+
+  <% while job.running? %>
+  <p>Waiting for the job to finish...</p>
+</section>
