@@ -39,13 +39,14 @@ MVP開発中
 - Token定義
 - ERB Lexer
 - 軽量HTML Tokenizer
+- HTML awareな混合Parser
 - AST Parser
-- 基本的なFormatter
+- 混合ASTベースのFormatter
 - ERB制御構文のインデント
 - HTMLタグ階層のインデント
 - `--write` によるファイルの直接整形
 - VSCode workspace の保存時整形設定
-- Lexer / Parser 診断を使った基本的なLinter
+- Lexer / Parser / HTMLタグ対応診断を使った基本的なLinter
 - `--check` による整形済みチェック
 
 ## CLI

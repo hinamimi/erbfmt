@@ -20,13 +20,14 @@ Early development.
 - File input
 - ERB lexer
 - Lightweight HTML tokenizer
+- HTML-aware mixed parser
 - AST parser
-- Basic formatter
+- Mixed AST-driven formatter
 - ERB block indentation
 - HTML tag indentation by default
 - In-place formatting with `--write`
 - VSCode workspace format-on-save setup
-- Basic linter with lexer and parser diagnostics
+- Basic linter with lexer, parser, and HTML balance diagnostics
 - Format checking with `--check`
 
 ### Planned

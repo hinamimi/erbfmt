@@ -2,6 +2,8 @@ mod formatter;
 mod html;
 mod lexer;
 mod linter;
+mod mixed_parser;
+#[cfg(test)]
 mod parser;
 
 use anyhow::Result;
@@ -47,7 +49,7 @@ fn main() -> Result<ExitCode> {
     }
 
     let tokens = lexer::tokenize(&content)?;
-    let document = parser::parse(&tokens)?;
+    let document = mixed_parser::parse(&tokens)?;
     let formatted = if args.no_html_indent {
         formatter::format_document_with_options(
             &document,

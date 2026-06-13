@@ -1,7 +1,4 @@
-use crate::{
-    html::{self, HtmlToken},
-    parser::{Document, Node},
-};
+use crate::mixed_parser::{Document, Node};
 
 const INDENT: &str = "  ";
 
@@ -29,8 +26,6 @@ pub fn format_document_with_options(document: &Document, options: FormatOptions)
 struct Formatter {
     options: FormatOptions,
     output: String,
-    line: String,
-    html_depth: usize,
 }
 
 impl Formatter {
@@ -38,8 +33,6 @@ impl Formatter {
         Self {
             options,
             output: String::new(),
-            line: String::new(),
-            html_depth: 0,
         }
     }
 
@@ -51,130 +44,117 @@ impl Formatter {
 
     fn format_node(&mut self, node: &Node, depth: usize) {
         match node {
-            Node::Html(html) => self.write_html(html, depth),
-            Node::ErbCode(code) => self.write_inline_erb("<%", code, "%>", depth),
-            Node::ErbOutput(code) => self.write_inline_erb("<%=", code, "%>", depth),
+            Node::HtmlText(text) => self.write_text(text, depth),
+            Node::HtmlElement {
+                open,
+                close,
+                children,
+                ..
+            } => self.write_html_element(open, close, children, depth),
+            Node::HtmlSelfClosing { raw, .. } | Node::HtmlVoid { raw, .. } => {
+                self.write_indented_line(depth, raw);
+            }
+            Node::HtmlComment(comment) | Node::HtmlDoctype(comment) => {
+                self.write_indented_line(depth, comment);
+            }
+            Node::ErbCode(code) => {
+                self.write_indented_line(depth, &format!("<% {} %>", code.trim()))
+            }
+            Node::ErbOutput(code) => {
+                self.write_indented_line(depth, &format!("<%= {} %>", code.trim()));
+            }
             Node::ErbBlock { code, children, .. } => {
-                self.flush_line();
                 self.write_indented_line(depth, &format!("<% {code} %>"));
                 self.format_nodes(children, depth + 1);
-                self.flush_line();
                 self.write_indented_line(depth, "<% end %>");
             }
         }
     }
 
-    fn write_html(&mut self, html: &str, depth: usize) {
-        for segment in html.split_inclusive('\n') {
-            let Some(line) = segment.strip_suffix('\n') else {
-                self.write_inline_text(segment, depth);
-                continue;
-            };
-
-            if !line.is_empty() || !self.line.is_empty() {
-                self.write_inline_text(line, depth);
-                self.flush_line();
+    fn write_text(&mut self, text: &str, depth: usize) {
+        for line in text.lines() {
+            let trimmed = line.trim();
+            if !trimmed.is_empty() {
+                self.write_indented_line(depth, trimmed);
             }
         }
     }
 
-    fn write_inline_erb(&mut self, open: &str, code: &str, close: &str, depth: usize) {
-        self.write_inline_text(&format!("{open} {} {close}", code.trim()), depth);
+    fn write_html_element(&mut self, open: &str, close: &str, children: &[Node], depth: usize) {
+        if can_render_inline(children) {
+            let content = render_inline_nodes(children);
+            self.write_indented_line(depth, &format!("{open}{content}{close}"));
+        } else {
+            self.write_indented_line(depth, open);
+            self.format_nodes(children, self.html_child_depth(depth));
+            self.write_indented_line(depth, close);
+        }
     }
 
-    fn write_inline_text(&mut self, text: &str, depth: usize) {
-        if text.trim().is_empty() {
-            return;
-        }
-
-        if self.line.is_empty() {
-            self.line
-                .push_str(&INDENT.repeat(self.line_depth(depth, text)));
-            self.line.push_str(text.trim_start());
-        } else {
-            self.line.push_str(text);
-        }
+    fn html_child_depth(&self, depth: usize) -> usize {
+        depth + usize::from(self.options.indent_html)
     }
 
     fn write_indented_line(&mut self, depth: usize, line: &str) {
-        self.output
-            .push_str(&INDENT.repeat(self.line_depth(depth, line)));
-        self.output.push_str(line);
-        self.output.push('\n');
-        self.apply_html_depth_delta(line);
-    }
-
-    fn flush_line(&mut self) {
-        let line = self.line.trim_end().to_string();
-        if line.is_empty() {
-            self.line.clear();
+        let trimmed = line.trim();
+        if trimmed.is_empty() {
             return;
         }
 
-        self.output.push_str(&line);
+        self.output.push_str(&INDENT.repeat(depth));
+        self.output.push_str(trimmed);
         self.output.push('\n');
-        self.line.clear();
-        self.apply_html_depth_delta(&line);
     }
 
-    fn line_depth(&self, erb_depth: usize, text: &str) -> usize {
-        if !self.options.indent_html {
-            return erb_depth;
-        }
-
-        erb_depth + self.html_depth.saturating_sub(leading_close_count(text))
-    }
-
-    fn apply_html_depth_delta(&mut self, line: &str) {
-        if !self.options.indent_html {
-            return;
-        }
-
-        let (opens, closes) = html_tag_delta(line);
-        self.html_depth = self.html_depth.saturating_add(opens).saturating_sub(closes);
-    }
-
-    fn finish(mut self) -> String {
-        self.flush_line();
+    fn finish(self) -> String {
         self.output
     }
 }
 
-fn leading_close_count(text: &str) -> usize {
-    for token in html::tokenize(text) {
-        match token {
-            HtmlToken::Text(text) if text.trim().is_empty() => {}
-            HtmlToken::CloseTag(_) => return 1,
-            _ => return 0,
-        }
-    }
-
-    0
+fn can_render_inline(nodes: &[Node]) -> bool {
+    nodes.iter().all(is_inline_node)
 }
 
-fn html_tag_delta(line: &str) -> (usize, usize) {
-    let mut opens = 0;
-    let mut closes = 0;
-
-    for token in html::tokenize(line) {
-        match token {
-            HtmlToken::OpenTag(_) => opens += 1,
-            HtmlToken::CloseTag(_) => closes += 1,
-            HtmlToken::Text(_)
-            | HtmlToken::SelfClosingTag(_)
-            | HtmlToken::VoidTag(_)
-            | HtmlToken::Comment(_)
-            | HtmlToken::Doctype(_) => {}
-        }
+fn is_inline_node(node: &Node) -> bool {
+    match node {
+        Node::HtmlText(text) => !text.contains('\n'),
+        Node::HtmlSelfClosing { .. }
+        | Node::HtmlVoid { .. }
+        | Node::ErbCode(_)
+        | Node::ErbOutput(_) => true,
+        Node::HtmlElement { .. }
+        | Node::HtmlComment(_)
+        | Node::HtmlDoctype(_)
+        | Node::ErbBlock { .. } => false,
     }
+}
 
-    (opens, closes)
+fn render_inline_nodes(nodes: &[Node]) -> String {
+    nodes
+        .iter()
+        .map(render_inline_node)
+        .collect::<String>()
+        .trim()
+        .to_string()
+}
+
+fn render_inline_node(node: &Node) -> String {
+    match node {
+        Node::HtmlText(text) => text.clone(),
+        Node::HtmlSelfClosing { raw, .. } | Node::HtmlVoid { raw, .. } => raw.clone(),
+        Node::ErbCode(code) => format!("<% {} %>", code.trim()),
+        Node::ErbOutput(code) => format!("<%= {} %>", code.trim()),
+        Node::HtmlElement { .. }
+        | Node::HtmlComment(_)
+        | Node::HtmlDoctype(_)
+        | Node::ErbBlock { .. } => unreachable!("node cannot render inline"),
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{lexer::tokenize, parser::parse};
+    use crate::{lexer::tokenize, mixed_parser::parse};
 
     fn format(input: &str) -> String {
         let tokens = tokenize(input).unwrap();

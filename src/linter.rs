@@ -1,4 +1,4 @@
-use crate::{lexer, parser};
+use crate::{lexer, mixed_parser};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Diagnostic {
@@ -15,7 +15,7 @@ pub fn lint(input: &str) -> Vec<Diagnostic> {
         }
     };
 
-    match parser::parse(&tokens) {
+    match mixed_parser::parse(&tokens) {
         Ok(_) => Vec::new(),
         Err(error) => {
             vec![Diagnostic {
@@ -68,6 +68,18 @@ mod tests {
             diagnostics,
             vec![Diagnostic {
                 message: "unclosed ERB block `if user` at token 0".to_string()
+            }]
+        );
+    }
+
+    #[test]
+    fn reports_unbalanced_html_tags() {
+        let diagnostics = lint("<div><span>Hello</div>");
+
+        assert_eq!(
+            diagnostics,
+            vec![Diagnostic {
+                message: "mismatched HTML close tag `</div>`, expected closing tag for `span`, found `div`".to_string()
             }]
         );
     }
