@@ -1,5 +1,14 @@
 {
+  "emeraldwalk.runonsave": {
+    "commands": [
+      {
+        "match": "\\.html\\.erb$",
+        "cmd": "cargo run --quiet -- --write \"${file}\""
+      }
+    ]
+  },
   "cSpell.words": [
-    "erbfmt"
+    "erbfmt",
+    "runonsave"
   ]
 }

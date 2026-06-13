@@ -23,11 +23,12 @@ Early development.
 - Basic formatter
 - ERB block indentation
 - HTML tag indentation by default
+- In-place formatting with `--write`
+- VSCode workspace format-on-save setup
 
 ### Planned
 
-- Snapshot testing
-- VSCode integration
+- Linter
 
 ## Example
 
@@ -64,14 +65,29 @@ Early development.
 Format a file:
 
 ```bash
-cargo run -- samples/sample.erb
+cargo run -- samples/sample.html.erb
+```
+
+Format a file in place:
+
+```bash
+cargo run -- --write samples/sample.html.erb
 ```
 
 By default, erbfmt indents both ERB control-flow blocks and HTML tag nesting.
 Use `--no-html-indent` to keep HTML indentation unchanged and only indent ERB blocks:
 
 ```bash
-cargo run -- --no-html-indent samples/sample.erb
+cargo run -- --no-html-indent samples/sample.html.erb
+```
+
+## VSCode
+
+This repository includes workspace settings for format on save.
+Install the recommended `emeraldwalk.RunOnSave` extension, then saving a `.html.erb` file runs:
+
+```bash
+cargo run --quiet -- --write "${file}"
 ```
 
 ## Development
@@ -81,5 +97,5 @@ cargo fmt
 cargo check --all-targets
 cargo clippy
 cargo test
-cargo run -- samples/sample.erb
+cargo run -- samples/sample.html.erb
 ```

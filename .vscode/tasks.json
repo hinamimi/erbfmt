@@ -36,7 +36,14 @@
       "label": "cargo run sample",
       "type": "shell",
       "command": "cargo",
-      "args": ["run", "--", "samples/sample.erb"],
+      "args": ["run", "--", "samples/sample.html.erb"],
+      "problemMatcher": ["$rustc"]
+    },
+    {
+      "label": "cargo run write sample",
+      "type": "shell",
+      "command": "cargo",
+      "args": ["run", "--", "--write", "samples/sample.html.erb"],
       "problemMatcher": ["$rustc"]
     },
     {

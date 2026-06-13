@@ -42,13 +42,21 @@ MVP開発中
 - 基本的なFormatter
 - ERB制御構文のインデント
 - HTMLタグ階層のインデント
+- `--write` によるファイルの直接整形
+- VSCode workspace の保存時整形設定
 
 ## CLI
 
 ファイルを整形します。
 
 ```bash
-cargo run -- samples/sample.erb
+cargo run -- samples/sample.html.erb
+```
+
+ファイルへ直接書き戻す場合は `--write` を指定します。
+
+```bash
+cargo run -- --write samples/sample.html.erb
 ```
 
 デフォルトでは、ERB制御構文のネストとHTMLタグ階層の両方をインデントします。
@@ -70,12 +78,20 @@ cargo run -- samples/sample.erb
 HTMLタグ階層によるインデントを無効にし、ERB制御構文だけをインデントしたい場合は `--no-html-indent` を指定します。
 
 ```bash
-cargo run -- --no-html-indent samples/sample.erb
+cargo run -- --no-html-indent samples/sample.html.erb
+```
+
+## VSCode
+
+このリポジトリには、保存時に `.html.erb` ファイルを整形する workspace 設定が含まれています。
+推奨拡張の `emeraldwalk.RunOnSave` をインストールすると、`.html.erb` ファイル保存時に以下のコマンドが実行されます。
+
+```bash
+cargo run --quiet -- --write "${file}"
 ```
 
 ## 将来構想
 
 - Linter
-- VSCode拡張
 - npm package
 - Ruby Gem
