@@ -31,10 +31,11 @@ Early development.
 - Syntax lint rules for empty ERB blocks and unsupported ERB control keywords
 - Format checking with `--check`
 - File-scoped CLI diagnostics
+- Multi-file lint, check, and write modes
 
 ### Planned
 
-- Multi-file CLI
+- Packaging preparation
 
 ## Example
 
@@ -90,6 +91,13 @@ Check whether a file is already formatted:
 
 ```bash
 cargo run -- --check samples/sample.html.erb
+```
+
+Lint or check multiple files:
+
+```bash
+cargo run -- --lint samples/sample.html.erb samples/lint-next.html.erb
+cargo run -- --check samples/sample.html.erb samples/lint-next.html.erb
 ```
 
 `--write`, `--check`, and `--lint` are mutually exclusive. `--no-html-indent`

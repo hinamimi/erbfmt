@@ -61,6 +61,19 @@
       "problemMatcher": ["$rustc"]
     },
     {
+      "label": "cargo run lint samples",
+      "type": "shell",
+      "command": "cargo",
+      "args": [
+        "run",
+        "--",
+        "--lint",
+        "samples/sample.html.erb",
+        "samples/lint-next.html.erb"
+      ],
+      "problemMatcher": ["$rustc"]
+    },
+    {
       "label": "cargo run check sample",
       "type": "shell",
       "command": "cargo",

@@ -50,6 +50,7 @@ MVP開発中
 - 空のERBブロックと未対応ERB制御キーワード向けの構文lint
 - `--check` による整形済みチェック
 - ファイル名付きのCLI診断
+- 複数ファイルのlint、check、write
 
 ## CLI
 
@@ -75,6 +76,13 @@ cargo run -- --lint samples/sample.html.erb
 
 ```bash
 cargo run -- --check samples/sample.html.erb
+```
+
+複数ファイルをlintまたはcheckすることもできます。
+
+```bash
+cargo run -- --lint samples/sample.html.erb samples/lint-next.html.erb
+cargo run -- --check samples/sample.html.erb samples/lint-next.html.erb
 ```
 
 `--write`、`--check`、`--lint` は同時に指定できません。`--no-html-indent` は整形やチェックでは使えますが、lintでは使えません。
