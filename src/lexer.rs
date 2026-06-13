@@ -3,19 +3,19 @@ use std::fmt;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Token {
     Html(String),
-    Erb { kind: ErbKind, code: String },
+    ErbCode(String),
+    ErbOutput(String),
+    ErbBlockStart { kind: ErbBlockKind, code: String },
+    ErbBlockEnd(String),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ErbKind {
-    Code,
-    Output,
+pub enum ErbBlockKind {
     If,
     Unless,
     Case,
     Do,
     Begin,
-    End,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -53,10 +53,10 @@ pub fn tokenize(input: &str) -> Result<Vec<Token>, LexError> {
         }
 
         let tag_content_start = start + "<%".len();
-        let (kind_hint, code_start) = if input[tag_content_start..].starts_with('=') {
-            (ErbKind::Output, tag_content_start + "=".len())
+        let (is_output, code_start) = if input[tag_content_start..].starts_with('=') {
+            (true, tag_content_start + "=".len())
         } else {
-            (ErbKind::Code, tag_content_start)
+            (false, tag_content_start)
         };
 
         let Some(relative_end) = input[code_start..].find("%>") else {
@@ -65,13 +65,13 @@ pub fn tokenize(input: &str) -> Result<Vec<Token>, LexError> {
 
         let code_end = code_start + relative_end;
         let code = input[code_start..code_end].trim().to_string();
-        let kind = match kind_hint {
-            ErbKind::Output => ErbKind::Output,
-            ErbKind::Code => classify_code(&code),
-            _ => unreachable!("lexer only creates code and output hints"),
+        let token = if is_output {
+            Token::ErbOutput(code)
+        } else {
+            classify_code(code)
         };
 
-        tokens.push(Token::Erb { kind, code });
+        tokens.push(token);
         cursor = code_end + "%>".len();
     }
 
@@ -82,21 +82,36 @@ pub fn tokenize(input: &str) -> Result<Vec<Token>, LexError> {
     Ok(tokens)
 }
 
-fn classify_code(code: &str) -> ErbKind {
-    if starts_with_keyword(code, "if") {
-        ErbKind::If
-    } else if starts_with_keyword(code, "unless") {
-        ErbKind::Unless
-    } else if starts_with_keyword(code, "case") {
-        ErbKind::Case
-    } else if starts_with_keyword(code, "begin") {
-        ErbKind::Begin
-    } else if starts_with_keyword(code, "end") {
-        ErbKind::End
-    } else if starts_with_keyword(code, "do") || ends_with_do_block(code) {
-        ErbKind::Do
+fn classify_code(code: String) -> Token {
+    if starts_with_keyword(&code, "if") {
+        Token::ErbBlockStart {
+            kind: ErbBlockKind::If,
+            code,
+        }
+    } else if starts_with_keyword(&code, "unless") {
+        Token::ErbBlockStart {
+            kind: ErbBlockKind::Unless,
+            code,
+        }
+    } else if starts_with_keyword(&code, "case") {
+        Token::ErbBlockStart {
+            kind: ErbBlockKind::Case,
+            code,
+        }
+    } else if starts_with_keyword(&code, "begin") {
+        Token::ErbBlockStart {
+            kind: ErbBlockKind::Begin,
+            code,
+        }
+    } else if starts_with_keyword(&code, "end") {
+        Token::ErbBlockEnd(code)
+    } else if starts_with_keyword(&code, "do") || ends_with_do_block(&code) {
+        Token::ErbBlockStart {
+            kind: ErbBlockKind::Do,
+            code,
+        }
     } else {
-        ErbKind::Code
+        Token::ErbCode(code)
     }
 }
 
@@ -158,26 +173,14 @@ mod tests {
     fn tokenizes_empty_erb_code_tag() {
         let tokens = tokenize("<% %>").unwrap();
 
-        assert_eq!(
-            tokens,
-            vec![Token::Erb {
-                kind: ErbKind::Code,
-                code: String::new()
-            }]
-        );
+        assert_eq!(tokens, vec![Token::ErbCode(String::new())]);
     }
 
     #[test]
     fn tokenizes_erb_output_tag() {
         let tokens = tokenize("<%= user.name %>").unwrap();
 
-        assert_eq!(
-            tokens,
-            vec![Token::Erb {
-                kind: ErbKind::Output,
-                code: "user.name".to_string()
-            }]
-        );
+        assert_eq!(tokens, vec![Token::ErbOutput("user.name".to_string())]);
     }
 
     #[test]
@@ -188,10 +191,7 @@ mod tests {
             tokens,
             vec![
                 Token::Html("<p>Hello ".to_string()),
-                Token::Erb {
-                    kind: ErbKind::Output,
-                    code: "user.name".to_string()
-                },
+                Token::ErbOutput("user.name".to_string()),
                 Token::Html("</p>".to_string())
             ]
         );
@@ -200,21 +200,20 @@ mod tests {
     #[test]
     fn tokenizes_supported_erb_control_tags() {
         let cases = [
-            ("<% if user %>", ErbKind::If, "if user"),
+            ("<% if user %>", ErbBlockKind::If, "if user"),
             (
                 "<% unless user.guest? %>",
-                ErbKind::Unless,
+                ErbBlockKind::Unless,
                 "unless user.guest?",
             ),
-            ("<% case user.role %>", ErbKind::Case, "case user.role"),
-            ("<% do %>", ErbKind::Do, "do"),
-            ("<% end %>", ErbKind::End, "end"),
+            ("<% case user.role %>", ErbBlockKind::Case, "case user.role"),
+            ("<% do %>", ErbBlockKind::Do, "do"),
         ];
 
         for (input, kind, code) in cases {
             assert_eq!(
                 tokenize(input).unwrap(),
-                vec![Token::Erb {
+                vec![Token::ErbBlockStart {
                     kind,
                     code: code.to_string()
                 }]
@@ -223,13 +222,20 @@ mod tests {
     }
 
     #[test]
+    fn tokenizes_erb_block_end_tag() {
+        let tokens = tokenize("<% end %>").unwrap();
+
+        assert_eq!(tokens, vec![Token::ErbBlockEnd("end".to_string())]);
+    }
+
+    #[test]
     fn tokenizes_begin_control_tag() {
         let tokens = tokenize("<% begin %>").unwrap();
 
         assert_eq!(
             tokens,
-            vec![Token::Erb {
-                kind: ErbKind::Begin,
+            vec![Token::ErbBlockStart {
+                kind: ErbBlockKind::Begin,
                 code: "begin".to_string()
             }]
         );
@@ -241,8 +247,8 @@ mod tests {
 
         assert_eq!(
             tokens,
-            vec![Token::Erb {
-                kind: ErbKind::Do,
+            vec![Token::ErbBlockStart {
+                kind: ErbBlockKind::Do,
                 code: "users.each do |user|".to_string()
             }]
         );
