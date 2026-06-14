@@ -211,7 +211,7 @@ Result:
 
 - Chose VSCode extension as the first thin wrapper because formatter-on-save is
   the highest-leverage local integration.
-- Added `editors/vscode` with a JavaScript extension that registers a document
+- Added `editors/vscode` with a TypeScript extension that registers a document
   formatter and invokes the Rust `erbfmt` command.
 - Added diagnostics wiring that invokes `erbfmt --lint` on open and save.
 - Added settings for `erbfmt.command`, `erbfmt.arguments`, and

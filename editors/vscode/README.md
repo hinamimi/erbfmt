@@ -15,13 +15,20 @@ Thin VSCode wrapper for the Rust `erbfmt` binary.
 From this repository, use VSCode's Extension Development Host:
 
 1. Run `cargo build` once.
-2. Open the repository root in VSCode.
-3. Open the Run and Debug view.
-4. Choose `Run erbfmt VSCode Extension`.
-5. Press F5.
-6. In the new Extension Development Host window, open
+2. Run `npm install --prefix editors/vscode` once.
+3. Open the repository root in VSCode.
+4. Open the Run and Debug view.
+5. Choose `Run erbfmt VSCode Extension`.
+6. Press F5.
+7. In the new Extension Development Host window, open
    `samples/sample.html.erb`.
-7. Run `erbfmt: Format Document`.
+8. Run `erbfmt: Format Document`.
+
+The F5 launch configuration runs `npm run compile --prefix editors/vscode`
+before starting the Extension Development Host.
+
+This repository includes `.node-version` for nodenv. The current local Node
+version is `24.10.0`.
 
 `samples/sample.html.erb` is intentionally not formatted. If the extension is
 working, running `erbfmt: Format Document` should change its indentation.
@@ -55,3 +62,13 @@ Use `erbfmt.configPath` to force a specific `erbfmt.json`; otherwise the
 extension searches from the formatted file toward the filesystem root.
 
 Set `erbfmt.lint.enabled` to `false` to disable diagnostics.
+
+## TypeScript
+
+The extension source lives in `src/extension.ts` and compiles to
+`out/extension.js`.
+
+```bash
+npm run compile --prefix editors/vscode
+npm test --prefix editors/vscode
+```

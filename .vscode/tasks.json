@@ -81,6 +81,22 @@
       "problemMatcher": ["$rustc"]
     },
     {
+      "label": "vscode extension compile",
+      "type": "shell",
+      "command": "npm",
+      "args": ["run", "compile", "--prefix", "editors/vscode"],
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "vscode extension test",
+      "type": "shell",
+      "command": "npm",
+      "args": ["test", "--prefix", "editors/vscode"],
+      "group": "test",
+      "problemMatcher": []
+    },
+    {
       "label": "erbfmt: verify",
       "dependsOrder": "sequence",
       "dependsOn": [

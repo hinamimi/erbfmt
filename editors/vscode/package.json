@@ -15,7 +15,7 @@
     "onCommand:erbfmt.formatDocument",
     "onCommand:erbfmt.lintDocument"
   ],
-  "main": "./extension.js",
+  "main": "./out/extension.js",
   "contributes": {
     "languages": [
       {
@@ -73,6 +73,12 @@
     }
   },
   "scripts": {
-    "test": "node test/smoke.test.js"
+    "compile": "tsc -p .",
+    "test": "npm run compile && node test/smoke.test.js"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/vscode": "^1.85.0",
+    "typescript": "^6.0.0"
   }
 }

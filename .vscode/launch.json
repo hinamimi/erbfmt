@@ -5,6 +5,7 @@
       "name": "Run erbfmt VSCode Extension",
       "type": "extensionHost",
       "request": "launch",
+      "preLaunchTask": "vscode extension compile",
       "runtimeExecutable": "${execPath}",
       "args": [
         "--extensionDevelopmentPath=${workspaceFolder}/editors/vscode",

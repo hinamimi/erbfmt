@@ -7,11 +7,12 @@ const packageJson = JSON.parse(
   fs.readFileSync(path.join(extensionDir, "package.json"), "utf8"),
 );
 const extensionSource = fs.readFileSync(
-  path.join(extensionDir, "extension.js"),
+  path.join(extensionDir, "src", "extension.ts"),
   "utf8",
 );
 
-assert.strictEqual(packageJson.main, "./extension.js");
+assert.strictEqual(packageJson.main, "./out/extension.js");
+assert.strictEqual(packageJson.scripts.compile, "tsc -p .");
 assert(packageJson.activationEvents.includes("onLanguage:erb"));
 assert(packageJson.activationEvents.includes("onLanguage:html-erb"));
 assert(packageJson.contributes.languages.some((language) => language.id === "html-erb"));

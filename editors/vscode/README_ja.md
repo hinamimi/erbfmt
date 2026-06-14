@@ -15,13 +15,20 @@ Rust製 `erbfmt` binary を呼び出す薄いVSCode wrapperです。
 このリポジトリから VSCode の Extension Development Host を使います。
 
 1. 先に `cargo build` を一度実行します。
-2. VSCodeでリポジトリルートを開きます。
-3. Run and Debug view を開きます。
-4. `Run erbfmt VSCode Extension` を選びます。
-5. F5 を押します。
-6. 新しく開いた Extension Development Host で
+2. `npm install --prefix editors/vscode` を一度実行します。
+3. VSCodeでリポジトリルートを開きます。
+4. Run and Debug view を開きます。
+5. `Run erbfmt VSCode Extension` を選びます。
+6. F5 を押します。
+7. 新しく開いた Extension Development Host で
    `samples/sample.html.erb` を開きます。
-7. `erbfmt: Format Document` を実行します。
+8. `erbfmt: Format Document` を実行します。
+
+F5 の launch configuration は Extension Development Host を起動する前に
+`npm run compile --prefix editors/vscode` を実行します。
+
+このリポジトリには nodenv 用の `.node-version` を含めています。
+現在のローカルNode versionは `24.10.0` です。
 
 `samples/sample.html.erb` は意図的に未整形です。extension が動いていれば、
 `erbfmt: Format Document` の実行でインデントが変わります。
@@ -54,3 +61,12 @@ cargo install --path ../..
 `erbfmt.json` を探します。
 
 diagnostics を無効にする場合は `erbfmt.lint.enabled` を `false` に設定します。
+
+## TypeScript
+
+extension のsourceは `src/extension.ts` にあり、`out/extension.js` へcompileされます。
+
+```bash
+npm run compile --prefix editors/vscode
+npm test --prefix editors/vscode
+```

@@ -1,17 +1,37 @@
-const childProcess = require("child_process");
-const fs = require("fs/promises");
-const os = require("os");
-const path = require("path");
-const vscode = require("vscode");
+import * as childProcess from "child_process";
+import { constants as fsConstants } from "fs";
+import * as fs from "fs/promises";
+import * as os from "os";
+import * as path from "path";
+import * as vscode from "vscode";
 
-const FORMATTER_SELECTOR = [
+const FORMATTER_SELECTOR: vscode.DocumentFilter[] = [
   { scheme: "file", language: "erb" },
   { scheme: "file", language: "html-erb" },
 ];
 
-function activate(context) {
+type CommandContext = {
+  command: string;
+  cwd: string;
+  extraArguments: string[];
+  settings: vscode.WorkspaceConfiguration;
+  workspaceFolder: vscode.WorkspaceFolder | undefined;
+};
+
+type ExecResult = {
+  stdout: string;
+  stderr: string;
+  exitCode: number | string;
+  errorMessage: string | undefined;
+};
+
+type ExecOptions = {
+  cwd: string;
+};
+
+export function activate(context: vscode.ExtensionContext): void {
   const diagnostics = vscode.languages.createDiagnosticCollection("erbfmt");
-  const provider = {
+  const provider: vscode.DocumentFormattingEditProvider = {
     async provideDocumentFormattingEdits(document, _options, token) {
       const formatted = await formatDocument(document, token);
 
@@ -37,7 +57,7 @@ function activate(context) {
           edit.replace(fullDocumentRange(editor.document), formatted);
         });
       } catch (error) {
-        await vscode.window.showErrorMessage(error.message);
+        await vscode.window.showErrorMessage(errorMessage(error));
       }
     }),
     vscode.commands.registerCommand("erbfmt.lintDocument", async () => {
@@ -64,9 +84,12 @@ function activate(context) {
   }
 }
 
-function deactivate() {}
+export function deactivate(): void {}
 
-async function formatDocument(document, token) {
+async function formatDocument(
+  document: vscode.TextDocument,
+  token: vscode.CancellationToken,
+): Promise<string> {
   if (document.uri.scheme !== "file") {
     throw new Error("erbfmt can only format files on disk.");
   }
@@ -90,14 +113,17 @@ async function formatDocument(document, token) {
       throw new Error(formatFailureMessage(context, args, result));
     }
 
-    const { stdout } = result;
-    return stdout;
+    return result.stdout;
   } finally {
     await fs.rm(tempDir, { recursive: true, force: true });
   }
 }
 
-async function lintDocument(document, diagnostics, token) {
+async function lintDocument(
+  document: vscode.TextDocument,
+  diagnostics: vscode.DiagnosticCollection,
+  token: vscode.CancellationToken,
+): Promise<void> {
   if (!isSupportedDocument(document)) {
     diagnostics.delete(document.uri);
     return;
@@ -131,7 +157,7 @@ async function lintDocument(document, diagnostics, token) {
     diagnostics.set(document.uri, [
       new vscode.Diagnostic(
         firstCharacterRange(document),
-        error.message,
+        errorMessage(error),
         vscode.DiagnosticSeverity.Error,
       ),
     ]);
@@ -140,16 +166,20 @@ async function lintDocument(document, diagnostics, token) {
   }
 }
 
-async function getCommandContext(document) {
+async function getCommandContext(
+  document: vscode.TextDocument,
+): Promise<CommandContext> {
   const workspaceFolder = vscode.workspace.getWorkspaceFolder(document.uri);
   let cwd = workspaceFolder?.uri.fsPath ?? path.dirname(document.uri.fsPath);
   const settings = vscode.workspace.getConfiguration("erbfmt", document.uri);
   let command = settings.get("command", "erbfmt");
-  const configuredArguments = settings.get("arguments", []);
+  const configuredArguments = settings.get<unknown>("arguments", []);
   let extraArguments = Array.isArray(configuredArguments)
-    ? configuredArguments.filter((argument) => typeof argument === "string")
+    ? configuredArguments.filter(
+        (argument): argument is string => typeof argument === "string",
+      )
     : [];
-  const inspectedCommand = settings.inspect("command");
+  const inspectedCommand = settings.inspect<string>("command");
   const commandIsDefault =
     inspectedCommand &&
     inspectedCommand.globalValue === undefined &&
@@ -178,7 +208,7 @@ async function getCommandContext(document) {
   };
 }
 
-async function isErbfmtCheckout(directory) {
+async function isErbfmtCheckout(directory: string): Promise<boolean> {
   return (
     (await isFile(path.join(directory, "Cargo.toml"))) &&
     (await isFile(path.join(directory, "src", "main.rs"))) &&
@@ -186,7 +216,9 @@ async function isErbfmtCheckout(directory) {
   );
 }
 
-async function findNearestErbfmtCheckout(startDirectory) {
+async function findNearestErbfmtCheckout(
+  startDirectory: string,
+): Promise<string | undefined> {
   let current = startDirectory;
 
   while (true) {
@@ -203,7 +235,11 @@ async function findNearestErbfmtCheckout(startDirectory) {
   }
 }
 
-async function buildErbfmtArgs(context, document, trailingArguments) {
+async function buildErbfmtArgs(
+  context: CommandContext,
+  document: vscode.TextDocument,
+  trailingArguments: string[],
+): Promise<string[]> {
   const args = [...context.extraArguments];
   const configPath = await resolveConfigPath(
     context.settings,
@@ -219,7 +255,11 @@ async function buildErbfmtArgs(context, document, trailingArguments) {
   return args;
 }
 
-async function resolveConfigPath(settings, document, workspaceFolder) {
+async function resolveConfigPath(
+  settings: vscode.WorkspaceConfiguration,
+  document: vscode.TextDocument,
+  workspaceFolder: vscode.WorkspaceFolder | undefined,
+): Promise<string | undefined> {
   const configuredPath = settings.get("configPath", "").trim();
   if (configuredPath) {
     if (path.isAbsolute(configuredPath)) {
@@ -233,7 +273,9 @@ async function resolveConfigPath(settings, document, workspaceFolder) {
   return findNearestConfig(path.dirname(document.uri.fsPath));
 }
 
-async function findNearestConfig(startDirectory) {
+async function findNearestConfig(
+  startDirectory: string,
+): Promise<string | undefined> {
   let current = startDirectory;
 
   while (true) {
@@ -251,7 +293,7 @@ async function findNearestConfig(startDirectory) {
   }
 }
 
-async function isFile(filePath) {
+async function isFile(filePath: string): Promise<boolean> {
   try {
     const stat = await fs.stat(filePath);
     return stat.isFile();
@@ -260,16 +302,16 @@ async function isFile(filePath) {
   }
 }
 
-async function isExecutableFile(filePath) {
+async function isExecutableFile(filePath: string): Promise<boolean> {
   try {
-    await fs.access(filePath, fs.constants.X_OK);
+    await fs.access(filePath, fsConstants.X_OK);
     return true;
   } catch (_error) {
     return false;
   }
 }
 
-async function findCargoCommand() {
+async function findCargoCommand(): Promise<string> {
   const homeCargo = path.join(os.homedir(), ".cargo", "bin", "cargo");
   if (await isExecutableFile(homeCargo)) {
     return homeCargo;
@@ -278,8 +320,12 @@ async function findCargoCommand() {
   return "cargo";
 }
 
-function parseDiagnostics(document, filePath, stderr) {
-  const diagnostics = [];
+function parseDiagnostics(
+  document: vscode.TextDocument,
+  filePath: string,
+  stderr: string,
+): vscode.Diagnostic[] {
+  const diagnostics: vscode.Diagnostic[] = [];
 
   for (const rawLine of stderr.split(/\r?\n/)) {
     const line = rawLine.trim();
@@ -302,7 +348,10 @@ function parseDiagnostics(document, filePath, stderr) {
   return diagnostics;
 }
 
-function rangeFromMessage(document, message) {
+function rangeFromMessage(
+  document: vscode.TextDocument,
+  message: string,
+): vscode.Range {
   const match = message.match(/ at line (\d+), column (\d+)$/);
   if (!match) {
     return firstCharacterRange(document);
@@ -316,7 +365,7 @@ function rangeFromMessage(document, message) {
   return new vscode.Range(line, column, line, endColumn);
 }
 
-function firstCharacterRange(document) {
+function firstCharacterRange(document: vscode.TextDocument): vscode.Range {
   if (document.lineCount === 0) {
     return new vscode.Range(0, 0, 0, 0);
   }
@@ -325,40 +374,58 @@ function firstCharacterRange(document) {
   return new vscode.Range(0, 0, 0, Math.min(1, firstLineLength));
 }
 
-function fullDocumentRange(document) {
+function fullDocumentRange(document: vscode.TextDocument): vscode.Range {
   return new vscode.Range(
     document.positionAt(0),
     document.positionAt(document.getText().length),
   );
 }
 
-function isSupportedDocument(document) {
+function isSupportedDocument(document: vscode.TextDocument): boolean {
   return (
     document.uri.scheme === "file" &&
-    FORMATTER_SELECTOR.some((selector) => selector.language === document.languageId)
+    FORMATTER_SELECTOR.some(
+      (selector) =>
+        typeof selector === "object" &&
+        "language" in selector &&
+        selector.language === document.languageId,
+    )
   );
 }
 
-function createNullToken() {
+function createNullToken(): vscode.CancellationToken {
+  const onCancellationRequested: vscode.Event<unknown> = () => ({
+    dispose() {},
+  });
+
   return {
     isCancellationRequested: false,
-    onCancellationRequested: () => ({ dispose() {} }),
+    onCancellationRequested,
   };
 }
 
-function execFile(command, args, options, token) {
+function execFile(
+  command: string,
+  args: string[],
+  options: ExecOptions,
+  token: vscode.CancellationToken,
+): Promise<ExecResult> {
   return new Promise((resolve) => {
     const child = childProcess.execFile(
       command,
       args,
       {
-        ...options,
+        cwd: options.cwd,
         maxBuffer: 16 * 1024 * 1024,
       },
-      (error, stdout, stderr) => {
+      (
+        error: childProcess.ExecFileException | null,
+        stdout: string | Buffer,
+        stderr: string | Buffer,
+      ) => {
         resolve({
-          stdout,
-          stderr,
+          stdout: stdout.toString(),
+          stderr: stderr.toString(),
           exitCode: error?.code ?? 0,
           errorMessage: error?.message,
         });
@@ -377,7 +444,11 @@ function execFile(command, args, options, token) {
   });
 }
 
-function formatFailureMessage(context, args, result) {
+function formatFailureMessage(
+  context: CommandContext,
+  args: string[],
+  result: ExecResult,
+): string {
   const detail =
     result.stderr.trim() ||
     result.errorMessage ||
@@ -387,7 +458,6 @@ function formatFailureMessage(context, args, result) {
   return `erbfmt failed: ${detail}\ncommand: ${commandLine}\ncwd: ${context.cwd}`;
 }
 
-module.exports = {
-  activate,
-  deactivate,
-};
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
