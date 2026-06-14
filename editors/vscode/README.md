@@ -37,18 +37,10 @@ VSCode's built-in `Format Document` should also work when erbfmt is the selected
 default formatter. If it does not, run `Format Document With...` and choose
 `erbfmt`.
 
-The repository workspace settings point the extension at the local Rust
-checkout:
-
-```json
-{
-  "erbfmt.command": "cargo",
-  "erbfmt.arguments": ["run", "--quiet", "--"]
-}
-```
-
 When the extension runs from this checkout, it uses `target/debug/erbfmt` if the
 binary exists. If it does not exist yet, it falls back to `cargo run --quiet --`.
+Running `cargo build` first is the most reliable local setup because VSCode may
+not be able to spawn `cargo` in every environment.
 
 `erbfmt.command` must be the executable only. Put extra command-line arguments
 in `erbfmt.arguments`.
@@ -69,6 +61,8 @@ Set `erbfmt.lint.enabled` to `false` to disable diagnostics.
 The extension source lives in `src/extension.ts` and compiles to
 `out/extension.js`.
 
+From the repository root:
+
 ```bash
 npm run check --prefix editors/vscode
 npm run compile --prefix editors/vscode
@@ -82,18 +76,40 @@ npm run format --prefix editors/vscode
 npm run lint --prefix editors/vscode
 ```
 
+From `editors/vscode`, omit the `--prefix editors/vscode` part:
+
+```bash
+npm run check
+npm run compile
+npm test
+```
+
 ## Local Package
 
 Build a local VSIX package:
+
+From the repository root:
 
 ```bash
 npm run package --prefix editors/vscode
 ```
 
+From `editors/vscode`:
+
+```bash
+npm run package
+```
+
 Install the generated VSIX from the repository root:
 
 ```bash
-code --install-extension editors/vscode/erbfmt-vscode-0.1.0.vsix
+code --install-extension editors/vscode/erbfmt-vscode-0.0.0-dev.vsix
+```
+
+Or from `editors/vscode`:
+
+```bash
+code --install-extension erbfmt-vscode-0.0.0-dev.vsix
 ```
 
 The packaged extension does not bundle the Rust binary yet. Install `erbfmt`

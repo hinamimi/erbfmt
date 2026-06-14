@@ -36,17 +36,9 @@ F5 の launch configuration は Extension Development Host を起動する前に
 VSCode標準の `Format Document` も、erbfmt が default formatter として選ばれていれば動くはずです。
 動かない場合は `Format Document With...` から `erbfmt` を選んでください。
 
-このリポジトリの workspace 設定では、extension がローカルのRust checkoutを呼び出します。
-
-```json
-{
-  "erbfmt.command": "cargo",
-  "erbfmt.arguments": ["run", "--quiet", "--"]
-}
-```
-
-このcheckoutから実行している場合、extension は `target/debug/erbfmt` があればそれを使います。
-まだbinaryがない場合は `cargo run --quiet --` にfallbackします。
+このcheckoutから実行している場合、extension は既定で `target/debug/erbfmt` があればそれを使います。
+まだbinaryがない場合は `cargo run --quiet --` にfallbackします。VSCodeから `cargo` を起動できない場合があるため、
+まず `cargo build` で `target/debug/erbfmt` を作っておくのが安定です。
 
 `erbfmt.command` には実行ファイルだけを指定します。追加のcommand-line argumentsは
 `erbfmt.arguments` に分けて指定してください。
@@ -67,6 +59,8 @@ diagnostics を無効にする場合は `erbfmt.lint.enabled` を `false` に設
 
 extension のsourceは `src/extension.ts` にあり、`out/extension.js` へcompileされます。
 
+リポジトリルートから実行する場合:
+
 ```bash
 npm run check --prefix editors/vscode
 npm run compile --prefix editors/vscode
@@ -80,18 +74,40 @@ npm run format --prefix editors/vscode
 npm run lint --prefix editors/vscode
 ```
 
+`editors/vscode` から実行する場合は、`--prefix editors/vscode` を外します。
+
+```bash
+npm run check
+npm run compile
+npm test
+```
+
 ## ローカルPackage
 
 ローカル用の VSIX package を作成します。
+
+リポジトリルートから実行する場合:
 
 ```bash
 npm run package --prefix editors/vscode
 ```
 
+`editors/vscode` から実行する場合:
+
+```bash
+npm run package
+```
+
 生成された VSIX はリポジトリルートからインストールできます。
 
 ```bash
-code --install-extension editors/vscode/erbfmt-vscode-0.1.0.vsix
+code --install-extension editors/vscode/erbfmt-vscode-0.0.0-dev.vsix
+```
+
+`editors/vscode` からインストールする場合:
+
+```bash
+code --install-extension erbfmt-vscode-0.0.0-dev.vsix
 ```
 
 現時点のpackageにはRust binaryを同梱していません。別途 `erbfmt` をインストールするか、

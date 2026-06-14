@@ -53,15 +53,24 @@ Keep these files in the release verification surface:
 - `samples/*.html.erb`
 - `README.md`
 - `README_ja.md`
+- `LICENSE.txt`
 - `docs/*.md`
 - `erbfmt.json`
 
 ## Versioning
 
-The CLI version is read from `Cargo.toml`.
+During active development, erbfmt intentionally uses the fixed development
+version `0.0.0-dev` for both the Rust crate and the VSCode extension. Do not
+bump minor versions for ordinary milestone work while the project is still in
+this phase.
 
-Before a release:
+The CLI version is read from `Cargo.toml`. The VSCode extension version is read
+from `editors/vscode/package.json`.
 
-- Update the crate version in `Cargo.toml`.
+Before a public release:
+
+- Replace `0.0.0-dev` with the release version in `Cargo.toml` and
+  `editors/vscode/package.json`.
+- Regenerate the lockfiles if needed.
 - Confirm `cargo run --quiet -- --version` prints the new version.
 - Confirm `erbfmt --version` after local install.

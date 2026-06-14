@@ -2,7 +2,7 @@
   "name": "erbfmt-vscode",
   "displayName": "erbfmt",
   "description": "VSCode formatter wrapper for erbfmt.",
-  "version": "0.1.0",
+  "version": "0.0.0-dev",
   "publisher": "erbfmt",
   "license": "MIT",
   "engines": {

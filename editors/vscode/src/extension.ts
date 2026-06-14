@@ -189,6 +189,10 @@ async function getCommandContext(document: vscode.TextDocument): Promise<Command
     cwd = checkoutRoot;
   }
 
+  if (command === "cargo") {
+    command = await findCargoCommand();
+  }
+
   return {
     command,
     cwd,

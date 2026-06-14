@@ -31,19 +31,20 @@ The extension:
   document.
 - keeps all formatting behavior in the Rust binary.
 
-For local development, either install the binary:
+For local development, build the binary first:
+
+```bash
+cargo build
+```
+
+When the extension runs from this checkout, it uses `target/debug/erbfmt` if the
+binary exists. This is more reliable than asking VSCode to spawn `cargo`
+directly.
+
+Alternatively, install the binary:
 
 ```bash
 cargo install --path .
-```
-
-or point the extension at the local checkout:
-
-```json
-{
-  "erbfmt.command": "cargo",
-  "erbfmt.arguments": ["run", "--quiet", "--"]
-}
 ```
 
 The extension searches for `erbfmt.json` from the formatted file upward. Set
@@ -55,14 +56,30 @@ Set `erbfmt.lint.enabled` to `false` to disable diagnostics.
 
 Build a local VSIX package:
 
+From the repository root:
+
 ```bash
 npm run package --prefix editors/vscode
 ```
 
-Install it locally:
+From `editors/vscode`:
 
 ```bash
-code --install-extension editors/vscode/erbfmt-vscode-0.1.0.vsix
+npm run package
+```
+
+Install it locally:
+
+From the repository root:
+
+```bash
+code --install-extension editors/vscode/erbfmt-vscode-0.0.0-dev.vsix
+```
+
+From `editors/vscode`:
+
+```bash
+code --install-extension erbfmt-vscode-0.0.0-dev.vsix
 ```
 
 The package includes the compiled extension JavaScript in `out/`, but it does
