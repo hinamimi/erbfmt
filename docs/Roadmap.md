@@ -26,6 +26,7 @@ Implemented:
 - Snapshot tests with `insta`
 - CLI integration tests that invoke the compiled binary
 - Release checklist and local install documentation
+- VSCode workspace language association for `*.html.erb`
 
 Reference samples:
 
@@ -43,9 +44,10 @@ Known constraints:
 
 ## Immediate Focus
 
-The Rust binary is now documented enough for local pre-release use. The next
-milestones should make `*.html.erb` files easier to identify and format inside
-editors before expanding to npm/Ruby wrappers.
+The Rust binary is now documented enough for local pre-release use, and the
+workspace has a basic VSCode association for `*.html.erb`. The next milestones
+should improve diagnostics and real-template formatter behavior before
+expanding to npm/Ruby wrappers.
 
 ### Milestone 19
 
@@ -82,7 +84,7 @@ Result:
 
 VSCode Language Association
 
-Status: Next
+Status: Done
 
 Make `*.html.erb` files work predictably in VSCode.
 
@@ -106,11 +108,18 @@ Acceptance:
 - Repository workspace settings keep formatting `.html.erb` files on save.
 - Future extension requirements are listed before implementation begins.
 
+Result:
+
+- Workspace settings associate `*.html.erb` with the `erb` language id.
+- Recommended extensions include Shopify Ruby LSP.
+- `docs/VSCode.md` documents language association, format-on-save wiring, and
+  future extension requirements.
+
 ### Milestone 21
 
 Diagnostic Quality Pass
 
-Status: Planned
+Status: Next
 
 Improve lint and parse diagnostics so CLI output is easier to act on.
 

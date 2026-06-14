@@ -143,11 +143,15 @@ erbfmt --no-html-indent samples/sample.html.erb
 ## VSCode
 
 このリポジトリには、保存時に `.html.erb` ファイルを整形する workspace 設定が含まれています。
+また、`*.html.erb` を `erb` language id に関連付ける設定も含まれています。これにより、Shopify Ruby LSP などのRuby toolingが `.html.erb` を認識しやすくなります。
+
 推奨拡張の `emeraldwalk.RunOnSave` をインストールすると、`.html.erb` ファイル保存時に以下のコマンドが実行されます。
 
 ```bash
 cargo run --quiet -- --write "${file}"
 ```
+
+workspace の language association と将来の拡張方針は [docs/VSCode.md](docs/VSCode.md) にまとめています。
 
 ## 将来構想
 

@@ -1,4 +1,7 @@
 {
+  "files.associations": {
+    "*.html.erb": "erb"
+  },
   "emeraldwalk.runonsave": {
     "commands": [
       {

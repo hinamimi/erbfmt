@@ -154,11 +154,17 @@ erbfmt --no-html-indent samples/sample.html.erb
 ## VSCode
 
 This repository includes workspace settings for format on save.
+It also associates `*.html.erb` files with the `erb` language id so Ruby tooling
+such as Shopify Ruby LSP can recognize them more reliably.
+
 Install the recommended `emeraldwalk.RunOnSave` extension, then saving a `.html.erb` file runs:
 
 ```bash
 cargo run --quiet -- --write "${file}"
 ```
+
+See [docs/VSCode.md](docs/VSCode.md) for the workspace language association and
+future extension notes.
 
 ## Development
 
