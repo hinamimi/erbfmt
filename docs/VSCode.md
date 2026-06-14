@@ -15,7 +15,38 @@ This repository associates `*.html.erb` files with VSCode's `erb` language id:
 This is a workspace-level fallback for Ruby tooling such as Shopify Ruby LSP,
 which may recognize `erb` but not always `html.erb` by default.
 
-## Format On Save
+## First-party Extension Scaffold
+
+The repository includes a thin VSCode extension scaffold in
+`editors/vscode`.
+
+The extension:
+
+- contributes a `html-erb` language id for `*.html.erb`.
+- registers a document formatter for both `erb` and `html-erb`.
+- invokes the configured `erbfmt` command and uses stdout as the formatted
+  document.
+- keeps all formatting behavior in the Rust binary.
+
+For local development, either install the binary:
+
+```bash
+cargo install --path .
+```
+
+or point the extension at the local checkout:
+
+```json
+{
+  "erbfmt.command": "cargo",
+  "erbfmt.arguments": ["run", "--quiet", "--"]
+}
+```
+
+The extension searches for `erbfmt.json` from the formatted file upward. Set
+`erbfmt.configPath` to force a specific config file.
+
+## Format On Save Fallback
 
 The workspace uses `emeraldwalk.RunOnSave` to format `.html.erb` files:
 
@@ -44,10 +75,11 @@ The workspace recommends:
 
 ## Future Extension Requirements
 
-A first-party VSCode extension should eventually contribute:
+The first-party VSCode extension still needs:
 
-- a dedicated `html.erb` language id or a deliberate association strategy.
-- file pattern support for `*.html.erb`.
-- formatter registration that invokes the `erbfmt` binary.
-- settings for binary path and formatter options.
+- packaging with `vsce`.
+- tests inside a real VSCode extension host.
+- publish-time metadata and icon assets.
+- clearer behavior when Ruby LSP is also installed.
+- optional diagnostics wiring for `erbfmt --lint`.
 - clear behavior when Ruby LSP is also installed.

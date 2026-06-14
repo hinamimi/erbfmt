@@ -29,6 +29,7 @@ Implemented:
 - CLI integration tests that invoke the compiled binary
 - Release checklist and local install documentation
 - VSCode workspace language association for `*.html.erb`
+- Thin VSCode extension scaffold
 - Line/column diagnostics for lexer and ERB parser errors
 - `erbfmt.json` formatter and linter configuration
 - `formatter.lineWidth` wrapping for long HTML tags
@@ -45,16 +46,17 @@ Known constraints:
 - Ruby code is not parsed as Ruby AST.
 - Formatting currently normalizes most non-meaningful whitespace.
 - Lint rule diagnostics do not yet include line/column spans.
-- Distribution wrappers and editor extensions are not implemented yet.
+- Distribution wrappers are not packaged yet.
+- The VSCode extension scaffold is not published yet.
 
 ## Immediate Focus
 
 The Rust binary is documented enough for local pre-release use, the workspace
-has a basic VSCode association for `*.html.erb`, syntax diagnostics include
-source locations, formatter/linter behavior can be configured through
-`erbfmt.json`, and real-template formatter behavior is covered by an audit
-fixture. The next milestone should decide the first distribution wrapper or
-perform one more compatibility pass on collected real templates.
+has a thin VSCode extension scaffold, syntax diagnostics include source
+locations, formatter/linter behavior can be configured through `erbfmt.json`,
+and real-template formatter behavior is covered by an audit fixture. The next
+milestone should prepare the extension for local packaging or add editor-host
+tests.
 
 ### Milestone 19
 
@@ -184,7 +186,7 @@ Result:
 
 Pre-release Distribution Decision
 
-Status: Next
+Status: Done
 
 Choose the first thin wrapper or integration target now that the Rust CLI has
 configuration, diagnostics, and formatter stability coverage.
@@ -202,13 +204,44 @@ Acceptance:
 - The chosen wrapper has a minimal implementation plan before code begins.
 - Existing Rust tests remain the release gate.
 
+Result:
+
+- Chose VSCode extension as the first thin wrapper because formatter-on-save is
+  the highest-leverage local integration.
+- Added `editors/vscode` with a JavaScript extension that registers a document
+  formatter and invokes the Rust `erbfmt` command.
+- Added settings for `erbfmt.command`, `erbfmt.arguments`, and
+  `erbfmt.configPath`.
+- Kept formatting logic in the Rust binary.
+
+### Milestone 24
+
+VSCode Extension Packaging Pass
+
+Status: Next
+
+Prepare the extension scaffold for real local installation.
+
+Target work:
+
+- Add extension-host tests or a documented manual verification path.
+- Decide whether to package with `vsce` now or defer until binary distribution
+  is clearer.
+- Add local install/debug instructions for the extension.
+- Decide how the extension should discover or bundle the `erbfmt` binary.
+
+Acceptance:
+
+- The extension can be launched or packaged locally with documented commands.
+- Formatter behavior is verified through the extension path.
+- Rust tests remain the formatter release gate.
+
 ## Later
 
 Potential future directions:
 
 - npm package
 - Ruby gem
-- VSCode extension with `*.html.erb` language association
 - Tree-sitter integration
 - Biome integration
 

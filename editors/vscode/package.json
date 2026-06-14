@@ -1,0 +1,60 @@
+{
+  "name": "erbfmt-vscode",
+  "displayName": "erbfmt",
+  "description": "VSCode formatter wrapper for erbfmt.",
+  "version": "0.1.0",
+  "publisher": "erbfmt",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": ["Formatters"],
+  "activationEvents": [
+    "onLanguage:erb",
+    "onLanguage:html-erb",
+    "onCommand:erbfmt.formatDocument"
+  ],
+  "main": "./extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "html-erb",
+        "aliases": ["HTML ERB", "html.erb"],
+        "filenamePatterns": ["*.html.erb"],
+        "mimetypes": ["text/html+erb"]
+      }
+    ],
+    "commands": [
+      {
+        "command": "erbfmt.formatDocument",
+        "title": "erbfmt: Format Document"
+      }
+    ],
+    "configuration": {
+      "title": "erbfmt",
+      "properties": {
+        "erbfmt.command": {
+          "type": "string",
+          "default": "erbfmt",
+          "description": "Command used to run the erbfmt binary."
+        },
+        "erbfmt.arguments": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "description": "Arguments inserted before erbfmt's own formatter arguments. Use this for local development, for example [\"run\", \"--quiet\", \"--\"]."
+        },
+        "erbfmt.configPath": {
+          "type": "string",
+          "default": "",
+          "description": "Optional path to erbfmt.json. Relative paths are resolved from the workspace folder."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "test": "node test/smoke.test.js"
+  }
+}

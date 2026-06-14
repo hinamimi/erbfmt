@@ -159,9 +159,20 @@ per line.
 
 ## VSCode
 
-This repository includes workspace settings for format on save.
-It also associates `*.html.erb` files with the `erb` language id so Ruby tooling
-such as Shopify Ruby LSP can recognize them more reliably.
+This repository includes a thin VSCode extension scaffold in `editors/vscode`.
+It registers `erbfmt` as a document formatter for `*.html.erb` files while
+keeping the formatter engine in the Rust binary.
+
+For local extension development, point the wrapper at the checkout:
+
+```json
+{
+  "erbfmt.command": "cargo",
+  "erbfmt.arguments": ["run", "--quiet", "--"]
+}
+```
+
+The workspace also includes RunOnSave settings as a fallback.
 
 Install the recommended `emeraldwalk.RunOnSave` extension, then saving a `.html.erb` file runs:
 
@@ -169,8 +180,8 @@ Install the recommended `emeraldwalk.RunOnSave` extension, then saving a `.html.
 cargo run --quiet -- --write "${file}"
 ```
 
-See [docs/VSCode.md](docs/VSCode.md) for the workspace language association and
-future extension notes.
+See [docs/VSCode.md](docs/VSCode.md) for extension and workspace integration
+notes.
 
 ## Development
 
