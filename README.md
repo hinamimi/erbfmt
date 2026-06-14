@@ -92,28 +92,45 @@ Early development.
 
 ## CLI
 
+Install the local checkout as `erbfmt`:
+
+```bash
+cargo install --path .
+```
+
+Confirm the installed binary:
+
+```bash
+erbfmt --version
+erbfmt --help
+```
+
 Format a file:
 
 ```bash
 cargo run -- samples/sample.html.erb
+erbfmt samples/sample.html.erb
 ```
 
 Format a file in place:
 
 ```bash
 cargo run -- --write samples/sample.html.erb
+erbfmt --write samples/sample.html.erb
 ```
 
 Lint a file:
 
 ```bash
 cargo run -- --lint samples/sample.html.erb
+erbfmt --lint samples/sample.html.erb
 ```
 
 Check whether a file is already formatted:
 
 ```bash
 cargo run -- --check samples/sample.html.erb
+erbfmt --check samples/sample.html.erb
 ```
 
 Lint or check multiple files:
@@ -131,6 +148,7 @@ Use `--no-html-indent` to keep HTML indentation unchanged and only indent ERB bl
 
 ```bash
 cargo run -- --no-html-indent samples/sample.html.erb
+erbfmt --no-html-indent samples/sample.html.erb
 ```
 
 ## VSCode
@@ -151,3 +169,5 @@ cargo clippy
 cargo test
 cargo run -- samples/sample.html.erb
 ```
+
+See [docs/Release.md](docs/Release.md) for local release verification.

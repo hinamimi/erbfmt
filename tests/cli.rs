@@ -10,6 +10,35 @@ const UNFORMATTED: &str = "<div>\n<p>Hello</p>\n</div>\n";
 const FORMATTED: &str = "<div>\n  <p>Hello</p>\n</div>\n";
 
 #[test]
+fn version_reports_crate_version() {
+    let output = run(["--version"]);
+
+    assert_success(&output);
+    assert_eq!(
+        stdout(&output),
+        format!("erbfmt {}\n", env!("CARGO_PKG_VERSION"))
+    );
+    assert_eq!(stderr(&output), "");
+}
+
+#[test]
+fn help_describes_core_modes() {
+    let output = run(["--help"]);
+
+    assert_success(&output);
+    let stdout = stdout(&output);
+    assert!(
+        stdout.contains("Format and lint Ruby ERB templates"),
+        "{stdout}"
+    );
+    assert!(stdout.contains("--write"), "{stdout}");
+    assert!(stdout.contains("--check"), "{stdout}");
+    assert!(stdout.contains("--lint"), "{stdout}");
+    assert!(stdout.contains("--no-html-indent"), "{stdout}");
+    assert_eq!(stderr(&output), "");
+}
+
+#[test]
 fn formats_single_file_to_stdout() {
     let dir = TestDir::new("stdout");
     let file = dir.write("input.html.erb", UNFORMATTED);

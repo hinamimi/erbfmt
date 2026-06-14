@@ -13,25 +13,30 @@ use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 #[derive(Parser)]
-#[command(group(
+#[command(
+    name = "erbfmt",
+    version,
+    about = "Format and lint Ruby ERB templates",
+    group(
     ArgGroup::new("mode")
         .args(["write", "check", "lint"])
         .multiple(false)
-))]
+    )
+)]
 struct Args {
-    #[arg(required = true)]
+    #[arg(required = true, value_name = "FILE")]
     files: Vec<PathBuf>,
 
-    #[arg(long, conflicts_with = "lint")]
+    #[arg(long, conflicts_with = "lint", help = "Disable HTML tag indentation")]
     no_html_indent: bool,
 
-    #[arg(long)]
+    #[arg(long, help = "Write formatted output back to files")]
     write: bool,
 
-    #[arg(long)]
+    #[arg(long, help = "Check whether files are already formatted")]
     check: bool,
 
-    #[arg(long)]
+    #[arg(long, help = "Run lint diagnostics instead of formatting")]
     lint: bool,
 }
 
