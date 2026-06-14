@@ -13,7 +13,7 @@ preserved as text; Ruby semantic analysis remains out of scope for now.
 Implemented:
 
 - Rust CLI for single-file and multi-file use
-- `--write`, `--check`, `--lint`, and `--no-html-indent`
+- `--write`, `--check`, and `--lint`
 - VSCode workspace format-on-save setup
 - ERB lexer
 - Lightweight HTML tokenizer

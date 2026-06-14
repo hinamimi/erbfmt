@@ -113,7 +113,7 @@ cargo run -- --lint samples/sample.html.erb samples/lint-next.html.erb
 cargo run -- --check samples/sample.html.erb samples/lint-next.html.erb
 ```
 
-`--write`、`--check`、`--lint` は同時に指定できません。`--no-html-indent` は整形やチェックでは使えますが、lintでは使えません。
+`--write`、`--check`、`--lint` は同時に指定できません。
 
 デフォルトでは、ERB制御構文のネストとHTMLタグ階層の両方をインデントします。
 
@@ -141,14 +141,7 @@ cargo run -- --check samples/sample.html.erb samples/lint-next.html.erb
 </div>
 ```
 
-HTMLタグ階層によるインデントを無効にし、ERB制御構文だけをインデントしたい場合は `--no-html-indent` を指定します。
-
-```bash
-cargo run -- --no-html-indent samples/sample.html.erb
-erbfmt --no-html-indent samples/sample.html.erb
-```
-
-同じ挙動は `erbfmt.json` の `formatter.noHtmlIndent` でも設定できます。
+HTMLタグ階層によるインデントを無効にし、ERB制御構文だけをインデントしたい場合は `erbfmt.json` の `"indentHtml": false` を設定します。
 
 `formatter.lineWidth` は、長いHTMLタグを属性ごとに複数行へ展開する基準として使われます。
 

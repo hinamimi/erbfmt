@@ -5,7 +5,6 @@
     "indentStyle": "space",
     "indentWidth": 2,
     "indentHtml": true,
-    "noHtmlIndent": false,
     "lineEnding": "lf",
     "lineWidth": 80,
     "trailingNewline": true

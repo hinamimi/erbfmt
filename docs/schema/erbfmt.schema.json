@@ -24,9 +24,6 @@
         "indentHtml": {
           "type": "boolean"
         },
-        "noHtmlIndent": {
-          "type": "boolean"
-        },
         "lineEnding": {
           "enum": ["lf", "crlf"]
         },

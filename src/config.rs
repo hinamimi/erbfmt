@@ -34,14 +34,8 @@ impl Config {
             .with_context(|| format!("failed to load config `{}`", path.display()))
     }
 
-    pub fn format_options(&self, no_html_indent: bool) -> FormatOptions {
-        let mut options = self.formatter.options;
-
-        if no_html_indent {
-            options.indent_html = false;
-        }
-
-        options
+    pub fn format_options(&self) -> FormatOptions {
+        self.formatter.options
     }
 
     pub fn lint_options(&self) -> LintOptions {
@@ -99,7 +93,6 @@ struct RawFormatterConfig {
     indent_style: Option<IndentStyle>,
     indent_width: Option<usize>,
     indent_html: Option<bool>,
-    no_html_indent: Option<bool>,
     line_ending: Option<LineEnding>,
     line_width: Option<usize>,
     trailing_newline: Option<bool>,
@@ -127,10 +120,6 @@ impl RawFormatterConfig {
 
         if let Some(indent_html) = self.indent_html {
             config.options.indent_html = indent_html;
-        }
-
-        if let Some(no_html_indent) = self.no_html_indent {
-            config.options.indent_html = !no_html_indent;
         }
 
         if let Some(line_ending) = self.line_ending {

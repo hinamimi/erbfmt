@@ -28,9 +28,6 @@ struct Args {
     #[arg(required = true, value_name = "FILE")]
     files: Vec<PathBuf>,
 
-    #[arg(long, conflicts_with = "lint", help = "Disable HTML tag indentation")]
-    no_html_indent: bool,
-
     #[arg(long, help = "Write formatted output back to files")]
     write: bool,
 
@@ -81,7 +78,7 @@ fn run_file(args: &Args, config: &config::Config, file: &Path) -> Result<FileSta
         return run_lint(file, &content, config);
     }
 
-    let formatted = format_content(file, &content, config, args.no_html_indent)?;
+    let formatted = format_content(file, &content, config)?;
 
     if args.write {
         fs::write(file, formatted)
@@ -123,12 +120,7 @@ fn run_lint(file: &Path, content: &str, config: &config::Config) -> Result<FileS
     Ok(FileStatus::Failed)
 }
 
-fn format_content(
-    file: &Path,
-    content: &str,
-    config: &config::Config,
-    no_html_indent: bool,
-) -> Result<String> {
+fn format_content(file: &Path, content: &str, config: &config::Config) -> Result<String> {
     if !config.formatter.enabled {
         return Ok(content.to_string());
     }
@@ -140,6 +132,6 @@ fn format_content(
 
     Ok(formatter::format_document_with_options(
         &document,
-        config.format_options(no_html_indent),
+        config.format_options(),
     ))
 }

@@ -148,19 +148,11 @@ cargo run -- --lint samples/sample.html.erb samples/lint-next.html.erb
 cargo run -- --check samples/sample.html.erb samples/lint-next.html.erb
 ```
 
-`--write`, `--check`, and `--lint` are mutually exclusive. `--no-html-indent`
-can be used with formatting and checking, but not with linting.
+`--write`, `--check`, and `--lint` are mutually exclusive.
 
 By default, erbfmt indents both ERB control-flow blocks and HTML tag nesting.
-Use `--no-html-indent` to keep HTML indentation unchanged and only indent ERB blocks:
-
-```bash
-cargo run -- --no-html-indent samples/sample.html.erb
-erbfmt --no-html-indent samples/sample.html.erb
-```
-
-The same behavior can be configured with `formatter.noHtmlIndent` in
-`erbfmt.json`.
+Set `"indentHtml": false` in `erbfmt.json` to keep HTML indentation unchanged
+and only indent ERB blocks.
 
 `formatter.lineWidth` controls when long HTML tags are expanded one attribute
 per line.

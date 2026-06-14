@@ -34,7 +34,6 @@ fn help_describes_core_modes() {
     assert!(stdout.contains("--write"), "{stdout}");
     assert!(stdout.contains("--check"), "{stdout}");
     assert!(stdout.contains("--lint"), "{stdout}");
-    assert!(stdout.contains("--no-html-indent"), "{stdout}");
     assert!(stdout.contains("--config"), "{stdout}");
     assert_eq!(stderr(&output), "");
 }
@@ -164,8 +163,8 @@ fn config_controls_formatter_line_width() {
 
 #[test]
 fn config_can_disable_html_indentation() {
-    let dir = TestDir::new("config_no_html_indent");
-    let config = dir.write("erbfmt.json", r#"{"formatter":{"noHtmlIndent":true}}"#);
+    let dir = TestDir::new("config_indent_html_false");
+    let config = dir.write("erbfmt.json", r#"{"formatter":{"indentHtml":false}}"#);
     let file = dir.write(
         "input.html.erb",
         "<% if user %>\n<ul>\n<li>Hello</li>\n</ul>\n<% end %>\n",

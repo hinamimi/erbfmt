@@ -8,8 +8,8 @@ erbfmt --config path/to/erbfmt.json app/views/users/show.html.erb
 ```
 
 The shape is intentionally close to Biome's `formatter` and `linter`
-configuration sections, with small erbfmt-specific `formatter.noHtmlIndent`
-and `formatter.indentHtml` options for the existing HTML indentation behavior.
+configuration sections, with a small erbfmt-specific `formatter.indentHtml`
+option for the existing HTML indentation behavior.
 
 ## Example
 
@@ -20,7 +20,6 @@ and `formatter.indentHtml` options for the existing HTML indentation behavior.
     "indentStyle": "space",
     "indentWidth": 2,
     "indentHtml": true,
-    "noHtmlIndent": false,
     "lineEnding": "lf",
     "lineWidth": 80,
     "trailingNewline": true
@@ -42,18 +41,11 @@ and `formatter.indentHtml` options for the existing HTML indentation behavior.
 - `formatter.indentStyle`: `space` or `tab`.
 - `formatter.indentWidth`: number of spaces per indent level when using
   `space`.
-- `formatter.indentHtml`: indent nested HTML tags. This matches the CLI
-  behavior controlled by `--no-html-indent`.
-- `formatter.noHtmlIndent`: disable nested HTML tag indentation. This is the
-  config equivalent of CLI `--no-html-indent`.
+- `formatter.indentHtml`: indent nested HTML tags.
 - `formatter.lineEnding`: `lf` or `crlf`.
 - `formatter.lineWidth`: target line width. Opening, void, and self-closing
   HTML tags that exceed this width are expanded one attribute per line.
 - `formatter.trailingNewline`: keep or remove the final newline.
-
-CLI `--no-html-indent` overrides `formatter.indentHtml` and
-`formatter.noHtmlIndent`. If both `formatter.indentHtml` and
-`formatter.noHtmlIndent` are set, `formatter.noHtmlIndent` wins.
 
 ## Linter
 
