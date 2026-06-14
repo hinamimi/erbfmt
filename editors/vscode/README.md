@@ -84,6 +84,23 @@ npm run compile
 npm test
 ```
 
+Run extension-host tests when you need to verify the wrapper through VSCode
+APIs. This command builds the Rust binary first and may download a test VSCode
+build on first run. It needs an environment where VSCode/Electron can launch;
+headless Linux environments may need `xvfb-run` or an equivalent display setup.
+
+From the repository root:
+
+```bash
+npm run test:host --prefix editors/vscode
+```
+
+From `editors/vscode`:
+
+```bash
+npm run test:host
+```
+
 ## Local Package
 
 Build a local VSIX package:

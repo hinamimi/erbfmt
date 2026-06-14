@@ -288,7 +288,7 @@ Result:
 
 VSCode Extension Host Test Pass
 
-Status: Next
+Status: Done
 
 Move beyond smoke tests by exercising the extension through a real VSCode
 extension-host test harness.
@@ -305,6 +305,42 @@ Acceptance:
 - Extension-host tests verify formatting edits through VSCode APIs.
 - Extension-host tests verify diagnostics point at the expected ERB tag range.
 - Existing Rust and extension smoke checks continue to pass.
+
+Result:
+
+- Added `@vscode/test-electron` and a `npm run test:host` command for local
+  extension-host verification.
+- Added an extension-host formatting test that invokes VSCode's document
+  formatting provider.
+- Added an extension-host diagnostics test that checks the lint range on the
+  offending ERB tag.
+- Documented extension-host test setup in the VSCode extension docs.
+- The local sandbox can download the VSCode test build, but Electron exits with
+  code 1 in this headless environment; run the host test in a GUI-capable or
+  xvfb-backed environment.
+
+### Milestone 27
+
+VSCode Configuration UX Pass
+
+Status: Next
+
+Make local extension failures easier to understand before publishing.
+
+Target work:
+
+- Improve error messages when the configured `erbfmt` command is missing or not
+  executable.
+- Add a command or diagnostic note that explains which binary path is being
+  used.
+- Decide whether the extension should offer a bundled-binary path later.
+- Keep the current extension package thin until binary distribution is decided.
+
+Acceptance:
+
+- Common setup failures point users toward `cargo build`, `cargo install`, or
+  `erbfmt.command`.
+- Existing formatter, diagnostics, and extension-host tests pass.
 
 ## Later
 

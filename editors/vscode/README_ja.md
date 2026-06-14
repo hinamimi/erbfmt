@@ -82,6 +82,22 @@ npm run compile
 npm test
 ```
 
+VSCode API 経由で wrapper を検証したい場合は extension-host test を実行します。
+このコマンドは先にRust binaryをbuildし、初回実行時にテスト用VSCodeをdownloadする場合があります。
+VSCode/Electronを起動できる環境が必要です。headless Linuxでは `xvfb-run` などのdisplay設定が必要になる場合があります。
+
+リポジトリルートから実行する場合:
+
+```bash
+npm run test:host --prefix editors/vscode
+```
+
+`editors/vscode` から実行する場合:
+
+```bash
+npm run test:host
+```
+
 ## ローカルPackage
 
 ローカル用の VSIX package を作成します。

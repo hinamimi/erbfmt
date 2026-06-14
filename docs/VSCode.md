@@ -85,6 +85,17 @@ code --install-extension erbfmt-vscode-0.0.0-dev.vsix
 The package includes the compiled extension JavaScript in `out/`, but it does
 not bundle the Rust `erbfmt` binary yet.
 
+Run extension-host tests when you need to verify the wrapper through VSCode
+APIs:
+
+```bash
+npm run test:host --prefix editors/vscode
+```
+
+This command builds the Rust binary first and may download a test VSCode build
+on first run. It needs an environment where VSCode/Electron can launch;
+headless Linux environments may need `xvfb-run` or an equivalent display setup.
+
 ## Format On Save Fallback
 
 The workspace uses `emeraldwalk.RunOnSave` to format `.html.erb` files:
@@ -116,8 +127,5 @@ The workspace recommends:
 
 The first-party VSCode extension still needs:
 
-- tests inside a real VSCode extension host.
 - publish-time metadata and icon assets.
 - clearer behavior when Ruby LSP is also installed.
-- diagnostics with precise spans for lint rules that do not yet report
-  line/column.
