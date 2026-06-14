@@ -15,7 +15,8 @@
     "onLanguage:erb",
     "onLanguage:html-erb",
     "onCommand:erbfmt.formatDocument",
-    "onCommand:erbfmt.lintDocument"
+    "onCommand:erbfmt.lintDocument",
+    "onCommand:erbfmt.showCommand"
   ],
   "main": "./out/extension.js",
   "contributes": {
@@ -53,6 +54,10 @@
       {
         "command": "erbfmt.lintDocument",
         "title": "erbfmt: Lint Document"
+      },
+      {
+        "command": "erbfmt.showCommand",
+        "title": "erbfmt: Show Command"
       }
     ],
     "configuration": {

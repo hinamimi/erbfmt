@@ -31,6 +31,7 @@ type ExecOptions = {
 
 export function activate(context: vscode.ExtensionContext): void {
   const diagnostics = vscode.languages.createDiagnosticCollection("erbfmt");
+  const output = vscode.window.createOutputChannel("erbfmt");
   const provider: vscode.DocumentFormattingEditProvider = {
     async provideDocumentFormattingEdits(document, _options, token) {
       const formatted = await formatDocument(document, token);
@@ -41,6 +42,7 @@ export function activate(context: vscode.ExtensionContext): void {
 
   context.subscriptions.push(
     diagnostics,
+    output,
     vscode.languages.registerDocumentFormattingEditProvider(FORMATTER_SELECTOR, provider),
     vscode.commands.registerCommand("erbfmt.formatDocument", async () => {
       const editor = vscode.window.activeTextEditor;
@@ -64,6 +66,32 @@ export function activate(context: vscode.ExtensionContext): void {
       }
 
       await lintDocument(editor.document, diagnostics, createNullToken());
+    }),
+    vscode.commands.registerCommand("erbfmt.showCommand", async () => {
+      const editor = vscode.window.activeTextEditor;
+      if (!editor) {
+        await vscode.window.showWarningMessage(
+          "Open an ERB document before showing erbfmt command.",
+        );
+        return;
+      }
+
+      try {
+        const commandInfo = await describeCommand(editor.document);
+        output.clear();
+        output.appendLine("erbfmt command resolution");
+        output.appendLine("");
+        output.appendLine(`command: ${commandInfo.commandLine}`);
+        output.appendLine(`cwd: ${commandInfo.cwd}`);
+        if (commandInfo.configPath) {
+          output.appendLine(`config: ${commandInfo.configPath}`);
+        } else {
+          output.appendLine("config: <none>");
+        }
+        output.show(true);
+      } catch (error) {
+        await vscode.window.showErrorMessage(errorMessage(error));
+      }
     }),
     vscode.workspace.onDidOpenTextDocument((document) => {
       void lintDocument(document, diagnostics, createNullToken());
@@ -146,7 +174,19 @@ async function lintDocument(
       return;
     }
 
-    diagnostics.set(document.uri, parseDiagnostics(document, tempFile, result.stderr));
+    const parsedDiagnostics = parseDiagnostics(document, tempFile, result.stderr);
+    diagnostics.set(
+      document.uri,
+      parsedDiagnostics.length > 0
+        ? parsedDiagnostics
+        : [
+            new vscode.Diagnostic(
+              firstCharacterRange(document),
+              formatFailureMessage(context, args, result),
+              vscode.DiagnosticSeverity.Error,
+            ),
+          ],
+    );
   } catch (error) {
     diagnostics.set(document.uri, [
       new vscode.Diagnostic(
@@ -158,6 +198,34 @@ async function lintDocument(
   } finally {
     await fs.rm(tempDir, { recursive: true, force: true });
   }
+}
+
+type CommandDescription = {
+  commandLine: string;
+  cwd: string;
+  configPath: string | undefined;
+};
+
+async function describeCommand(document: vscode.TextDocument): Promise<CommandDescription> {
+  if (document.uri.scheme !== "file") {
+    throw new Error("erbfmt can only inspect files on disk.");
+  }
+
+  const context = await getCommandContext(document);
+  const configPath = await resolveConfigPath(context.settings, document, context.workspaceFolder);
+  const args = [...context.extraArguments];
+
+  if (configPath) {
+    args.push("--config", configPath);
+  }
+
+  args.push("<file>");
+
+  return {
+    commandLine: commandLine(context.command, args),
+    cwd: context.cwd,
+    configPath,
+  };
 }
 
 async function getCommandContext(document: vscode.TextDocument): Promise<CommandContext> {
@@ -424,9 +492,48 @@ function execFile(
 
 function formatFailureMessage(context: CommandContext, args: string[], result: ExecResult): string {
   const detail = result.stderr.trim() || result.errorMessage || `exit code ${result.exitCode}`;
-  const commandLine = [context.command, ...args].join(" ");
+  const hint = setupHint(context, result);
 
-  return `erbfmt failed: ${detail}\ncommand: ${commandLine}\ncwd: ${context.cwd}`;
+  return [
+    `erbfmt failed: ${detail}`,
+    hint,
+    `command: ${commandLine(context.command, args)}`,
+    `cwd: ${context.cwd}`,
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
+function setupHint(context: CommandContext, result: ExecResult): string | undefined {
+  if (result.exitCode === "ENOENT") {
+    if (path.basename(context.command) === "cargo") {
+      return "Hint: VSCode could not find cargo. Run `cargo build` in the erbfmt checkout, install erbfmt, or set `erbfmt.command` to an absolute erbfmt binary path.";
+    }
+
+    return "Hint: erbfmt was not found. Run `cargo build` in this checkout, install erbfmt, or set `erbfmt.command` to an absolute erbfmt binary path.";
+  }
+
+  if (result.exitCode === "EACCES") {
+    if (path.basename(context.command) === "cargo") {
+      return "Hint: VSCode could not execute cargo. Run `cargo build` in the erbfmt checkout, install erbfmt, or set `erbfmt.command` to an executable erbfmt binary path.";
+    }
+
+    return "Hint: the configured erbfmt command is not executable. Check file permissions, run `cargo build`, or update `erbfmt.command`.";
+  }
+
+  return undefined;
+}
+
+function commandLine(command: string, args: string[]): string {
+  return [command, ...args].map(shellQuote).join(" ");
+}
+
+function shellQuote(value: string): string {
+  if (/^[A-Za-z0-9_./:=@+-]+$/.test(value)) {
+    return value;
+  }
+
+  return `'${value.replaceAll("'", "'\\''")}'`;
 }
 
 function errorMessage(error: unknown): string {

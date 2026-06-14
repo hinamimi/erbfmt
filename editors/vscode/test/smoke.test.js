@@ -12,6 +12,7 @@ assert(packageJson.scripts["test:host"].includes("cargo build"));
 assert(packageJson.scripts["test:host"].includes("test/runTest.js"));
 assert(packageJson.activationEvents.includes("onLanguage:erb"));
 assert(packageJson.activationEvents.includes("onLanguage:html-erb"));
+assert(packageJson.activationEvents.includes("onCommand:erbfmt.showCommand"));
 assert(packageJson.contributes.languages.some((language) => language.id === "html-erb"));
 assert(packageJson.contributes.grammars.some((grammar) => grammar.language === "html-erb"));
 assert(
@@ -19,6 +20,9 @@ assert(
 );
 assert(
   packageJson.contributes.commands.some((command) => command.command === "erbfmt.lintDocument"),
+);
+assert(
+  packageJson.contributes.commands.some((command) => command.command === "erbfmt.showCommand"),
 );
 assert(packageJson.contributes.configuration.properties["erbfmt.command"]);
 assert(packageJson.contributes.configuration.properties["erbfmt.arguments"]);
@@ -33,5 +37,7 @@ assert(extensionSource.includes("createDiagnosticCollection"));
 assert(extensionSource.includes("--lint"));
 assert(extensionSource.includes("fullDocumentRange"));
 assert(extensionSource.includes("childProcess.execFile"));
+assert(extensionSource.includes("createOutputChannel"));
+assert(extensionSource.includes("setupHint"));
 
 console.log("VSCode extension smoke test passed.");

@@ -323,7 +323,7 @@ Result:
 
 VSCode Configuration UX Pass
 
-Status: Next
+Status: Done
 
 Make local extension failures easier to understand before publishing.
 
@@ -341,6 +341,39 @@ Acceptance:
 - Common setup failures point users toward `cargo build`, `cargo install`, or
   `erbfmt.command`.
 - Existing formatter, diagnostics, and extension-host tests pass.
+
+Result:
+
+- Added `erbfmt: Show Command` to display the resolved command line, cwd, and
+  config path for the active document.
+- Improved formatter and diagnostics failure output for `ENOENT` and `EACCES`
+  with setup hints for `cargo build`, `cargo install`, and `erbfmt.command`.
+- Fixed lint diagnostics so spawn failures without stderr still surface as a
+  visible VSCode diagnostic.
+- Kept binary bundling out of scope; the extension remains a thin wrapper.
+
+### Milestone 28
+
+VSCode Publish Metadata Pass
+
+Status: Next
+
+Prepare the local VSIX for eventual marketplace or GitHub release publishing.
+
+Target work:
+
+- Add repository metadata once the canonical repository URL is decided.
+- Add categories, keywords, and icon assets suitable for a formatter extension.
+- Decide whether the package README should be English-only or include links to
+  Japanese docs.
+- Keep generated VSIX contents small and predictable.
+
+Acceptance:
+
+- `vsce package --no-dependencies` runs without metadata warnings or only with
+  documented intentional warnings.
+- Package contents remain limited to runtime files.
+- README files explain install and local binary expectations clearly.
 
 ## Later
 

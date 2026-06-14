@@ -29,6 +29,8 @@ The extension:
 - publishes diagnostics by invoking `erbfmt --lint` on open and save.
 - invokes the configured `erbfmt` command and uses stdout as the formatted
   document.
+- provides `erbfmt: Show Command` to inspect the resolved command, cwd, and
+  config path for the active document.
 - keeps all formatting behavior in the Rust binary.
 
 For local development, build the binary first:
@@ -51,6 +53,10 @@ The extension searches for `erbfmt.json` from the formatted file upward. Set
 `erbfmt.configPath` to force a specific config file.
 
 Set `erbfmt.lint.enabled` to `false` to disable diagnostics.
+
+Use `erbfmt: Show Command` from the command palette when setup fails. If the
+extension reports `ENOENT` or `EACCES`, run `cargo build`, install `erbfmt`, or
+set `erbfmt.command` to an executable absolute path.
 
 ## Local Package
 
