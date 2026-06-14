@@ -2,7 +2,7 @@ use std::fmt;
 
 use crate::{
     html::{self, HtmlTag, HtmlToken},
-    lexer::{ErbBlockKind, ErbBranchKind, Token},
+    lexer::{ErbBlockKind, ErbBranchKind, SourceLocation, SpannedToken, Token},
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -110,6 +110,50 @@ impl fmt::Display for ParseError {
 
 impl std::error::Error for ParseError {}
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LocatedParseError {
+    error: ParseError,
+    location: Option<SourceLocation>,
+}
+
+impl fmt::Display for LocatedParseError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let Some(location) = self.location else {
+            return write!(f, "{}", self.error);
+        };
+
+        match &self.error {
+            ParseError::UnexpectedErbBlockEnd { code, .. } => {
+                write!(f, "unexpected ERB block end `{code}` at {location}")
+            }
+            ParseError::UnexpectedErbBranch { code, .. } => {
+                write!(f, "unexpected ERB branch `{code}` at {location}")
+            }
+            ParseError::UnclosedErbBlock { code, .. } => {
+                write!(f, "unclosed ERB block `{code}` at {location}")
+            }
+            ParseError::UnexpectedHtmlCloseTag { .. }
+            | ParseError::MismatchedHtmlCloseTag { .. }
+            | ParseError::UnclosedHtmlTag { .. } => write!(f, "{} at {location}", self.error),
+        }
+    }
+}
+
+impl std::error::Error for LocatedParseError {}
+
+impl ParseError {
+    fn token_index(&self) -> Option<usize> {
+        match self {
+            Self::UnexpectedErbBlockEnd { token_index, .. }
+            | Self::UnexpectedErbBranch { token_index, .. }
+            | Self::UnclosedErbBlock { token_index, .. } => Some(*token_index),
+            Self::UnexpectedHtmlCloseTag { .. }
+            | Self::MismatchedHtmlCloseTag { .. }
+            | Self::UnclosedHtmlTag { .. } => None,
+        }
+    }
+}
+
 pub fn parse(tokens: &[Token]) -> Result<Document, ParseError> {
     let mut parser = Parser {
         stack: vec![Frame::root()],
@@ -120,6 +164,22 @@ pub fn parse(tokens: &[Token]) -> Result<Document, ParseError> {
     }
 
     parser.finish()
+}
+
+pub fn parse_spanned(tokens: &[SpannedToken]) -> Result<Document, LocatedParseError> {
+    let plain_tokens = tokens
+        .iter()
+        .map(|spanned| spanned.token.clone())
+        .collect::<Vec<_>>();
+
+    parse(&plain_tokens).map_err(|error| {
+        let location = error
+            .token_index()
+            .and_then(|token_index| tokens.get(token_index))
+            .map(|spanned| spanned.span.location);
+
+        LocatedParseError { error, location }
+    })
 }
 
 struct Parser {

@@ -118,9 +118,9 @@ fn run_lint(file: &Path, content: &str) -> Result<FileStatus> {
 }
 
 fn format_content(file: &Path, content: &str, no_html_indent: bool) -> Result<String> {
-    let tokens =
-        lexer::tokenize(content).with_context(|| format!("failed to lex `{}`", file.display()))?;
-    let document = mixed_parser::parse(&tokens)
+    let tokens = lexer::tokenize_with_spans(content)
+        .with_context(|| format!("failed to lex `{}`", file.display()))?;
+    let document = mixed_parser::parse_spanned(&tokens)
         .with_context(|| format!("failed to parse `{}`", file.display()))?;
 
     Ok(if no_html_indent {

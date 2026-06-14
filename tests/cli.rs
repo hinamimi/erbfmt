@@ -130,6 +130,42 @@ fn lint_fails_for_invalid_file() {
 }
 
 #[test]
+fn lint_lexer_errors_include_line_and_column() {
+    let dir = TestDir::new("lint_lex_location");
+    let file = dir.write("input.html.erb", "<div>\n  <% if user");
+
+    let output = run(["--lint".as_ref(), file.as_path()]);
+
+    assert_failure(&output);
+    assert_eq!(stdout(&output), "");
+    assert_eq!(
+        stderr(&output),
+        format!(
+            "{}: unterminated ERB tag at line 2, column 3\n",
+            file.display()
+        )
+    );
+}
+
+#[test]
+fn lint_parser_errors_include_line_and_column() {
+    let dir = TestDir::new("lint_parse_location");
+    let file = dir.write("input.html.erb", "<p>Hello</p>\n<% end %>\n");
+
+    let output = run(["--lint".as_ref(), file.as_path()]);
+
+    assert_failure(&output);
+    assert_eq!(stdout(&output), "");
+    assert_eq!(
+        stderr(&output),
+        format!(
+            "{}: unexpected ERB block end `end` at line 2, column 1\n",
+            file.display()
+        )
+    );
+}
+
+#[test]
 fn multi_file_check_returns_failure_if_any_file_is_unformatted() {
     let dir = TestDir::new("multi_check");
     let formatted = dir.write("formatted.html.erb", FORMATTED);

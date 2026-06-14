@@ -9,7 +9,7 @@ pub struct Diagnostic {
 }
 
 pub fn lint(input: &str) -> Vec<Diagnostic> {
-    let tokens = match lexer::tokenize(input) {
+    let tokens = match lexer::tokenize_with_spans(input) {
         Ok(tokens) => tokens,
         Err(error) => {
             return vec![Diagnostic {
@@ -18,7 +18,7 @@ pub fn lint(input: &str) -> Vec<Diagnostic> {
         }
     };
 
-    match mixed_parser::parse(&tokens) {
+    match mixed_parser::parse_spanned(&tokens) {
         Ok(document) => lint_document(&document),
         Err(error) => {
             vec![Diagnostic {
@@ -118,7 +118,7 @@ mod tests {
         assert_eq!(
             diagnostics,
             vec![Diagnostic {
-                message: "unterminated ERB tag at byte 5".to_string()
+                message: "unterminated ERB tag at line 1, column 6".to_string()
             }]
         );
     }
@@ -130,7 +130,7 @@ mod tests {
         assert_eq!(
             diagnostics,
             vec![Diagnostic {
-                message: "unexpected ERB block end `end` at token 0".to_string()
+                message: "unexpected ERB block end `end` at line 1, column 1".to_string()
             }]
         );
     }
@@ -142,7 +142,7 @@ mod tests {
         assert_eq!(
             diagnostics,
             vec![Diagnostic {
-                message: "unclosed ERB block `if user` at token 0".to_string()
+                message: "unclosed ERB block `if user` at line 1, column 1".to_string()
             }]
         );
     }

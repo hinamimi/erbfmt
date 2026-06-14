@@ -27,6 +27,7 @@ Implemented:
 - CLI integration tests that invoke the compiled binary
 - Release checklist and local install documentation
 - VSCode workspace language association for `*.html.erb`
+- Line/column diagnostics for lexer and ERB parser errors
 
 Reference samples:
 
@@ -44,10 +45,10 @@ Known constraints:
 
 ## Immediate Focus
 
-The Rust binary is now documented enough for local pre-release use, and the
-workspace has a basic VSCode association for `*.html.erb`. The next milestones
-should improve diagnostics and real-template formatter behavior before
-expanding to npm/Ruby wrappers.
+The Rust binary is documented enough for local pre-release use, the workspace
+has a basic VSCode association for `*.html.erb`, and syntax diagnostics now
+include source locations. The next milestone should audit real-template
+formatter behavior before expanding to npm/Ruby wrappers.
 
 ### Milestone 19
 
@@ -119,7 +120,7 @@ Result:
 
 Diagnostic Quality Pass
 
-Status: Next
+Status: Done
 
 Improve lint and parse diagnostics so CLI output is easier to act on.
 
@@ -136,11 +137,17 @@ Acceptance:
 - Existing lint rules still pass.
 - Multi-file output remains deterministic.
 
+Result:
+
+- Lexer errors report line and column.
+- ERB parser errors report line and column when called through spanned tokens.
+- CLI integration tests cover lexer and parser diagnostic locations.
+
 ### Milestone 22
 
 Formatter Behavior Audit
 
-Status: Planned
+Status: Next
 
 Run another focused pass on real-world ERB patterns before wrappers.
 

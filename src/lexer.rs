@@ -11,6 +11,31 @@ pub enum Token {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct SourceLocation {
+    pub line: usize,
+    pub column: usize,
+}
+
+impl fmt::Display for SourceLocation {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "line {}, column {}", self.line, self.column)
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Span {
+    pub start: usize,
+    pub end: usize,
+    pub location: SourceLocation,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SpannedToken {
+    pub token: Token,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ErbBlockKind {
     If,
     Unless,
@@ -29,13 +54,15 @@ pub enum ErbBranchKind {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LexError {
     position: usize,
+    location: SourceLocation,
     message: String,
 }
 
 impl LexError {
-    fn unterminated_erb(position: usize) -> Self {
+    fn unterminated_erb(input: &str, position: usize) -> Self {
         Self {
             position,
+            location: source_location(input, position),
             message: "unterminated ERB tag".to_string(),
         }
     }
@@ -43,13 +70,21 @@ impl LexError {
 
 impl fmt::Display for LexError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{} at byte {}", self.message, self.position)
+        write!(f, "{} at {}", self.message, self.location)
     }
 }
 
 impl std::error::Error for LexError {}
 
+#[cfg(test)]
 pub fn tokenize(input: &str) -> Result<Vec<Token>, LexError> {
+    Ok(tokenize_with_spans(input)?
+        .into_iter()
+        .map(|spanned| spanned.token)
+        .collect())
+}
+
+pub fn tokenize_with_spans(input: &str) -> Result<Vec<SpannedToken>, LexError> {
     let mut tokens = Vec::new();
     let mut cursor = 0;
     let mut search_cursor = 0;
@@ -63,7 +98,12 @@ pub fn tokenize(input: &str) -> Result<Vec<Token>, LexError> {
         }
 
         if start > cursor {
-            tokens.push(Token::Html(input[cursor..start].to_string()));
+            tokens.push(spanned_token(
+                input,
+                cursor,
+                start,
+                Token::Html(input[cursor..start].to_string()),
+            ));
         }
 
         let tag_content_start = start + "<%".len();
@@ -74,27 +114,64 @@ pub fn tokenize(input: &str) -> Result<Vec<Token>, LexError> {
         };
 
         let Some(relative_end) = input[code_start..].find("%>") else {
-            return Err(LexError::unterminated_erb(start));
+            return Err(LexError::unterminated_erb(input, start));
         };
 
         let code_end = code_start + relative_end;
         let code = input[code_start..code_end].trim().to_string();
+        let token_end = code_end + "%>".len();
         let token = if is_output {
             Token::ErbOutput(code)
         } else {
             classify_code(code)
         };
 
-        tokens.push(token);
-        cursor = code_end + "%>".len();
+        tokens.push(spanned_token(input, start, token_end, token));
+        cursor = token_end;
         search_cursor = cursor;
     }
 
     if cursor < input.len() {
-        tokens.push(Token::Html(input[cursor..].to_string()));
+        tokens.push(spanned_token(
+            input,
+            cursor,
+            input.len(),
+            Token::Html(input[cursor..].to_string()),
+        ));
     }
 
     Ok(tokens)
+}
+
+fn spanned_token(input: &str, start: usize, end: usize, token: Token) -> SpannedToken {
+    SpannedToken {
+        token,
+        span: Span {
+            start,
+            end,
+            location: source_location(input, start),
+        },
+    }
+}
+
+pub fn source_location(input: &str, position: usize) -> SourceLocation {
+    let mut line = 1;
+    let mut column = 1;
+
+    for (index, ch) in input.char_indices() {
+        if index >= position {
+            break;
+        }
+
+        if ch == '\n' {
+            line += 1;
+            column = 1;
+        } else {
+            column += 1;
+        }
+    }
+
+    SourceLocation { line, column }
 }
 
 fn is_inside_html_tag(input: &str, position: usize) -> bool {
@@ -400,6 +477,9 @@ mod tests {
     fn reports_unterminated_erb_tag() {
         let error = tokenize("<div><% if user").unwrap_err();
 
-        assert_eq!(error.to_string(), "unterminated ERB tag at byte 5");
+        assert_eq!(
+            error.to_string(),
+            "unterminated ERB tag at line 1, column 6"
+        );
     }
 }
