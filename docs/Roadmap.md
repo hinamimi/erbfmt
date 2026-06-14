@@ -31,6 +31,7 @@ Implemented:
 - VSCode workspace language association for `*.html.erb`
 - Thin VSCode extension scaffold
 - VSCode diagnostics wrapper for `erbfmt --lint`
+- VSCode extension local VSIX packaging
 - Line/column diagnostics for lexer and ERB parser errors
 - `erbfmt.json` formatter and linter configuration
 - `formatter.lineWidth` wrapping for long HTML tags
@@ -47,7 +48,7 @@ Known constraints:
 - Ruby code is not parsed as Ruby AST.
 - Formatting currently normalizes most non-meaningful whitespace.
 - Lint rule diagnostics do not yet include line/column spans.
-- Distribution wrappers are not packaged yet.
+- Distribution wrappers are not published yet.
 - The VSCode extension scaffold is not published yet.
 - Lint rule diagnostics without line/column are shown at the start of the file
   in VSCode.
@@ -223,7 +224,7 @@ Result:
 
 VSCode Extension Packaging Pass
 
-Status: Next
+Status: Done
 
 Prepare the extension scaffold for real local installation.
 
@@ -241,6 +242,38 @@ Acceptance:
 - Formatter behavior is verified through the extension path.
 - Diagnostics behavior is verified through the extension path.
 - Rust tests remain the formatter release gate.
+
+Result:
+
+- Added TypeScript compile output packaging with `@vscode/vsce`.
+- Added `npm run package --prefix editors/vscode` for local VSIX generation.
+- Added `.vscodeignore` so generated `out/` is packaged while source, tests,
+  and dev-only config are excluded.
+- Documented local VSIX build and install commands.
+- Kept Rust binary bundling out of scope; local packages still expect an
+  installed or configured `erbfmt` binary.
+
+### Milestone 25
+
+Editor Diagnostics Span Pass
+
+Status: Next
+
+Improve lint diagnostics so VSCode can place rule findings on useful ranges
+instead of the start of the file.
+
+Target work:
+
+- Add source spans to lint diagnostics for empty ERB blocks.
+- Add source spans to unsupported ERB block starter diagnostics.
+- Preserve existing CLI output format or document any intentional changes.
+- Keep extension diagnostics as a thin consumer of CLI output.
+
+Acceptance:
+
+- VSCode diagnostics for current lint rules point at the relevant ERB tag.
+- CLI integration tests cover diagnostic locations where applicable.
+- Existing formatter and extension checks pass.
 
 ## Later
 

@@ -1,0 +1,7 @@
+node_modules
+src
+test
+biome.json
+tsconfig.json
+package-lock.json
+*.vsix

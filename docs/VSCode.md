@@ -17,8 +17,7 @@ which may recognize `erb` but not always `html.erb` by default.
 
 ## First-party Extension Scaffold
 
-The repository includes a thin VSCode extension scaffold in
-`editors/vscode`.
+The repository includes a thin TypeScript VSCode extension in `editors/vscode`.
 
 The extension:
 
@@ -48,6 +47,23 @@ The extension searches for `erbfmt.json` from the formatted file upward. Set
 `erbfmt.configPath` to force a specific config file.
 
 Set `erbfmt.lint.enabled` to `false` to disable diagnostics.
+
+## Local Package
+
+Build a local VSIX package:
+
+```bash
+npm run package --prefix editors/vscode
+```
+
+Install it locally:
+
+```bash
+code --install-extension editors/vscode/erbfmt-vscode-0.1.0.vsix
+```
+
+The package includes the compiled extension JavaScript in `out/`, but it does
+not bundle the Rust `erbfmt` binary yet.
 
 ## Format On Save Fallback
 
@@ -80,10 +96,8 @@ The workspace recommends:
 
 The first-party VSCode extension still needs:
 
-- packaging with `vsce`.
 - tests inside a real VSCode extension host.
 - publish-time metadata and icon assets.
 - clearer behavior when Ruby LSP is also installed.
 - diagnostics with precise spans for lint rules that do not yet report
   line/column.
-- clear behavior when Ruby LSP is also installed.

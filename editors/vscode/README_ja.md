@@ -78,3 +78,20 @@ extension code のformat / lint は Biome で行います。
 npm run format --prefix editors/vscode
 npm run lint --prefix editors/vscode
 ```
+
+## ローカルPackage
+
+ローカル用の VSIX package を作成します。
+
+```bash
+npm run package --prefix editors/vscode
+```
+
+生成された VSIX はリポジトリルートからインストールできます。
+
+```bash
+code --install-extension editors/vscode/erbfmt-vscode-0.1.0.vsix
+```
+
+現時点のpackageにはRust binaryを同梱していません。別途 `erbfmt` をインストールするか、
+`erbfmt.command` でローカルbinaryを指定してください。

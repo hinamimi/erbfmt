@@ -80,3 +80,20 @@ Biome handles formatting and linting for the extension code.
 npm run format --prefix editors/vscode
 npm run lint --prefix editors/vscode
 ```
+
+## Local Package
+
+Build a local VSIX package:
+
+```bash
+npm run package --prefix editors/vscode
+```
+
+Install the generated VSIX from the repository root:
+
+```bash
+code --install-extension editors/vscode/erbfmt-vscode-0.1.0.vsix
+```
+
+The packaged extension does not bundle the Rust binary yet. Install `erbfmt`
+separately or configure `erbfmt.command` to point at a local binary.

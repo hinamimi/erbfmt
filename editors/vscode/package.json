@@ -86,12 +86,15 @@
     "compile": "tsc -p .",
     "format": "biome format --write .",
     "lint": "biome lint .",
-    "test": "npm run check && npm run compile && node test/smoke.test.js"
+    "package": "vsce package --no-dependencies",
+    "test": "npm run check && npm run compile && node test/smoke.test.js",
+    "vscode:prepublish": "npm run compile"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.0",
     "@types/node": "^20.11.0",
     "@types/vscode": "^1.85.0",
+    "@vscode/vsce": "^3.9.2",
     "typescript": "^6.0.0"
   }
 }
