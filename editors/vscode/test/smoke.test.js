@@ -11,6 +11,7 @@ assert.strictEqual(packageJson.scripts.compile, "tsc -p .");
 assert(packageJson.activationEvents.includes("onLanguage:erb"));
 assert(packageJson.activationEvents.includes("onLanguage:html-erb"));
 assert(packageJson.contributes.languages.some((language) => language.id === "html-erb"));
+assert(packageJson.contributes.grammars.some((grammar) => grammar.language === "html-erb"));
 assert(
   packageJson.contributes.commands.some((command) => command.command === "erbfmt.formatDocument"),
 );

@@ -2,18 +2,20 @@
 
 ## Language Association
 
-This repository associates `*.html.erb` files with VSCode's `erb` language id:
+This repository associates `*.html.erb` files with the extension-provided
+`html-erb` language id:
 
 ```json
 {
   "files.associations": {
-    "*.html.erb": "erb"
+    "*.html.erb": "html-erb"
   }
 }
 ```
 
-This is a workspace-level fallback for Ruby tooling such as Shopify Ruby LSP,
-which may recognize `erb` but not always `html.erb` by default.
+The `html-erb` language id contributes syntax highlighting for HTML with ERB
+tags. Ruby tooling such as Shopify Ruby LSP may still use the `erb` language id;
+the extension registers formatter support for both `erb` and `html-erb`.
 
 ## First-party Extension Scaffold
 
@@ -22,6 +24,7 @@ The repository includes a thin TypeScript VSCode extension in `editors/vscode`.
 The extension:
 
 - contributes a `html-erb` language id for `*.html.erb`.
+- contributes TextMate syntax highlighting for HTML plus ERB tags.
 - registers a document formatter for both `erb` and `html-erb`.
 - publishes diagnostics by invoking `erbfmt --lint` on open and save.
 - invokes the configured `erbfmt` command and uses stdout as the formatted

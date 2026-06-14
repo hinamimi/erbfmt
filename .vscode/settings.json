@@ -1,6 +1,6 @@
 {
   "files.associations": {
-    "*.html.erb": "erb"
+    "*.html.erb": "html-erb"
   },
   "[erb]": {
     "editor.defaultFormatter": "erbfmt.erbfmt-vscode"

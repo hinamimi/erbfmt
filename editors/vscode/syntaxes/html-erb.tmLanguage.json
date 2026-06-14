@@ -1,0 +1,76 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "HTML ERB",
+  "scopeName": "text.html.erb",
+  "patterns": [
+    {
+      "include": "#erb-comment"
+    },
+    {
+      "include": "#erb-output"
+    },
+    {
+      "include": "#erb-code"
+    },
+    {
+      "include": "text.html.basic"
+    }
+  ],
+  "repository": {
+    "erb-comment": {
+      "name": "comment.block.erb",
+      "begin": "<%#",
+      "beginCaptures": {
+        "0": {
+          "name": "punctuation.section.embedded.begin.erb"
+        }
+      },
+      "end": "%>",
+      "endCaptures": {
+        "0": {
+          "name": "punctuation.section.embedded.end.erb"
+        }
+      }
+    },
+    "erb-output": {
+      "name": "meta.embedded.output.erb",
+      "begin": "<%=",
+      "beginCaptures": {
+        "0": {
+          "name": "punctuation.section.embedded.begin.erb"
+        }
+      },
+      "end": "%>",
+      "endCaptures": {
+        "0": {
+          "name": "punctuation.section.embedded.end.erb"
+        }
+      },
+      "patterns": [
+        {
+          "include": "source.ruby"
+        }
+      ]
+    },
+    "erb-code": {
+      "name": "meta.embedded.block.erb",
+      "begin": "<%",
+      "beginCaptures": {
+        "0": {
+          "name": "punctuation.section.embedded.begin.erb"
+        }
+      },
+      "end": "%>",
+      "endCaptures": {
+        "0": {
+          "name": "punctuation.section.embedded.end.erb"
+        }
+      },
+      "patterns": [
+        {
+          "include": "source.ruby"
+        }
+      ]
+    }
+  }
+}

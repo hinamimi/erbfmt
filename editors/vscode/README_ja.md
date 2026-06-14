@@ -5,6 +5,7 @@ Rust製 `erbfmt` binary を呼び出す薄いVSCode wrapperです。
 ## 挙動
 
 - `*.html.erb` 向けに `html-erb` language id を提供します。
+- HTML と ERB tag の syntax highlighting を提供します。
 - `erb` と `html-erb` の document formatter を登録します。
 - open / save 時に `erbfmt --lint` を実行し、diagnostics を表示します。
 - 設定された `erbfmt` command を呼び出し、stdout を整形結果としてdocumentへ反映します。

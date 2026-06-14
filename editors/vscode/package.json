@@ -34,6 +34,17 @@
         ]
       }
     ],
+    "grammars": [
+      {
+        "language": "html-erb",
+        "scopeName": "text.html.erb",
+        "path": "./syntaxes/html-erb.tmLanguage.json",
+        "embeddedLanguages": {
+          "source.ruby": "ruby",
+          "text.html.basic": "html"
+        }
+      }
+    ],
     "commands": [
       {
         "command": "erbfmt.formatDocument",

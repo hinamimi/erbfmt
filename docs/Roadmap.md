@@ -32,6 +32,7 @@ Implemented:
 - Thin VSCode extension scaffold
 - VSCode diagnostics wrapper for `erbfmt --lint`
 - VSCode extension local VSIX packaging
+- VSCode `html-erb` syntax highlighting
 - Line/column diagnostics for lexer and ERB parser errors
 - `erbfmt.json` formatter and linter configuration
 - `formatter.lineWidth` wrapping for long HTML tags
