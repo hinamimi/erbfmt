@@ -6,6 +6,7 @@ Thin VSCode wrapper for the Rust `erbfmt` binary.
 
 - contributes a `html-erb` language id for `*.html.erb`.
 - registers a document formatter for `erb` and `html-erb`.
+- runs `erbfmt --lint` on open and save to publish diagnostics.
 - calls the configured `erbfmt` command and replaces the document with stdout.
 - keeps formatting logic in the Rust binary.
 
@@ -39,3 +40,5 @@ cargo install --path ../..
 
 Use `erbfmt.configPath` to force a specific `erbfmt.json`; otherwise the
 extension searches from the formatted file toward the filesystem root.
+
+Set `erbfmt.lint.enabled` to `false` to disable diagnostics.

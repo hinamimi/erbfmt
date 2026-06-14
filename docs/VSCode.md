@@ -24,6 +24,7 @@ The extension:
 
 - contributes a `html-erb` language id for `*.html.erb`.
 - registers a document formatter for both `erb` and `html-erb`.
+- publishes diagnostics by invoking `erbfmt --lint` on open and save.
 - invokes the configured `erbfmt` command and uses stdout as the formatted
   document.
 - keeps all formatting behavior in the Rust binary.
@@ -45,6 +46,8 @@ or point the extension at the local checkout:
 
 The extension searches for `erbfmt.json` from the formatted file upward. Set
 `erbfmt.configPath` to force a specific config file.
+
+Set `erbfmt.lint.enabled` to `false` to disable diagnostics.
 
 ## Format On Save Fallback
 
@@ -81,5 +84,6 @@ The first-party VSCode extension still needs:
 - tests inside a real VSCode extension host.
 - publish-time metadata and icon assets.
 - clearer behavior when Ruby LSP is also installed.
-- optional diagnostics wiring for `erbfmt --lint`.
+- diagnostics with precise spans for lint rules that do not yet report
+  line/column.
 - clear behavior when Ruby LSP is also installed.

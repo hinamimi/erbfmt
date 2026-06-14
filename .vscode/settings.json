@@ -10,6 +10,7 @@
   },
   "erbfmt.command": "cargo",
   "erbfmt.arguments": ["run", "--quiet", "--"],
+  "erbfmt.lint.enabled": true,
   "emeraldwalk.runonsave": {
     "commands": [
       {

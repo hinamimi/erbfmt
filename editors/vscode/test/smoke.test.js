@@ -16,10 +16,14 @@ assert(packageJson.activationEvents.includes("onLanguage:erb"));
 assert(packageJson.activationEvents.includes("onLanguage:html-erb"));
 assert(packageJson.contributes.languages.some((language) => language.id === "html-erb"));
 assert(packageJson.contributes.commands.some((command) => command.command === "erbfmt.formatDocument"));
+assert(packageJson.contributes.commands.some((command) => command.command === "erbfmt.lintDocument"));
 assert(packageJson.contributes.configuration.properties["erbfmt.command"]);
 assert(packageJson.contributes.configuration.properties["erbfmt.arguments"]);
 assert(packageJson.contributes.configuration.properties["erbfmt.configPath"]);
+assert(packageJson.contributes.configuration.properties["erbfmt.lint.enabled"]);
 assert(extensionSource.includes("registerDocumentFormattingEditProvider"));
+assert(extensionSource.includes("createDiagnosticCollection"));
+assert(extensionSource.includes("--lint"));
 assert(extensionSource.includes("childProcess.execFile"));
 
 console.log("VSCode extension smoke test passed.");

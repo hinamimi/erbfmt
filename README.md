@@ -161,7 +161,8 @@ per line.
 
 This repository includes a thin VSCode extension scaffold in `editors/vscode`.
 It registers `erbfmt` as a document formatter for `*.html.erb` files while
-keeping the formatter engine in the Rust binary.
+keeping the formatter and lint engines in the Rust binary. The extension also
+invokes `erbfmt --lint` on open and save to publish diagnostics.
 
 For local extension development, point the wrapper at the checkout:
 

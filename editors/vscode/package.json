@@ -12,7 +12,8 @@
   "activationEvents": [
     "onLanguage:erb",
     "onLanguage:html-erb",
-    "onCommand:erbfmt.formatDocument"
+    "onCommand:erbfmt.formatDocument",
+    "onCommand:erbfmt.lintDocument"
   ],
   "main": "./extension.js",
   "contributes": {
@@ -28,6 +29,10 @@
       {
         "command": "erbfmt.formatDocument",
         "title": "erbfmt: Format Document"
+      },
+      {
+        "command": "erbfmt.lintDocument",
+        "title": "erbfmt: Lint Document"
       }
     ],
     "configuration": {
@@ -50,6 +55,11 @@
           "type": "string",
           "default": "",
           "description": "Optional path to erbfmt.json. Relative paths are resolved from the workspace folder."
+        },
+        "erbfmt.lint.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable erbfmt diagnostics by running erbfmt --lint on open and save."
         }
       }
     }

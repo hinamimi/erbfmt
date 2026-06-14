@@ -10,6 +10,7 @@ const FORMATTER_SELECTOR = [
 ];
 
 function activate(context) {
+  const diagnostics = vscode.languages.createDiagnosticCollection("erbfmt");
   const provider = {
     async provideDocumentFormattingEdits(document, _options, token) {
       const formatted = await formatDocument(document, token);
@@ -23,6 +24,7 @@ function activate(context) {
   };
 
   context.subscriptions.push(
+    diagnostics,
     vscode.languages.registerDocumentFormattingEditProvider(
       FORMATTER_SELECTOR,
       provider,
@@ -34,7 +36,28 @@ function activate(context) {
 
       await vscode.commands.executeCommand("editor.action.formatDocument");
     }),
+    vscode.commands.registerCommand("erbfmt.lintDocument", async () => {
+      const editor = vscode.window.activeTextEditor;
+      if (!editor) {
+        return;
+      }
+
+      await lintDocument(editor.document, diagnostics, createNullToken());
+    }),
+    vscode.workspace.onDidOpenTextDocument((document) => {
+      void lintDocument(document, diagnostics, createNullToken());
+    }),
+    vscode.workspace.onDidSaveTextDocument((document) => {
+      void lintDocument(document, diagnostics, createNullToken());
+    }),
+    vscode.workspace.onDidCloseTextDocument((document) => {
+      diagnostics.delete(document.uri);
+    }),
   );
+
+  for (const document of vscode.workspace.textDocuments) {
+    void lintDocument(document, diagnostics, createNullToken());
+  }
 }
 
 function deactivate() {}
@@ -48,6 +71,73 @@ async function formatDocument(document, token) {
     return document.getText();
   }
 
+  const context = getCommandContext(document);
+
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "erbfmt-vscode-"));
+  const tempFile = path.join(tempDir, path.basename(document.uri.fsPath));
+
+  try {
+    await fs.writeFile(tempFile, document.getText(), "utf8");
+
+    const args = await buildErbfmtArgs(context, document, [tempFile]);
+
+    const result = await execFile(context.command, args, { cwd: context.cwd }, token);
+    if (result.exitCode !== 0) {
+      const detail = result.stderr.trim() || `exit code ${result.exitCode}`;
+      throw new Error(`erbfmt failed: ${detail}`);
+    }
+
+    const { stdout } = result;
+    return stdout;
+  } finally {
+    await fs.rm(tempDir, { recursive: true, force: true });
+  }
+}
+
+async function lintDocument(document, diagnostics, token) {
+  if (!isSupportedDocument(document)) {
+    diagnostics.delete(document.uri);
+    return;
+  }
+
+  const settings = vscode.workspace.getConfiguration("erbfmt", document.uri);
+  if (!settings.get("lint.enabled", true)) {
+    diagnostics.delete(document.uri);
+    return;
+  }
+
+  const context = getCommandContext(document);
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "erbfmt-vscode-"));
+  const tempFile = path.join(tempDir, path.basename(document.uri.fsPath));
+
+  try {
+    await fs.writeFile(tempFile, document.getText(), "utf8");
+    const args = await buildErbfmtArgs(context, document, ["--lint", tempFile]);
+    const result = await execFile(context.command, args, { cwd: context.cwd }, token);
+
+    if (result.exitCode === 0) {
+      diagnostics.delete(document.uri);
+      return;
+    }
+
+    diagnostics.set(
+      document.uri,
+      parseDiagnostics(document, tempFile, result.stderr),
+    );
+  } catch (error) {
+    diagnostics.set(document.uri, [
+      new vscode.Diagnostic(
+        firstCharacterRange(document),
+        error.message,
+        vscode.DiagnosticSeverity.Error,
+      ),
+    ]);
+  } finally {
+    await fs.rm(tempDir, { recursive: true, force: true });
+  }
+}
+
+function getCommandContext(document) {
   const workspaceFolder = vscode.workspace.getWorkspaceFolder(document.uri);
   const cwd = workspaceFolder?.uri.fsPath ?? path.dirname(document.uri.fsPath);
   const settings = vscode.workspace.getConfiguration("erbfmt", document.uri);
@@ -57,24 +147,29 @@ async function formatDocument(document, token) {
     ? configuredArguments.filter((argument) => typeof argument === "string")
     : [];
 
-  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "erbfmt-vscode-"));
-  const tempFile = path.join(tempDir, path.basename(document.uri.fsPath));
+  return {
+    command,
+    cwd,
+    extraArguments,
+    settings,
+    workspaceFolder,
+  };
+}
 
-  try {
-    await fs.writeFile(tempFile, document.getText(), "utf8");
+async function buildErbfmtArgs(context, document, trailingArguments) {
+  const args = [...context.extraArguments];
+  const configPath = await resolveConfigPath(
+    context.settings,
+    document,
+    context.workspaceFolder,
+  );
 
-    const args = [...extraArguments];
-    const configPath = await resolveConfigPath(settings, document, workspaceFolder);
-    if (configPath) {
-      args.push("--config", configPath);
-    }
-    args.push(tempFile);
-
-    const { stdout } = await execFile(command, args, { cwd }, token);
-    return stdout;
-  } finally {
-    await fs.rm(tempDir, { recursive: true, force: true });
+  if (configPath) {
+    args.push("--config", configPath);
   }
+
+  args.push(...trailingArguments);
+  return args;
 }
 
 async function resolveConfigPath(settings, document, workspaceFolder) {
@@ -118,8 +213,69 @@ async function isFile(filePath) {
   }
 }
 
+function parseDiagnostics(document, filePath, stderr) {
+  const diagnostics = [];
+
+  for (const rawLine of stderr.split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line) {
+      continue;
+    }
+
+    const message = line.startsWith(`${filePath}: `)
+      ? line.slice(filePath.length + 2)
+      : line;
+    const diagnostic = new vscode.Diagnostic(
+      rangeFromMessage(document, message),
+      message,
+      vscode.DiagnosticSeverity.Error,
+    );
+    diagnostic.source = "erbfmt";
+    diagnostics.push(diagnostic);
+  }
+
+  return diagnostics;
+}
+
+function rangeFromMessage(document, message) {
+  const match = message.match(/ at line (\d+), column (\d+)$/);
+  if (!match) {
+    return firstCharacterRange(document);
+  }
+
+  const line = Math.max(0, Math.min(Number(match[1]) - 1, document.lineCount - 1));
+  const lineText = document.lineAt(line).text;
+  const column = Math.max(0, Math.min(Number(match[2]) - 1, lineText.length));
+  const endColumn = Math.min(column + 1, lineText.length);
+
+  return new vscode.Range(line, column, line, endColumn);
+}
+
+function firstCharacterRange(document) {
+  if (document.lineCount === 0) {
+    return new vscode.Range(0, 0, 0, 0);
+  }
+
+  const firstLineLength = document.lineAt(0).text.length;
+  return new vscode.Range(0, 0, 0, Math.min(1, firstLineLength));
+}
+
+function isSupportedDocument(document) {
+  return (
+    document.uri.scheme === "file" &&
+    FORMATTER_SELECTOR.some((selector) => selector.language === document.languageId)
+  );
+}
+
+function createNullToken() {
+  return {
+    isCancellationRequested: false,
+    onCancellationRequested: () => ({ dispose() {} }),
+  };
+}
+
 function execFile(command, args, options, token) {
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     const child = childProcess.execFile(
       command,
       args,
@@ -128,19 +284,21 @@ function execFile(command, args, options, token) {
         maxBuffer: 16 * 1024 * 1024,
       },
       (error, stdout, stderr) => {
-        if (error) {
-          const detail = stderr.trim() || error.message;
-          reject(new Error(`erbfmt failed: ${detail}`));
-          return;
-        }
-
-        resolve({ stdout, stderr });
+        resolve({
+          stdout,
+          stderr,
+          exitCode: error?.code ?? 0,
+        });
       },
     );
 
     token.onCancellationRequested(() => {
       child.kill();
-      reject(new Error("erbfmt formatting was cancelled."));
+      resolve({
+        stdout: "",
+        stderr: "erbfmt formatting was cancelled.",
+        exitCode: 1,
+      });
     });
   });
 }

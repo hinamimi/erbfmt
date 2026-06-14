@@ -30,6 +30,7 @@ Implemented:
 - Release checklist and local install documentation
 - VSCode workspace language association for `*.html.erb`
 - Thin VSCode extension scaffold
+- VSCode diagnostics wrapper for `erbfmt --lint`
 - Line/column diagnostics for lexer and ERB parser errors
 - `erbfmt.json` formatter and linter configuration
 - `formatter.lineWidth` wrapping for long HTML tags
@@ -48,6 +49,8 @@ Known constraints:
 - Lint rule diagnostics do not yet include line/column spans.
 - Distribution wrappers are not packaged yet.
 - The VSCode extension scaffold is not published yet.
+- Lint rule diagnostics without line/column are shown at the start of the file
+  in VSCode.
 
 ## Immediate Focus
 
@@ -210,8 +213,10 @@ Result:
   the highest-leverage local integration.
 - Added `editors/vscode` with a JavaScript extension that registers a document
   formatter and invokes the Rust `erbfmt` command.
+- Added diagnostics wiring that invokes `erbfmt --lint` on open and save.
 - Added settings for `erbfmt.command`, `erbfmt.arguments`, and
   `erbfmt.configPath`.
+- Added `erbfmt.lint.enabled` for turning diagnostics off.
 - Kept formatting logic in the Rust binary.
 
 ### Milestone 24
@@ -224,7 +229,7 @@ Prepare the extension scaffold for real local installation.
 
 Target work:
 
-- Add extension-host tests or a documented manual verification path.
+- Add extension-host tests beyond the current smoke test.
 - Decide whether to package with `vsce` now or defer until binary distribution
   is clearer.
 - Add local install/debug instructions for the extension.
@@ -234,6 +239,7 @@ Acceptance:
 
 - The extension can be launched or packaged locally with documented commands.
 - Formatter behavior is verified through the extension path.
+- Diagnostics behavior is verified through the extension path.
 - Rust tests remain the formatter release gate.
 
 ## Later
