@@ -2,6 +2,14 @@
   "files.associations": {
     "*.html.erb": "erb"
   },
+  "[erb]": {
+    "editor.defaultFormatter": "erbfmt.erbfmt-vscode"
+  },
+  "[html-erb]": {
+    "editor.defaultFormatter": "erbfmt.erbfmt-vscode"
+  },
+  "erbfmt.command": "cargo",
+  "erbfmt.arguments": ["run", "--quiet", "--"],
   "emeraldwalk.runonsave": {
     "commands": [
       {

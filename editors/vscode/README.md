@@ -11,19 +11,30 @@ Thin VSCode wrapper for the Rust `erbfmt` binary.
 
 ## Local Development
 
-Install the Rust binary first:
+From this repository, use VSCode's Extension Development Host:
 
-```bash
-cargo install --path ../..
-```
+1. Open the repository root in VSCode.
+2. Open the Run and Debug view.
+3. Choose `Run erbfmt VSCode Extension`.
+4. Press F5.
+5. In the new Extension Development Host window, open
+   `samples/sample.html.erb`.
+6. Run `Format Document`.
 
-Or point the extension at the local checkout:
+The repository workspace settings point the extension at the local Rust
+checkout:
 
 ```json
 {
   "erbfmt.command": "cargo",
   "erbfmt.arguments": ["run", "--quiet", "--"]
 }
+```
+
+Alternatively, install the Rust binary first:
+
+```bash
+cargo install --path ../..
 ```
 
 Use `erbfmt.configPath` to force a specific `erbfmt.json`; otherwise the
