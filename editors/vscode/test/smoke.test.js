@@ -21,9 +21,16 @@ assert(packageJson.contributes.configuration.properties["erbfmt.command"]);
 assert(packageJson.contributes.configuration.properties["erbfmt.arguments"]);
 assert(packageJson.contributes.configuration.properties["erbfmt.configPath"]);
 assert(packageJson.contributes.configuration.properties["erbfmt.lint.enabled"]);
+assert.strictEqual(
+  packageJson.contributes.configurationDefaults["[html-erb]"][
+    "editor.defaultFormatter"
+  ],
+  "erbfmt.erbfmt-vscode",
+);
 assert(extensionSource.includes("registerDocumentFormattingEditProvider"));
 assert(extensionSource.includes("createDiagnosticCollection"));
 assert(extensionSource.includes("--lint"));
+assert(extensionSource.includes("fullDocumentRange"));
 assert(extensionSource.includes("childProcess.execFile"));
 
 console.log("VSCode extension smoke test passed.");

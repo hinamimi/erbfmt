@@ -1,21 +1,21 @@
 <div>
-<h1><%= page_title %></h1>
-<% if user %>
-<p>Hello, <%= user.name %></p>
-<ul>
-<% Objects.map do |obj| %>
-<li><%= obj.name %></li>
-<% end %>
-</ul>
-<% elsif guest? %>
-<p>Please sign in as a guest.</p>
-<% else %>
-<p>Please sign in.</p>
-<% end %>
-<% case role %>
-<% when "admin" %>
-<p>Admin tools</p>
-<% when "member" %>
-<p>Member dashboard</p>
-<% end %>
+  <h1><%= page_title %></h1>
+  <% if user %>
+    <p>Hello, <%= user.name %></p>
+    <ul>
+      <% Objects.map do |obj| %>
+        <li><%= obj.name %></li>
+      <% end %>
+    </ul>
+  <% elsif guest? %>
+    <p>Please sign in as a guest.</p>
+  <% else %>
+    <p>Please sign in.</p>
+  <% end %>
+  <% case role %>
+  <% when "admin" %>
+    <p>Admin tools</p>
+  <% when "member" %>
+    <p>Member dashboard</p>
+  <% end %>
 </div>

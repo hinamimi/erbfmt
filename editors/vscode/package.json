@@ -62,6 +62,14 @@
           "description": "Enable erbfmt diagnostics by running erbfmt --lint on open and save."
         }
       }
+    },
+    "configurationDefaults": {
+      "[erb]": {
+        "editor.defaultFormatter": "erbfmt.erbfmt-vscode"
+      },
+      "[html-erb]": {
+        "editor.defaultFormatter": "erbfmt.erbfmt-vscode"
+      }
     }
   },
   "scripts": {

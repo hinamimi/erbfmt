@@ -14,12 +14,8 @@ function activate(context) {
   const provider = {
     async provideDocumentFormattingEdits(document, _options, token) {
       const formatted = await formatDocument(document, token);
-      const fullRange = new vscode.Range(
-        document.positionAt(0),
-        document.positionAt(document.getText().length),
-      );
 
-      return [vscode.TextEdit.replace(fullRange, formatted)];
+      return [vscode.TextEdit.replace(fullDocumentRange(document), formatted)];
     },
   };
 
@@ -30,11 +26,19 @@ function activate(context) {
       provider,
     ),
     vscode.commands.registerCommand("erbfmt.formatDocument", async () => {
-      if (!vscode.window.activeTextEditor) {
+      const editor = vscode.window.activeTextEditor;
+      if (!editor) {
         return;
       }
 
-      await vscode.commands.executeCommand("editor.action.formatDocument");
+      try {
+        const formatted = await formatDocument(editor.document, createNullToken());
+        await editor.edit((edit) => {
+          edit.replace(fullDocumentRange(editor.document), formatted);
+        });
+      } catch (error) {
+        await vscode.window.showErrorMessage(error.message);
+      }
     }),
     vscode.commands.registerCommand("erbfmt.lintDocument", async () => {
       const editor = vscode.window.activeTextEditor;
@@ -71,7 +75,7 @@ async function formatDocument(document, token) {
     return document.getText();
   }
 
-  const context = getCommandContext(document);
+  const context = await getCommandContext(document);
 
   const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "erbfmt-vscode-"));
   const tempFile = path.join(tempDir, path.basename(document.uri.fsPath));
@@ -83,8 +87,7 @@ async function formatDocument(document, token) {
 
     const result = await execFile(context.command, args, { cwd: context.cwd }, token);
     if (result.exitCode !== 0) {
-      const detail = result.stderr.trim() || `exit code ${result.exitCode}`;
-      throw new Error(`erbfmt failed: ${detail}`);
+      throw new Error(formatFailureMessage(context, args, result));
     }
 
     const { stdout } = result;
@@ -106,7 +109,7 @@ async function lintDocument(document, diagnostics, token) {
     return;
   }
 
-  const context = getCommandContext(document);
+  const context = await getCommandContext(document);
   const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "erbfmt-vscode-"));
   const tempFile = path.join(tempDir, path.basename(document.uri.fsPath));
 
@@ -137,15 +140,34 @@ async function lintDocument(document, diagnostics, token) {
   }
 }
 
-function getCommandContext(document) {
+async function getCommandContext(document) {
   const workspaceFolder = vscode.workspace.getWorkspaceFolder(document.uri);
-  const cwd = workspaceFolder?.uri.fsPath ?? path.dirname(document.uri.fsPath);
+  let cwd = workspaceFolder?.uri.fsPath ?? path.dirname(document.uri.fsPath);
   const settings = vscode.workspace.getConfiguration("erbfmt", document.uri);
-  const command = settings.get("command", "erbfmt");
+  let command = settings.get("command", "erbfmt");
   const configuredArguments = settings.get("arguments", []);
-  const extraArguments = Array.isArray(configuredArguments)
+  let extraArguments = Array.isArray(configuredArguments)
     ? configuredArguments.filter((argument) => typeof argument === "string")
     : [];
+  const inspectedCommand = settings.inspect("command");
+  const commandIsDefault =
+    inspectedCommand &&
+    inspectedCommand.globalValue === undefined &&
+    inspectedCommand.workspaceValue === undefined &&
+    inspectedCommand.workspaceFolderValue === undefined &&
+    inspectedCommand.defaultValue === command;
+
+  const checkoutRoot = await findNearestErbfmtCheckout(cwd);
+  if (commandIsDefault && checkoutRoot) {
+    const localBinary = path.join(checkoutRoot, "target", "debug", "erbfmt");
+    if (await isExecutableFile(localBinary)) {
+      command = localBinary;
+    } else {
+      command = await findCargoCommand();
+      extraArguments = ["run", "--quiet", "--", ...extraArguments];
+    }
+    cwd = checkoutRoot;
+  }
 
   return {
     command,
@@ -154,6 +176,31 @@ function getCommandContext(document) {
     settings,
     workspaceFolder,
   };
+}
+
+async function isErbfmtCheckout(directory) {
+  return (
+    (await isFile(path.join(directory, "Cargo.toml"))) &&
+    (await isFile(path.join(directory, "src", "main.rs"))) &&
+    (await isFile(path.join(directory, "editors", "vscode", "package.json")))
+  );
+}
+
+async function findNearestErbfmtCheckout(startDirectory) {
+  let current = startDirectory;
+
+  while (true) {
+    if (await isErbfmtCheckout(current)) {
+      return current;
+    }
+
+    const parent = path.dirname(current);
+    if (parent === current) {
+      return undefined;
+    }
+
+    current = parent;
+  }
 }
 
 async function buildErbfmtArgs(context, document, trailingArguments) {
@@ -213,6 +260,24 @@ async function isFile(filePath) {
   }
 }
 
+async function isExecutableFile(filePath) {
+  try {
+    await fs.access(filePath, fs.constants.X_OK);
+    return true;
+  } catch (_error) {
+    return false;
+  }
+}
+
+async function findCargoCommand() {
+  const homeCargo = path.join(os.homedir(), ".cargo", "bin", "cargo");
+  if (await isExecutableFile(homeCargo)) {
+    return homeCargo;
+  }
+
+  return "cargo";
+}
+
 function parseDiagnostics(document, filePath, stderr) {
   const diagnostics = [];
 
@@ -260,6 +325,13 @@ function firstCharacterRange(document) {
   return new vscode.Range(0, 0, 0, Math.min(1, firstLineLength));
 }
 
+function fullDocumentRange(document) {
+  return new vscode.Range(
+    document.positionAt(0),
+    document.positionAt(document.getText().length),
+  );
+}
+
 function isSupportedDocument(document) {
   return (
     document.uri.scheme === "file" &&
@@ -288,6 +360,7 @@ function execFile(command, args, options, token) {
           stdout,
           stderr,
           exitCode: error?.code ?? 0,
+          errorMessage: error?.message,
         });
       },
     );
@@ -298,9 +371,20 @@ function execFile(command, args, options, token) {
         stdout: "",
         stderr: "erbfmt formatting was cancelled.",
         exitCode: 1,
+        errorMessage: undefined,
       });
     });
   });
+}
+
+function formatFailureMessage(context, args, result) {
+  const detail =
+    result.stderr.trim() ||
+    result.errorMessage ||
+    `exit code ${result.exitCode}`;
+  const commandLine = [context.command, ...args].join(" ");
+
+  return `erbfmt failed: ${detail}\ncommand: ${commandLine}\ncwd: ${context.cwd}`;
 }
 
 module.exports = {
