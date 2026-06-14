@@ -1,8 +1,8 @@
-import * as childProcess from "child_process";
-import { constants as fsConstants } from "fs";
-import * as fs from "fs/promises";
-import * as os from "os";
-import * as path from "path";
+import * as childProcess from "node:child_process";
+import { constants as fsConstants } from "node:fs";
+import * as fs from "node:fs/promises";
+import * as os from "node:os";
+import * as path from "node:path";
 import * as vscode from "vscode";
 
 const FORMATTER_SELECTOR: vscode.DocumentFilter[] = [
@@ -41,10 +41,7 @@ export function activate(context: vscode.ExtensionContext): void {
 
   context.subscriptions.push(
     diagnostics,
-    vscode.languages.registerDocumentFormattingEditProvider(
-      FORMATTER_SELECTOR,
-      provider,
-    ),
+    vscode.languages.registerDocumentFormattingEditProvider(FORMATTER_SELECTOR, provider),
     vscode.commands.registerCommand("erbfmt.formatDocument", async () => {
       const editor = vscode.window.activeTextEditor;
       if (!editor) {
@@ -149,10 +146,7 @@ async function lintDocument(
       return;
     }
 
-    diagnostics.set(
-      document.uri,
-      parseDiagnostics(document, tempFile, result.stderr),
-    );
+    diagnostics.set(document.uri, parseDiagnostics(document, tempFile, result.stderr));
   } catch (error) {
     diagnostics.set(document.uri, [
       new vscode.Diagnostic(
@@ -166,18 +160,14 @@ async function lintDocument(
   }
 }
 
-async function getCommandContext(
-  document: vscode.TextDocument,
-): Promise<CommandContext> {
+async function getCommandContext(document: vscode.TextDocument): Promise<CommandContext> {
   const workspaceFolder = vscode.workspace.getWorkspaceFolder(document.uri);
   let cwd = workspaceFolder?.uri.fsPath ?? path.dirname(document.uri.fsPath);
   const settings = vscode.workspace.getConfiguration("erbfmt", document.uri);
   let command = settings.get("command", "erbfmt");
   const configuredArguments = settings.get<unknown>("arguments", []);
   let extraArguments = Array.isArray(configuredArguments)
-    ? configuredArguments.filter(
-        (argument): argument is string => typeof argument === "string",
-      )
+    ? configuredArguments.filter((argument): argument is string => typeof argument === "string")
     : [];
   const inspectedCommand = settings.inspect<string>("command");
   const commandIsDefault =
@@ -216,9 +206,7 @@ async function isErbfmtCheckout(directory: string): Promise<boolean> {
   );
 }
 
-async function findNearestErbfmtCheckout(
-  startDirectory: string,
-): Promise<string | undefined> {
+async function findNearestErbfmtCheckout(startDirectory: string): Promise<string | undefined> {
   let current = startDirectory;
 
   while (true) {
@@ -241,11 +229,7 @@ async function buildErbfmtArgs(
   trailingArguments: string[],
 ): Promise<string[]> {
   const args = [...context.extraArguments];
-  const configPath = await resolveConfigPath(
-    context.settings,
-    document,
-    context.workspaceFolder,
-  );
+  const configPath = await resolveConfigPath(context.settings, document, context.workspaceFolder);
 
   if (configPath) {
     args.push("--config", configPath);
@@ -273,9 +257,7 @@ async function resolveConfigPath(
   return findNearestConfig(path.dirname(document.uri.fsPath));
 }
 
-async function findNearestConfig(
-  startDirectory: string,
-): Promise<string | undefined> {
+async function findNearestConfig(startDirectory: string): Promise<string | undefined> {
   let current = startDirectory;
 
   while (true) {
@@ -333,9 +315,7 @@ function parseDiagnostics(
       continue;
     }
 
-    const message = line.startsWith(`${filePath}: `)
-      ? line.slice(filePath.length + 2)
-      : line;
+    const message = line.startsWith(`${filePath}: `) ? line.slice(filePath.length + 2) : line;
     const diagnostic = new vscode.Diagnostic(
       rangeFromMessage(document, message),
       message,
@@ -348,10 +328,7 @@ function parseDiagnostics(
   return diagnostics;
 }
 
-function rangeFromMessage(
-  document: vscode.TextDocument,
-  message: string,
-): vscode.Range {
+function rangeFromMessage(document: vscode.TextDocument, message: string): vscode.Range {
   const match = message.match(/ at line (\d+), column (\d+)$/);
   if (!match) {
     return firstCharacterRange(document);
@@ -375,10 +352,7 @@ function firstCharacterRange(document: vscode.TextDocument): vscode.Range {
 }
 
 function fullDocumentRange(document: vscode.TextDocument): vscode.Range {
-  return new vscode.Range(
-    document.positionAt(0),
-    document.positionAt(document.getText().length),
-  );
+  return new vscode.Range(document.positionAt(0), document.positionAt(document.getText().length));
 }
 
 function isSupportedDocument(document: vscode.TextDocument): boolean {
@@ -444,15 +418,8 @@ function execFile(
   });
 }
 
-function formatFailureMessage(
-  context: CommandContext,
-  args: string[],
-  result: ExecResult,
-): string {
-  const detail =
-    result.stderr.trim() ||
-    result.errorMessage ||
-    `exit code ${result.exitCode}`;
+function formatFailureMessage(context: CommandContext, args: string[], result: ExecResult): string {
+  const detail = result.stderr.trim() || result.errorMessage || `exit code ${result.exitCode}`;
   const commandLine = [context.command, ...args].join(" ");
 
   return `erbfmt failed: ${detail}\ncommand: ${commandLine}\ncwd: ${context.cwd}`;

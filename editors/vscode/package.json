@@ -8,7 +8,9 @@
   "engines": {
     "vscode": "^1.85.0"
   },
-  "categories": ["Formatters"],
+  "categories": [
+    "Formatters"
+  ],
   "activationEvents": [
     "onLanguage:erb",
     "onLanguage:html-erb",
@@ -20,9 +22,16 @@
     "languages": [
       {
         "id": "html-erb",
-        "aliases": ["HTML ERB", "html.erb"],
-        "filenamePatterns": ["*.html.erb"],
-        "mimetypes": ["text/html+erb"]
+        "aliases": [
+          "HTML ERB",
+          "html.erb"
+        ],
+        "filenamePatterns": [
+          "*.html.erb"
+        ],
+        "mimetypes": [
+          "text/html+erb"
+        ]
       }
     ],
     "commands": [
@@ -73,10 +82,14 @@
     }
   },
   "scripts": {
+    "check": "biome check .",
     "compile": "tsc -p .",
-    "test": "npm run compile && node test/smoke.test.js"
+    "format": "biome format --write .",
+    "lint": "biome lint .",
+    "test": "npm run check && npm run compile && node test/smoke.test.js"
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.5.0",
     "@types/node": "^20.11.0",
     "@types/vscode": "^1.85.0",
     "typescript": "^6.0.0"

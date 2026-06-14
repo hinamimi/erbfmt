@@ -67,6 +67,14 @@ diagnostics を無効にする場合は `erbfmt.lint.enabled` を `false` に設
 extension のsourceは `src/extension.ts` にあり、`out/extension.js` へcompileされます。
 
 ```bash
+npm run check --prefix editors/vscode
 npm run compile --prefix editors/vscode
 npm test --prefix editors/vscode
+```
+
+extension code のformat / lint は Biome で行います。
+
+```bash
+npm run format --prefix editors/vscode
+npm run lint --prefix editors/vscode
 ```

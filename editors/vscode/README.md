@@ -69,6 +69,14 @@ The extension source lives in `src/extension.ts` and compiles to
 `out/extension.js`.
 
 ```bash
+npm run check --prefix editors/vscode
 npm run compile --prefix editors/vscode
 npm test --prefix editors/vscode
+```
+
+Biome handles formatting and linting for the extension code.
+
+```bash
+npm run format --prefix editors/vscode
+npm run lint --prefix editors/vscode
 ```

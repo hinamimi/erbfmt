@@ -89,6 +89,14 @@
       "problemMatcher": []
     },
     {
+      "label": "vscode extension check",
+      "type": "shell",
+      "command": "npm",
+      "args": ["run", "check", "--prefix", "editors/vscode"],
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
       "label": "vscode extension test",
       "type": "shell",
       "command": "npm",
