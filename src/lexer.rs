@@ -5,8 +5,15 @@ pub enum Token {
     Html(String),
     ErbCode(String),
     ErbOutput(String),
-    ErbBlockStart { kind: ErbBlockKind, code: String },
-    ErbBranch { kind: ErbBranchKind, code: String },
+    ErbBlockStart {
+        kind: ErbBlockKind,
+        code: String,
+        output: bool,
+    },
+    ErbBranch {
+        kind: ErbBranchKind,
+        code: String,
+    },
     ErbBlockEnd(String),
 }
 
@@ -49,6 +56,8 @@ pub enum ErbBranchKind {
     Else,
     Elsif,
     When,
+    Rescue,
+    Ensure,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -121,7 +130,7 @@ pub fn tokenize_with_spans(input: &str) -> Result<Vec<SpannedToken>, LexError> {
         let code = input[code_start..code_end].trim().to_string();
         let token_end = code_end + "%>".len();
         let token = if is_output {
-            Token::ErbOutput(code)
+            classify_output_code(code)
         } else {
             classify_code(code)
         };
@@ -236,21 +245,25 @@ fn classify_code(code: String) -> Token {
         Token::ErbBlockStart {
             kind: ErbBlockKind::If,
             code,
+            output: false,
         }
     } else if starts_with_keyword(&code, "unless") {
         Token::ErbBlockStart {
             kind: ErbBlockKind::Unless,
             code,
+            output: false,
         }
     } else if starts_with_keyword(&code, "case") {
         Token::ErbBlockStart {
             kind: ErbBlockKind::Case,
             code,
+            output: false,
         }
     } else if starts_with_keyword(&code, "begin") {
         Token::ErbBlockStart {
             kind: ErbBlockKind::Begin,
             code,
+            output: false,
         }
     } else if starts_with_keyword(&code, "else") {
         Token::ErbBranch {
@@ -267,15 +280,38 @@ fn classify_code(code: String) -> Token {
             kind: ErbBranchKind::When,
             code,
         }
+    } else if starts_with_keyword(&code, "rescue") {
+        Token::ErbBranch {
+            kind: ErbBranchKind::Rescue,
+            code,
+        }
+    } else if starts_with_keyword(&code, "ensure") {
+        Token::ErbBranch {
+            kind: ErbBranchKind::Ensure,
+            code,
+        }
     } else if starts_with_keyword(&code, "end") {
         Token::ErbBlockEnd(code)
     } else if starts_with_keyword(&code, "do") || ends_with_do_block(&code) {
         Token::ErbBlockStart {
             kind: ErbBlockKind::Do,
             code,
+            output: false,
         }
     } else {
         Token::ErbCode(code)
+    }
+}
+
+fn classify_output_code(code: String) -> Token {
+    if ends_with_do_block(&code) {
+        Token::ErbBlockStart {
+            kind: ErbBlockKind::Do,
+            code,
+            output: true,
+        }
+    } else {
+        Token::ErbOutput(code)
     }
 }
 
@@ -411,7 +447,8 @@ mod tests {
                 tokenize(input).unwrap(),
                 vec![Token::ErbBlockStart {
                     kind,
-                    code: code.to_string()
+                    code: code.to_string(),
+                    output: false
                 }]
             );
         }
@@ -434,6 +471,12 @@ mod tests {
                 ErbBranchKind::When,
                 "when \"admin\"",
             ),
+            (
+                "<% rescue => error %>",
+                ErbBranchKind::Rescue,
+                "rescue => error",
+            ),
+            ("<% ensure %>", ErbBranchKind::Ensure, "ensure"),
         ];
 
         for (input, kind, code) in cases {
@@ -455,7 +498,8 @@ mod tests {
             tokens,
             vec![Token::ErbBlockStart {
                 kind: ErbBlockKind::Begin,
-                code: "begin".to_string()
+                code: "begin".to_string(),
+                output: false
             }]
         );
     }
@@ -468,7 +512,22 @@ mod tests {
             tokens,
             vec![Token::ErbBlockStart {
                 kind: ErbBlockKind::Do,
-                code: "users.each do |user|".to_string()
+                code: "users.each do |user|".to_string(),
+                output: false
+            }]
+        );
+    }
+
+    #[test]
+    fn tokenizes_erb_output_do_block_expression() {
+        let tokens = tokenize("<%= form_with model: user do |form| %>").unwrap();
+
+        assert_eq!(
+            tokens,
+            vec![Token::ErbBlockStart {
+                kind: ErbBlockKind::Do,
+                code: "form_with model: user do |form|".to_string(),
+                output: true
             }]
         );
     }

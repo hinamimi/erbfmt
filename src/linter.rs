@@ -84,6 +84,7 @@ fn lint_node(node: &Node, options: LintOptions, diagnostics: &mut Vec<Diagnostic
         Node::ErbCode(code) => lint_erb_code(code, options, diagnostics),
         Node::ErbBlock {
             code,
+            output,
             children,
             branches,
             ..
@@ -95,7 +96,10 @@ fn lint_node(node: &Node, options: LintOptions, diagnostics: &mut Vec<Diagnostic
                     .any(|branch| branch.children.iter().any(is_meaningful_node))
             {
                 diagnostics.push(Diagnostic {
-                    message: format!("empty ERB control block `<% {code} %>`"),
+                    message: format!(
+                        "empty ERB control block `{}`",
+                        format_erb_block_open(*output, code)
+                    ),
                 });
             }
 
@@ -111,6 +115,14 @@ fn lint_node(node: &Node, options: LintOptions, diagnostics: &mut Vec<Diagnostic
         | Node::HtmlComment(_)
         | Node::HtmlDoctype(_)
         | Node::ErbOutput(_) => {}
+    }
+}
+
+fn format_erb_block_open(output: bool, code: &str) -> String {
+    if output {
+        format!("<%= {} %>", code.trim())
+    } else {
+        format!("<% {} %>", code.trim())
     }
 }
 

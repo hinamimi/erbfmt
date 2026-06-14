@@ -34,6 +34,7 @@ pub enum Node {
     ErbBlock {
         kind: ErbBlockKind,
         code: String,
+        output: bool,
         children: Vec<Node>,
         branches: Vec<ErbBranch>,
     },
@@ -198,9 +199,9 @@ impl Parser {
                 self.push_node(Node::ErbOutput(code.clone()));
                 Ok(())
             }
-            Token::ErbBlockStart { kind, code } => {
+            Token::ErbBlockStart { kind, code, output } => {
                 self.stack
-                    .push(Frame::erb(*kind, code.clone(), token_index));
+                    .push(Frame::erb(*kind, code.clone(), *output, token_index));
                 Ok(())
             }
             Token::ErbBranch { kind, code } => self.add_erb_branch(token_index, *kind, code),
@@ -254,12 +255,14 @@ impl Parser {
                 kind,
                 token_index,
                 code,
+                output,
                 ..
             } => {
                 self.stack.push(Frame {
                     kind: FrameKind::Erb {
                         kind,
                         code: code.clone(),
+                        output,
                         token_index,
                     },
                     children: frame.children,
@@ -331,12 +334,18 @@ impl Parser {
                 });
                 Err(ParseError::UnclosedHtmlTag { name, raw })
             }
-            FrameKind::Erb { kind, ref code, .. } => {
+            FrameKind::Erb {
+                kind,
+                ref code,
+                output,
+                ..
+            } => {
                 let block_code = code.clone();
                 let (children, branches) = frame.finish_erb_branches();
                 self.push_node(Node::ErbBlock {
                     kind,
                     code: block_code,
+                    output,
                     children,
                     branches,
                 });
@@ -433,11 +442,12 @@ impl Frame {
         }
     }
 
-    fn erb(kind: ErbBlockKind, code: String, token_index: usize) -> Self {
+    fn erb(kind: ErbBlockKind, code: String, output: bool, token_index: usize) -> Self {
         Self {
             kind: FrameKind::Erb {
                 kind,
                 code,
+                output,
                 token_index,
             },
             children: Vec::new(),
@@ -491,6 +501,7 @@ enum FrameKind {
     Erb {
         kind: ErbBlockKind,
         code: String,
+        output: bool,
         token_index: usize,
     },
 }
@@ -573,6 +584,7 @@ mod tests {
                 children: vec![Node::ErbBlock {
                     kind: ErbBlockKind::If,
                     code: "if user".to_string(),
+                    output: false,
                     children: vec![Node::HtmlElement {
                         name: "ul".to_string(),
                         open: "<ul>".to_string(),
@@ -603,6 +615,7 @@ mod tests {
                 children: vec![Node::ErbBlock {
                     kind: ErbBlockKind::If,
                     code: "if admin?".to_string(),
+                    output: false,
                     children: vec![Node::HtmlElement {
                         name: "p".to_string(),
                         open: "<p>".to_string(),
@@ -648,6 +661,7 @@ mod tests {
                 children: vec![Node::ErbBlock {
                     kind: ErbBlockKind::Case,
                     code: "case role".to_string(),
+                    output: false,
                     children: vec![],
                     branches: vec![
                         ErbBranch {
@@ -668,6 +682,79 @@ mod tests {
                                 open: "<p>".to_string(),
                                 close: "</p>".to_string(),
                                 children: vec![Node::HtmlText("User".to_string())]
+                            }]
+                        }
+                    ]
+                }]
+            }
+        );
+    }
+
+    #[test]
+    fn keeps_output_erb_do_blocks() {
+        let tokens =
+            tokenize("<%= form_with model: user do |form| %><p>Hello</p><% end %>").unwrap();
+        let document = parse(&tokens).unwrap();
+
+        assert_eq!(
+            document,
+            Document {
+                children: vec![Node::ErbBlock {
+                    kind: ErbBlockKind::Do,
+                    code: "form_with model: user do |form|".to_string(),
+                    output: true,
+                    children: vec![Node::HtmlElement {
+                        name: "p".to_string(),
+                        open: "<p>".to_string(),
+                        close: "</p>".to_string(),
+                        children: vec![Node::HtmlText("Hello".to_string())]
+                    }],
+                    branches: vec![]
+                }]
+            }
+        );
+    }
+
+    #[test]
+    fn keeps_begin_rescue_ensure_branches() {
+        let tokens = tokenize(
+            "<% begin %><p>Saving</p><% rescue => error %><p>Failed</p><% ensure %><p>Done</p><% end %>",
+        )
+        .unwrap();
+        let document = parse(&tokens).unwrap();
+
+        assert_eq!(
+            document,
+            Document {
+                children: vec![Node::ErbBlock {
+                    kind: ErbBlockKind::Begin,
+                    code: "begin".to_string(),
+                    output: false,
+                    children: vec![Node::HtmlElement {
+                        name: "p".to_string(),
+                        open: "<p>".to_string(),
+                        close: "</p>".to_string(),
+                        children: vec![Node::HtmlText("Saving".to_string())]
+                    }],
+                    branches: vec![
+                        ErbBranch {
+                            kind: ErbBranchKind::Rescue,
+                            code: "rescue => error".to_string(),
+                            children: vec![Node::HtmlElement {
+                                name: "p".to_string(),
+                                open: "<p>".to_string(),
+                                close: "</p>".to_string(),
+                                children: vec![Node::HtmlText("Failed".to_string())]
+                            }]
+                        },
+                        ErbBranch {
+                            kind: ErbBranchKind::Ensure,
+                            code: "ensure".to_string(),
+                            children: vec![Node::HtmlElement {
+                                name: "p".to_string(),
+                                open: "<p>".to_string(),
+                                close: "</p>".to_string(),
+                                children: vec![Node::HtmlText("Done".to_string())]
                             }]
                         }
                     ]

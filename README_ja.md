@@ -43,8 +43,9 @@ MVP開発中
 - AST Parser
 - 混合ASTベースのFormatter
 - ERB制御構文のインデント
-- `else`、`elsif`、`when` のERB分岐整形
+- `else`、`elsif`、`when`、`rescue`、`ensure` のERB分岐整形
 - `case` / `when` ブロックの整形
+- `<%= form_with ... do |form| %>` のような出力付きERB do-blockの整形
 - HTMLタグ属性内のERB output
 - HTMLタグ階層のインデント
 - `--write` によるファイルの直接整形

@@ -1,0 +1,38 @@
+<section
+class="profile-card profile-card--editable"
+data-controller="profile-form autosave"
+data-profile-form-user-id-value="<%= user.id %>"
+aria-labelledby="profile-title">
+<!-- form header -->
+<header>
+<h1 id="profile-title">Profile for <%= user.display_name %></h1>
+<p>Signed in as <%= current_user.email %></p>
+</header>
+<%= form_with model: user, url: user_path(user), data: { turbo_frame: "profile" } do |form| %>
+<div class="field field--wide" data-field-name="display_name" aria-describedby="display-name-help">
+<label for="display_name">Display name</label>
+<%= form.text_field :display_name, value: user.display_name, class: "input" %>
+<p id="display-name-help">Visible as <%= user.display_name %></p>
+</div>
+<% if user.errors.any? %>
+<!-- error summary -->
+<div class="alert alert--error">
+<ul>
+<% user.errors.full_messages.each do |message| %>
+<li><%= message %></li>
+<% end %>
+</ul>
+</div>
+<% else %>
+<p class="muted">No validation errors.</p>
+<% end %>
+<button type="submit" class="button button--primary" data-action="profile-form#submit">Save profile</button>
+<% begin %>
+<%= render "users/activity", user: user %>
+<% rescue => error %>
+<p class="alert alert--warning"><%= error.message %></p>
+<% ensure %>
+<% audit_viewed_profile(user) %>
+<% end %>
+<% end %>
+</section>

@@ -20,7 +20,9 @@ Implemented:
 - HTML-aware mixed parser
 - Mixed AST-driven formatter
 - ERB block formatting for `if`, `unless`, `case`, `do`, `begin`, and `end`
-- ERB branch formatting for `else`, `elsif`, and `when`
+- ERB branch formatting for `else`, `elsif`, `when`, `rescue`, and `ensure`
+- Output ERB do-block formatting for helpers such as
+  `<%= form_with ... do |form| %>`
 - Attribute ERB output handling inside HTML tags
 - Basic syntax lint rules
 - Snapshot tests with `insta`
@@ -36,6 +38,7 @@ Reference samples:
 - `samples/sample.html.erb`: ordinary formatting sample
 - `samples/lint-next.html.erb`: lint rule sample
 - `samples/stability.html.erb`: formatting stability sample
+- `samples/formatter-audit.html.erb`: real-template formatter audit sample
 
 Known constraints:
 
@@ -48,9 +51,10 @@ Known constraints:
 
 The Rust binary is documented enough for local pre-release use, the workspace
 has a basic VSCode association for `*.html.erb`, syntax diagnostics include
-source locations, and formatter/linter behavior can be configured through
-`erbfmt.json`. The next milestone should audit real-template formatter behavior
-before expanding to npm/Ruby wrappers.
+source locations, formatter/linter behavior can be configured through
+`erbfmt.json`, and real-template formatter behavior is covered by an audit
+fixture. The next milestone should decide the first distribution wrapper or
+perform one more compatibility pass on collected real templates.
 
 ### Milestone 19
 
@@ -149,7 +153,7 @@ Result:
 
 Formatter Behavior Audit
 
-Status: Next
+Status: Done
 
 Run another focused pass on real-world ERB patterns before wrappers.
 
@@ -166,6 +170,38 @@ Acceptance:
 - Any newly supported behavior is covered by formatter snapshots.
 - Unsupported patterns are documented as constraints or future milestones.
 
+Result:
+
+- Added `samples/formatter-audit.html.erb` with Rails-like helper blocks,
+  long HTML attributes, inline ERB output, comments, and `begin` / `rescue` /
+  `ensure`.
+- Added formatter snapshot coverage for the audit fixture.
+- Added support for output ERB do-blocks, preserving `<%=` on blocks such as
+  `<%= form_with ... do |form| %>`.
+- Added `rescue` and `ensure` as ERB branch markers.
+
+### Milestone 23
+
+Pre-release Distribution Decision
+
+Status: Next
+
+Choose the first thin wrapper or integration target now that the Rust CLI has
+configuration, diagnostics, and formatter stability coverage.
+
+Target work:
+
+- Decide whether npm, Ruby gem, or VSCode extension comes first.
+- Document the wrapper boundary: Rust binary remains the formatter engine.
+- Define local verification commands for the chosen wrapper.
+- Keep unsupported Ruby semantic analysis out of scope.
+
+Acceptance:
+
+- Roadmap documents the first distribution target and why.
+- The chosen wrapper has a minimal implementation plan before code begins.
+- Existing Rust tests remain the release gate.
+
 ## Later
 
 Potential future directions:
@@ -173,7 +209,6 @@ Potential future directions:
 - npm package
 - Ruby gem
 - VSCode extension with `*.html.erb` language association
-- Config file support
 - Tree-sitter integration
 - Biome integration
 

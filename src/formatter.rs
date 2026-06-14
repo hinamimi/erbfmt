@@ -99,11 +99,12 @@ impl Formatter {
             }
             Node::ErbBlock {
                 code,
+                output,
                 children,
                 branches,
                 ..
             } => {
-                self.write_indented_line(depth, &format!("<% {code} %>"));
+                self.write_indented_line(depth, &format_erb_block_open(*output, code));
                 self.format_nodes(children, depth + 1);
                 self.format_erb_branches(branches, depth);
                 self.write_indented_line(depth, "<% end %>");
@@ -337,6 +338,14 @@ fn render_inline_node(node: &Node) -> String {
     }
 }
 
+fn format_erb_block_open(output: bool, code: &str) -> String {
+    if output {
+        format!("<%= {} %>", code.trim())
+    } else {
+        format!("<% {} %>", code.trim())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -505,6 +514,26 @@ mod tests {
     }
 
     #[test]
+    fn formats_output_erb_do_blocks() {
+        assert_eq!(
+            format(
+                "<%= form_with model: user do |form| %>\n<div>\n<%= form.text_field :name %>\n</div>\n<% end %>\n"
+            ),
+            "<%= form_with model: user do |form| %>\n  <div>\n    <%= form.text_field :name %>\n  </div>\n<% end %>\n"
+        );
+    }
+
+    #[test]
+    fn formats_begin_rescue_ensure_branches() {
+        assert_eq!(
+            format(
+                "<% begin %>\n<p>Saving</p>\n<% rescue => error %>\n<p>Failed</p>\n<% ensure %>\n<p>Done</p>\n<% end %>\n"
+            ),
+            "<% begin %>\n  <p>Saving</p>\n<% rescue => error %>\n  <p>Failed</p>\n<% ensure %>\n  <p>Done</p>\n<% end %>\n"
+        );
+    }
+
+    #[test]
     fn snapshots_default_html_indentation() {
         insta::assert_snapshot!(
             "default_html_indentation",
@@ -547,7 +576,16 @@ mod tests {
         );
     }
 
+    #[test]
+    fn snapshots_formatter_audit_fixture() {
+        insta::assert_snapshot!("formatter_audit_fixture", format(formatter_audit_fixture()));
+    }
+
     fn stability_fixture() -> &'static str {
         "<!DOCTYPE html>\n<div class=\"page <%= page_class %>\">\n<!-- profile card -->\n<img src=\"<%= avatar_url %>\" alt=\"<%= user.name %>\">\n<input type=\"checkbox\" checked=\"<%= checked %>\">\n<% if user %>\n<section>\n<a href=\"/users/<%= user.id %>\"><%= user.name %></a>\n<br>\n<% unless notifications.empty? %>\n<ul>\n<% notifications.each do |notification| %>\n<li><%= notification.title %></li>\n<% end %>\n</ul>\n<% end %>\n</section>\n<% else %>\n<p>Please sign in</p>\n<% end %>\n</div>\n"
+    }
+
+    fn formatter_audit_fixture() -> &'static str {
+        include_str!("../samples/formatter-audit.html.erb")
     }
 }

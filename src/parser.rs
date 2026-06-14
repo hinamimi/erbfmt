@@ -15,6 +15,7 @@ pub enum Node {
     ErbBlock {
         kind: ErbBlockKind,
         code: String,
+        output: bool,
         children: Vec<Node>,
     },
 }
@@ -75,7 +76,7 @@ fn parse_nodes(
                 nodes.push(Node::ErbOutput(code.clone()));
                 *cursor += 1;
             }
-            Token::ErbBlockStart { kind, code } => {
+            Token::ErbBlockStart { kind, code, output } => {
                 let block_index = *cursor;
                 *cursor += 1;
                 let children = parse_nodes(tokens, cursor, true).map_err(|error| match error {
@@ -94,6 +95,7 @@ fn parse_nodes(
                 nodes.push(Node::ErbBlock {
                     kind: *kind,
                     code: code.clone(),
+                    output: *output,
                     children,
                 });
             }
@@ -166,6 +168,7 @@ mod tests {
                 children: vec![Node::ErbBlock {
                     kind: ErbBlockKind::If,
                     code: "if user".to_string(),
+                    output: false,
                     children: vec![
                         Node::Html("<p>".to_string()),
                         Node::ErbOutput("user.name".to_string()),
@@ -189,9 +192,11 @@ mod tests {
                 children: vec![Node::ErbBlock {
                     kind: ErbBlockKind::If,
                     code: "if user".to_string(),
+                    output: false,
                     children: vec![Node::ErbBlock {
                         kind: ErbBlockKind::Do,
                         code: "users.each do |user|".to_string(),
+                        output: false,
                         children: vec![Node::ErbOutput("user.name".to_string())]
                     }]
                 }]

@@ -24,8 +24,9 @@ Early development.
 - AST parser
 - Mixed AST-driven formatter
 - ERB block indentation
-- ERB branch formatting for `else`, `elsif`, and `when`
+- ERB branch formatting for `else`, `elsif`, `when`, `rescue`, and `ensure`
 - Case block formatting with `when` branches
+- Output ERB do-block formatting such as `<%= form_with ... do |form| %>`
 - ERB output inside HTML tag attributes
 - HTML tag indentation by default
 - In-place formatting with `--write`
