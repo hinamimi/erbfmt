@@ -149,6 +149,8 @@ erbfmt --no-html-indent samples/sample.html.erb
 
 同じ挙動は `erbfmt.json` の `formatter.noHtmlIndent` でも設定できます。
 
+`formatter.lineWidth` は、長いHTMLタグを属性ごとに複数行へ展開する基準として使われます。
+
 ## VSCode
 
 このリポジトリには、保存時に `.html.erb` ファイルを整形する workspace 設定が含まれています。

@@ -47,8 +47,8 @@ and `formatter.indentHtml` options for the existing HTML indentation behavior.
 - `formatter.noHtmlIndent`: disable nested HTML tag indentation. This is the
   config equivalent of CLI `--no-html-indent`.
 - `formatter.lineEnding`: `lf` or `crlf`.
-- `formatter.lineWidth`: accepted for compatibility with common formatter
-  configs. It is reserved for future wrapping behavior.
+- `formatter.lineWidth`: target line width. Opening, void, and self-closing
+  HTML tags that exceed this width are expanded one attribute per line.
 - `formatter.trailingNewline`: keep or remove the final newline.
 
 CLI `--no-html-indent` overrides `formatter.indentHtml` and

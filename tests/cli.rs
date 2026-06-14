@@ -144,6 +144,25 @@ fn config_controls_formatter_indent_width() {
 }
 
 #[test]
+fn config_controls_formatter_line_width() {
+    let dir = TestDir::new("config_line_width");
+    let config = dir.write("erbfmt.json", r#"{"formatter":{"lineWidth":48}}"#);
+    let file = dir.write(
+        "input.html.erb",
+        r#"<article class="card" data-user-id="<%= user.id %>" aria-label="Current user profile"><p>Hello</p></article>"#,
+    );
+
+    let output = run(["--config".as_ref(), config.as_path(), file.as_path()]);
+
+    assert_success(&output);
+    assert_eq!(
+        stdout(&output),
+        "<article\n  class=\"card\"\n  data-user-id=\"<%= user.id %>\"\n  aria-label=\"Current user profile\">\n  <p>Hello</p>\n</article>\n"
+    );
+    assert_eq!(stderr(&output), "");
+}
+
+#[test]
 fn config_can_disable_html_indentation() {
     let dir = TestDir::new("config_no_html_indent");
     let config = dir.write("erbfmt.json", r#"{"formatter":{"noHtmlIndent":true}}"#);

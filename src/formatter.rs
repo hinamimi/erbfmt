@@ -5,6 +5,7 @@ pub struct FormatOptions {
     pub indent_html: bool,
     pub indent_style: IndentStyle,
     pub indent_width: usize,
+    pub line_width: usize,
     pub line_ending: LineEnding,
     pub trailing_newline: bool,
 }
@@ -29,6 +30,7 @@ impl Default for FormatOptions {
             indent_html: true,
             indent_style: IndentStyle::Space,
             indent_width: 2,
+            line_width: 80,
             line_ending: LineEnding::Lf,
             trailing_newline: true,
         }
@@ -84,7 +86,7 @@ impl Formatter {
                 ..
             } => self.write_html_element(open, close, children, depth),
             Node::HtmlSelfClosing { raw, .. } | Node::HtmlVoid { raw, .. } => {
-                self.write_indented_line(depth, raw);
+                self.write_tag(raw, depth)
             }
             Node::HtmlComment(comment) | Node::HtmlDoctype(comment) => {
                 self.write_indented_line(depth, comment);
@@ -130,9 +132,43 @@ impl Formatter {
             let content = render_inline_nodes(children);
             self.write_indented_line(depth, &format!("{open}{content}{close}"));
         } else {
-            self.write_indented_line(depth, open);
+            self.write_tag(open, depth);
             self.format_nodes(children, self.html_child_depth(depth));
             self.write_indented_line(depth, close);
+        }
+    }
+
+    fn write_tag(&mut self, raw: &str, depth: usize) {
+        let trimmed = raw.trim();
+        let line_width = self.options.line_width;
+
+        if self.indent(depth).chars().count() + trimmed.chars().count() <= line_width {
+            self.write_indented_line(depth, trimmed);
+            return;
+        }
+
+        let Some(tag) = ParsedTag::parse(trimmed) else {
+            self.write_indented_line(depth, trimmed);
+            return;
+        };
+
+        if tag.attributes.is_empty() {
+            self.write_indented_line(depth, trimmed);
+            return;
+        }
+
+        self.write_indented_line(depth, &format!("<{}", tag.name));
+
+        let last_index = tag.attributes.len() - 1;
+        for (index, attribute) in tag.attributes.iter().enumerate() {
+            if index == last_index {
+                self.write_indented_line(
+                    depth + 1,
+                    &format!("{}{}", attribute, tag.closing_suffix()),
+                );
+            } else {
+                self.write_indented_line(depth + 1, attribute);
+            }
         }
     }
 
@@ -168,6 +204,97 @@ impl Formatter {
             LineEnding::Crlf => self.output.replace('\n', self.options.line_ending.as_str()),
         }
     }
+}
+
+struct ParsedTag {
+    name: String,
+    attributes: Vec<String>,
+    self_closing: bool,
+}
+
+impl ParsedTag {
+    fn parse(raw: &str) -> Option<Self> {
+        let body = raw.strip_prefix('<')?.strip_suffix('>')?.trim();
+
+        if body.is_empty()
+            || body.starts_with('/')
+            || body.starts_with('!')
+            || body.starts_with('?')
+            || body.starts_with('%')
+        {
+            return None;
+        }
+
+        let self_closing = body.ends_with('/');
+        let body = if self_closing {
+            body.strip_suffix('/')?.trim_end()
+        } else {
+            body
+        };
+
+        let name_end = body
+            .char_indices()
+            .find_map(|(index, ch)| ch.is_whitespace().then_some(index))
+            .unwrap_or(body.len());
+        let name = body[..name_end].to_string();
+        let attributes = split_attributes(body[name_end..].trim());
+
+        Some(Self {
+            name,
+            attributes,
+            self_closing,
+        })
+    }
+
+    fn closing_suffix(&self) -> &'static str {
+        if self.self_closing { " />" } else { ">" }
+    }
+}
+
+fn split_attributes(input: &str) -> Vec<String> {
+    let mut attributes = Vec::new();
+    let mut start = None;
+    let mut quote = None;
+    let mut cursor = 0;
+
+    while cursor < input.len() {
+        if input[cursor..].starts_with("<%") {
+            let Some(relative_end) = input[cursor + "<%".len()..].find("%>") else {
+                break;
+            };
+            cursor += "<%".len() + relative_end + "%>".len();
+            continue;
+        }
+
+        let ch = input[cursor..]
+            .chars()
+            .next()
+            .expect("cursor is inside input");
+
+        if start.is_none() && !ch.is_whitespace() {
+            start = Some(cursor);
+        }
+
+        match quote {
+            Some(active_quote) if ch == active_quote => quote = None,
+            Some(_) => {}
+            None if ch == '"' || ch == '\'' => quote = Some(ch),
+            None if ch.is_whitespace() => {
+                if let Some(attribute_start) = start.take() {
+                    attributes.push(input[attribute_start..cursor].to_string());
+                }
+            }
+            None => {}
+        }
+
+        cursor += ch.len_utf8();
+    }
+
+    if let Some(attribute_start) = start {
+        attributes.push(input[attribute_start..].trim_end().to_string());
+    }
+
+    attributes
 }
 
 fn can_render_inline(nodes: &[Node]) -> bool {
@@ -326,6 +453,34 @@ mod tests {
                 }
             ),
             "<div>\r\n  <p>Hello</p>\r\n</div>"
+        );
+    }
+
+    #[test]
+    fn wraps_long_html_opening_tags_by_attribute() {
+        assert_eq!(
+            format_with_options(
+                r#"<article class="card" data-user-id="<%= user.id %>" aria-label="Current user profile"><p>Hello</p></article>"#,
+                FormatOptions {
+                    line_width: 48,
+                    ..FormatOptions::default()
+                }
+            ),
+            "<article\n  class=\"card\"\n  data-user-id=\"<%= user.id %>\"\n  aria-label=\"Current user profile\">\n  <p>Hello</p>\n</article>\n"
+        );
+    }
+
+    #[test]
+    fn wraps_long_void_tags_by_attribute() {
+        assert_eq!(
+            format_with_options(
+                r#"<img src="<%= avatar_url %>" alt="<%= user.name %>" data-controller="avatar-preview">"#,
+                FormatOptions {
+                    line_width: 48,
+                    ..FormatOptions::default()
+                }
+            ),
+            "<img\n  src=\"<%= avatar_url %>\"\n  alt=\"<%= user.name %>\"\n  data-controller=\"avatar-preview\">\n"
         );
     }
 

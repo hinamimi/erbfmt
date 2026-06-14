@@ -29,6 +29,7 @@ Implemented:
 - VSCode workspace language association for `*.html.erb`
 - Line/column diagnostics for lexer and ERB parser errors
 - `erbfmt.json` formatter and linter configuration
+- `formatter.lineWidth` wrapping for long HTML tags
 
 Reference samples:
 

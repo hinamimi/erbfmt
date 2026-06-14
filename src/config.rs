@@ -52,7 +52,6 @@ impl Config {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct FormatterConfig {
     pub enabled: bool,
-    pub line_width: usize,
     pub options: FormatOptions,
 }
 
@@ -60,7 +59,6 @@ impl Default for FormatterConfig {
     fn default() -> Self {
         Self {
             enabled: true,
-            line_width: 80,
             options: FormatOptions::default(),
         }
     }
@@ -144,7 +142,7 @@ impl RawFormatterConfig {
                 bail!("formatter.lineWidth must be greater than 0");
             }
 
-            config.line_width = line_width;
+            config.options.line_width = line_width;
         }
 
         if let Some(trailing_newline) = self.trailing_newline {

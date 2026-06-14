@@ -161,6 +161,9 @@ erbfmt --no-html-indent samples/sample.html.erb
 The same behavior can be configured with `formatter.noHtmlIndent` in
 `erbfmt.json`.
 
+`formatter.lineWidth` controls when long HTML tags are expanded one attribute
+per line.
+
 ## VSCode
 
 This repository includes workspace settings for format on save.
