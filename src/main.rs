@@ -114,7 +114,7 @@ fn run_lint(file: &Path, content: &str, config: &config::Config) -> Result<FileS
     }
 
     for diagnostic in diagnostics {
-        eprintln!("{}: {}", file.display(), diagnostic.message);
+        eprintln!("{}: {}", file.display(), diagnostic.message_with_location());
     }
 
     Ok(FileStatus::Failed)

@@ -1,11 +1,37 @@
 use crate::{
+    html::{self, HtmlToken},
     lexer,
-    mixed_parser::{self, Document, Node},
+    lexer::SourceLocation,
+    mixed_parser,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Diagnostic {
     pub message: String,
+    pub location: Option<SourceLocation>,
+}
+
+impl Diagnostic {
+    fn new(message: impl Into<String>) -> Self {
+        Self {
+            message: message.into(),
+            location: None,
+        }
+    }
+
+    fn located(message: impl Into<String>, location: SourceLocation) -> Self {
+        Self {
+            message: message.into(),
+            location: Some(location),
+        }
+    }
+
+    pub fn message_with_location(&self) -> String {
+        match self.location {
+            Some(location) => format!("{} at {}", self.message, location),
+            None => self.message.clone(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -51,71 +77,91 @@ pub fn lint_with_options(input: &str, options: LintOptions) -> Vec<Diagnostic> {
     let tokens = match lexer::tokenize_with_spans(input) {
         Ok(tokens) => tokens,
         Err(error) => {
-            return vec![Diagnostic {
-                message: error.to_string(),
-            }];
+            return vec![Diagnostic::new(error.to_string())];
         }
     };
 
     match mixed_parser::parse_spanned(&tokens) {
-        Ok(document) => lint_document(&document, options),
-        Err(error) => {
-            vec![Diagnostic {
-                message: error.to_string(),
-            }]
-        }
+        Ok(_) => lint_tokens(&tokens, options),
+        Err(error) => vec![Diagnostic::new(error.to_string())],
     }
 }
 
-fn lint_document(document: &Document, options: LintOptions) -> Vec<Diagnostic> {
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct ErbBlockLintFrame {
+    code: String,
+    output: bool,
+    location: SourceLocation,
+    has_meaningful_content: bool,
+}
+
+fn lint_tokens(tokens: &[lexer::SpannedToken], options: LintOptions) -> Vec<Diagnostic> {
     let mut diagnostics = Vec::new();
-    lint_nodes(&document.children, options, &mut diagnostics);
+    let mut stack: Vec<ErbBlockLintFrame> = Vec::new();
+
+    for spanned in tokens {
+        match &spanned.token {
+            lexer::Token::Html(fragment) => {
+                if html_fragment_has_meaningful_content(fragment) {
+                    mark_current_block_meaningful(&mut stack);
+                }
+            }
+            lexer::Token::ErbCode(code) => {
+                lint_erb_code(code, spanned.span.location, options, &mut diagnostics);
+                mark_current_block_meaningful(&mut stack);
+            }
+            lexer::Token::ErbOutput(_) => {
+                mark_current_block_meaningful(&mut stack);
+            }
+            lexer::Token::ErbBlockStart { code, output, .. } => {
+                mark_current_block_meaningful(&mut stack);
+                stack.push(ErbBlockLintFrame {
+                    code: code.clone(),
+                    output: *output,
+                    location: spanned.span.location,
+                    has_meaningful_content: false,
+                });
+            }
+            lexer::Token::ErbBranch { .. } => {}
+            lexer::Token::ErbBlockEnd(_) => {
+                let Some(frame) = stack.pop() else {
+                    continue;
+                };
+
+                if options.rules.empty_erb_control_block && !frame.has_meaningful_content {
+                    diagnostics.push(Diagnostic::located(
+                        format!(
+                            "empty ERB control block `{}`",
+                            format_erb_block_open(frame.output, &frame.code)
+                        ),
+                        frame.location,
+                    ));
+                }
+            }
+        }
+    }
+
     diagnostics
 }
 
-fn lint_nodes(nodes: &[Node], options: LintOptions, diagnostics: &mut Vec<Diagnostic>) {
-    for node in nodes {
-        lint_node(node, options, diagnostics);
+fn mark_current_block_meaningful(stack: &mut [ErbBlockLintFrame]) {
+    if let Some(frame) = stack.last_mut() {
+        frame.has_meaningful_content = true;
     }
 }
 
-fn lint_node(node: &Node, options: LintOptions, diagnostics: &mut Vec<Diagnostic>) {
-    match node {
-        Node::ErbCode(code) => lint_erb_code(code, options, diagnostics),
-        Node::ErbBlock {
-            code,
-            output,
-            children,
-            branches,
-            ..
-        } => {
-            if options.rules.empty_erb_control_block
-                && !children.iter().any(is_meaningful_node)
-                && !branches
-                    .iter()
-                    .any(|branch| branch.children.iter().any(is_meaningful_node))
-            {
-                diagnostics.push(Diagnostic {
-                    message: format!(
-                        "empty ERB control block `{}`",
-                        format_erb_block_open(*output, code)
-                    ),
-                });
-            }
-
-            lint_nodes(children, options, diagnostics);
-            for branch in branches {
-                lint_nodes(&branch.children, options, diagnostics);
-            }
-        }
-        Node::HtmlElement { children, .. } => lint_nodes(children, options, diagnostics),
-        Node::HtmlText(_)
-        | Node::HtmlSelfClosing { .. }
-        | Node::HtmlVoid { .. }
-        | Node::HtmlComment(_)
-        | Node::HtmlDoctype(_)
-        | Node::ErbOutput(_) => {}
-    }
+fn html_fragment_has_meaningful_content(fragment: &str) -> bool {
+    html::tokenize(fragment)
+        .into_iter()
+        .any(|token| match token {
+            HtmlToken::Text(text) => !text.trim().is_empty(),
+            HtmlToken::Comment(_) => false,
+            HtmlToken::OpenTag(_)
+            | HtmlToken::CloseTag(_)
+            | HtmlToken::SelfClosingTag(_)
+            | HtmlToken::VoidTag(_)
+            | HtmlToken::Doctype(_) => true,
+        })
 }
 
 fn format_erb_block_open(output: bool, code: &str) -> String {
@@ -126,32 +172,24 @@ fn format_erb_block_open(output: bool, code: &str) -> String {
     }
 }
 
-fn lint_erb_code(code: &str, options: LintOptions, diagnostics: &mut Vec<Diagnostic>) {
+fn lint_erb_code(
+    code: &str,
+    location: SourceLocation,
+    options: LintOptions,
+    diagnostics: &mut Vec<Diagnostic>,
+) {
     if options.rules.unsupported_erb_block_starter
         && let Some("while" | "for" | "until") = first_keyword(code)
     {
-        diagnostics.push(Diagnostic {
-            message: format!("unsupported ERB block starter `<% {} %>`", code.trim()),
-        });
+        diagnostics.push(Diagnostic::located(
+            format!("unsupported ERB block starter `<% {} %>`", code.trim()),
+            location,
+        ));
     }
 }
 
 fn first_keyword(code: &str) -> Option<&str> {
     code.split_whitespace().next()
-}
-
-fn is_meaningful_node(node: &Node) -> bool {
-    match node {
-        Node::HtmlText(text) => !text.trim().is_empty(),
-        Node::HtmlComment(_) => false,
-        Node::HtmlElement { .. }
-        | Node::HtmlSelfClosing { .. }
-        | Node::HtmlVoid { .. }
-        | Node::HtmlDoctype(_)
-        | Node::ErbCode(_)
-        | Node::ErbOutput(_)
-        | Node::ErbBlock { .. } => true,
-    }
 }
 
 #[cfg(test)]
@@ -171,9 +209,7 @@ mod tests {
 
         assert_eq!(
             diagnostics,
-            vec![Diagnostic {
-                message: "unterminated ERB tag at line 1, column 6".to_string()
-            }]
+            vec![Diagnostic::new("unterminated ERB tag at line 1, column 6")]
         );
     }
 
@@ -183,9 +219,9 @@ mod tests {
 
         assert_eq!(
             diagnostics,
-            vec![Diagnostic {
-                message: "unexpected ERB block end `end` at line 1, column 1".to_string()
-            }]
+            vec![Diagnostic::new(
+                "unexpected ERB block end `end` at line 1, column 1"
+            )]
         );
     }
 
@@ -195,9 +231,9 @@ mod tests {
 
         assert_eq!(
             diagnostics,
-            vec![Diagnostic {
-                message: "unclosed ERB block `if user` at line 1, column 1".to_string()
-            }]
+            vec![Diagnostic::new(
+                "unclosed ERB block `if user` at line 1, column 1"
+            )]
         );
     }
 
@@ -207,9 +243,9 @@ mod tests {
 
         assert_eq!(
             diagnostics,
-            vec![Diagnostic {
-                message: "mismatched HTML close tag `</div>`, expected closing tag for `span`, found `div`".to_string()
-            }]
+            vec![Diagnostic::new(
+                "mismatched HTML close tag `</div>`, expected closing tag for `span`, found `div`"
+            )]
         );
     }
 
@@ -219,9 +255,10 @@ mod tests {
 
         assert_eq!(
             diagnostics,
-            vec![Diagnostic {
-                message: "empty ERB control block `<% if show_empty_state %>`".to_string()
-            }]
+            vec![Diagnostic::located(
+                "empty ERB control block `<% if show_empty_state %>`",
+                SourceLocation { line: 1, column: 1 }
+            )]
         );
     }
 
@@ -239,9 +276,10 @@ mod tests {
 
         assert_eq!(
             diagnostics,
-            vec![Diagnostic {
-                message: "unsupported ERB block starter `<% while job.running? %>`".to_string()
-            }]
+            vec![Diagnostic::located(
+                "unsupported ERB block starter `<% while job.running? %>`",
+                SourceLocation { line: 1, column: 1 }
+            )]
         );
     }
 

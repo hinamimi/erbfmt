@@ -123,7 +123,7 @@ fn lint_fails_for_invalid_file() {
     assert_eq!(
         stderr(&output),
         format!(
-            "{}: empty ERB control block `<% if show_empty_state %>`\n",
+            "{}: empty ERB control block `<% if show_empty_state %>` at line 1, column 1\n",
             file.display()
         )
     );
@@ -254,6 +254,27 @@ fn lint_parser_errors_include_line_and_column() {
 }
 
 #[test]
+fn lint_rule_diagnostics_include_line_and_column() {
+    let dir = TestDir::new("lint_rule_location");
+    let file = dir.write(
+        "input.html.erb",
+        "<p>Before</p>\n  <% while job.running? %>\n<p>Waiting</p>\n",
+    );
+
+    let output = run(["--lint".as_ref(), file.as_path()]);
+
+    assert_failure(&output);
+    assert_eq!(stdout(&output), "");
+    assert_eq!(
+        stderr(&output),
+        format!(
+            "{}: unsupported ERB block starter `<% while job.running? %>` at line 2, column 3\n",
+            file.display()
+        )
+    );
+}
+
+#[test]
 fn multi_file_check_returns_failure_if_any_file_is_unformatted() {
     let dir = TestDir::new("multi_check");
     let formatted = dir.write("formatted.html.erb", FORMATTED);
@@ -292,7 +313,7 @@ fn multi_file_lint_returns_failure_if_any_file_has_diagnostics() {
     assert_eq!(
         stderr(&output),
         format!(
-            "{}: empty ERB control block `<% if show_empty_state %>`\n",
+            "{}: empty ERB control block `<% if show_empty_state %>` at line 1, column 1\n",
             invalid.display()
         )
     );

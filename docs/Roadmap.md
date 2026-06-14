@@ -258,7 +258,7 @@ Result:
 
 Editor Diagnostics Span Pass
 
-Status: Next
+Status: Done
 
 Improve lint diagnostics so VSCode can place rule findings on useful ranges
 instead of the start of the file.
@@ -275,6 +275,36 @@ Acceptance:
 - VSCode diagnostics for current lint rules point at the relevant ERB tag.
 - CLI integration tests cover diagnostic locations where applicable.
 - Existing formatter and extension checks pass.
+
+Result:
+
+- Added source locations to lint rule diagnostics while preserving the existing
+  CLI diagnostic text shape.
+- Empty ERB control block diagnostics now point at the opening ERB tag.
+- Unsupported ERB block starter diagnostics now point at the offending ERB tag.
+- CLI integration tests cover lint rule line/column output.
+
+### Milestone 26
+
+VSCode Extension Host Test Pass
+
+Status: Next
+
+Move beyond smoke tests by exercising the extension through a real VSCode
+extension-host test harness.
+
+Target work:
+
+- Add extension-host tests for document formatting.
+- Add extension-host tests for diagnostics ranges.
+- Keep the extension as a thin wrapper around the Rust binary.
+- Document any setup needed for local extension-host tests.
+
+Acceptance:
+
+- Extension-host tests verify formatting edits through VSCode APIs.
+- Extension-host tests verify diagnostics point at the expected ERB tag range.
+- Existing Rust and extension smoke checks continue to pass.
 
 ## Later
 
