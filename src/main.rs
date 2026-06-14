@@ -1,3 +1,4 @@
+mod config;
 mod formatter;
 mod html;
 mod lexer;
@@ -38,6 +39,9 @@ struct Args {
 
     #[arg(long, help = "Run lint diagnostics instead of formatting")]
     lint: bool,
+
+    #[arg(long, value_name = "PATH", help = "Path to erbfmt.json")]
+    config: Option<PathBuf>,
 }
 
 fn main() -> Result<ExitCode> {
@@ -47,9 +51,11 @@ fn main() -> Result<ExitCode> {
         bail!("multiple files require --write, --check, or --lint");
     }
 
+    let config = config::Config::load(args.config.as_deref())?;
+
     let mut failed = false;
     for file in &args.files {
-        if run_file(&args, file)? == FileStatus::Failed {
+        if run_file(&args, &config, file)? == FileStatus::Failed {
             failed = true;
         }
     }
@@ -67,15 +73,15 @@ enum FileStatus {
     Failed,
 }
 
-fn run_file(args: &Args, file: &Path) -> Result<FileStatus> {
+fn run_file(args: &Args, config: &config::Config, file: &Path) -> Result<FileStatus> {
     let content =
         fs::read_to_string(file).with_context(|| format!("failed to read `{}`", file.display()))?;
 
     if args.lint {
-        return run_lint(file, &content);
+        return run_lint(file, &content, config);
     }
 
-    let formatted = format_content(file, &content, args.no_html_indent)?;
+    let formatted = format_content(file, &content, config, args.no_html_indent)?;
 
     if args.write {
         fs::write(file, formatted)
@@ -102,8 +108,8 @@ fn run_file(args: &Args, file: &Path) -> Result<FileStatus> {
     unreachable!("multiple files without a mode are rejected before processing")
 }
 
-fn run_lint(file: &Path, content: &str) -> Result<FileStatus> {
-    let diagnostics = linter::lint(content);
+fn run_lint(file: &Path, content: &str, config: &config::Config) -> Result<FileStatus> {
+    let diagnostics = linter::lint_with_options(content, config.lint_options());
 
     if diagnostics.is_empty() {
         println!("{}: no lint issues found.", file.display());
@@ -117,18 +123,23 @@ fn run_lint(file: &Path, content: &str) -> Result<FileStatus> {
     Ok(FileStatus::Failed)
 }
 
-fn format_content(file: &Path, content: &str, no_html_indent: bool) -> Result<String> {
+fn format_content(
+    file: &Path,
+    content: &str,
+    config: &config::Config,
+    no_html_indent: bool,
+) -> Result<String> {
+    if !config.formatter.enabled {
+        return Ok(content.to_string());
+    }
+
     let tokens = lexer::tokenize_with_spans(content)
         .with_context(|| format!("failed to lex `{}`", file.display()))?;
     let document = mixed_parser::parse_spanned(&tokens)
         .with_context(|| format!("failed to parse `{}`", file.display()))?;
 
-    Ok(if no_html_indent {
-        formatter::format_document_with_options(
-            &document,
-            formatter::FormatOptions { indent_html: false },
-        )
-    } else {
-        formatter::format_document(&document)
-    })
+    Ok(formatter::format_document_with_options(
+        &document,
+        config.format_options(no_html_indent),
+    ))
 }

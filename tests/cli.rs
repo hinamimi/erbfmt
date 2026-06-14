@@ -35,6 +35,7 @@ fn help_describes_core_modes() {
     assert!(stdout.contains("--check"), "{stdout}");
     assert!(stdout.contains("--lint"), "{stdout}");
     assert!(stdout.contains("--no-html-indent"), "{stdout}");
+    assert!(stdout.contains("--config"), "{stdout}");
     assert_eq!(stderr(&output), "");
 }
 
@@ -127,6 +128,75 @@ fn lint_fails_for_invalid_file() {
             file.display()
         )
     );
+}
+
+#[test]
+fn config_controls_formatter_indent_width() {
+    let dir = TestDir::new("config_indent_width");
+    let config = dir.write("erbfmt.json", r#"{"formatter":{"indentWidth":4}}"#);
+    let file = dir.write("input.html.erb", UNFORMATTED);
+
+    let output = run(["--config".as_ref(), config.as_path(), file.as_path()]);
+
+    assert_success(&output);
+    assert_eq!(stdout(&output), "<div>\n    <p>Hello</p>\n</div>\n");
+    assert_eq!(stderr(&output), "");
+}
+
+#[test]
+fn config_can_disable_html_indentation() {
+    let dir = TestDir::new("config_no_html_indent");
+    let config = dir.write("erbfmt.json", r#"{"formatter":{"noHtmlIndent":true}}"#);
+    let file = dir.write(
+        "input.html.erb",
+        "<% if user %>\n<ul>\n<li>Hello</li>\n</ul>\n<% end %>\n",
+    );
+
+    let output = run(["--config".as_ref(), config.as_path(), file.as_path()]);
+
+    assert_success(&output);
+    assert_eq!(
+        stdout(&output),
+        "<% if user %>\n  <ul>\n  <li>Hello</li>\n  </ul>\n<% end %>\n"
+    );
+    assert_eq!(stderr(&output), "");
+}
+
+#[test]
+fn config_can_disable_formatter() {
+    let dir = TestDir::new("config_formatter_disabled");
+    let config = dir.write("erbfmt.json", r#"{"formatter":{"enabled":false}}"#);
+    let file = dir.write("input.html.erb", UNFORMATTED);
+
+    let output = run(["--config".as_ref(), config.as_path(), file.as_path()]);
+
+    assert_success(&output);
+    assert_eq!(stdout(&output), UNFORMATTED);
+    assert_eq!(stderr(&output), "");
+}
+
+#[test]
+fn config_can_disable_linter_rule() {
+    let dir = TestDir::new("config_lint_rule_disabled");
+    let config = dir.write(
+        "erbfmt.json",
+        r#"{"linter":{"rules":{"emptyErbControlBlock":"off"}}}"#,
+    );
+    let file = dir.write("input.html.erb", "<% if show_empty_state %>\n<% end %>\n");
+
+    let output = run([
+        "--lint".as_ref(),
+        "--config".as_ref(),
+        config.as_path(),
+        file.as_path(),
+    ]);
+
+    assert_success(&output);
+    assert_eq!(
+        stdout(&output),
+        format!("{}: no lint issues found.\n", file.display())
+    );
+    assert_eq!(stderr(&output), "");
 }
 
 #[test]

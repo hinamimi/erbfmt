@@ -54,6 +54,7 @@ Keep these files in the release verification surface:
 - `README.md`
 - `README_ja.md`
 - `docs/*.md`
+- `erbfmt.json`
 
 ## Versioning
 

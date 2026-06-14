@@ -1,0 +1,21 @@
+{
+  "$schema": "./docs/schema/erbfmt.schema.json",
+  "formatter": {
+    "enabled": true,
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "indentHtml": true,
+    "noHtmlIndent": false,
+    "lineEnding": "lf",
+    "lineWidth": 80,
+    "trailingNewline": true
+  },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "recommended": true,
+      "emptyErbControlBlock": "error",
+      "unsupportedErbBlockStarter": "error"
+    }
+  }
+}

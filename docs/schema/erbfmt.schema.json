@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "erbfmt configuration",
+  "type": "object",
+  "additionalProperties": true,
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "formatter": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "indentStyle": {
+          "enum": ["space", "tab"]
+        },
+        "indentWidth": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "indentHtml": {
+          "type": "boolean"
+        },
+        "noHtmlIndent": {
+          "type": "boolean"
+        },
+        "lineEnding": {
+          "enum": ["lf", "crlf"]
+        },
+        "lineWidth": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "trailingNewline": {
+          "type": "boolean"
+        }
+      }
+    },
+    "linter": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "rules": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "recommended": {
+              "type": "boolean"
+            },
+            "emptyErbControlBlock": {
+              "enum": ["off", "warn", "error"]
+            },
+            "unsupportedErbBlockStarter": {
+              "enum": ["off", "warn", "error"]
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -8,7 +8,46 @@ pub struct Diagnostic {
     pub message: String,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct LintOptions {
+    pub enabled: bool,
+    pub rules: LintRules,
+}
+
+impl Default for LintOptions {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            rules: LintRules::default(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct LintRules {
+    pub empty_erb_control_block: bool,
+    pub unsupported_erb_block_starter: bool,
+}
+
+impl Default for LintRules {
+    fn default() -> Self {
+        Self {
+            empty_erb_control_block: true,
+            unsupported_erb_block_starter: true,
+        }
+    }
+}
+
+#[allow(dead_code)]
 pub fn lint(input: &str) -> Vec<Diagnostic> {
+    lint_with_options(input, LintOptions::default())
+}
+
+pub fn lint_with_options(input: &str, options: LintOptions) -> Vec<Diagnostic> {
+    if !options.enabled {
+        return Vec::new();
+    }
+
     let tokens = match lexer::tokenize_with_spans(input) {
         Ok(tokens) => tokens,
         Err(error) => {
@@ -19,7 +58,7 @@ pub fn lint(input: &str) -> Vec<Diagnostic> {
     };
 
     match mixed_parser::parse_spanned(&tokens) {
-        Ok(document) => lint_document(&document),
+        Ok(document) => lint_document(&document, options),
         Err(error) => {
             vec![Diagnostic {
                 message: error.to_string(),
@@ -28,28 +67,29 @@ pub fn lint(input: &str) -> Vec<Diagnostic> {
     }
 }
 
-fn lint_document(document: &Document) -> Vec<Diagnostic> {
+fn lint_document(document: &Document, options: LintOptions) -> Vec<Diagnostic> {
     let mut diagnostics = Vec::new();
-    lint_nodes(&document.children, &mut diagnostics);
+    lint_nodes(&document.children, options, &mut diagnostics);
     diagnostics
 }
 
-fn lint_nodes(nodes: &[Node], diagnostics: &mut Vec<Diagnostic>) {
+fn lint_nodes(nodes: &[Node], options: LintOptions, diagnostics: &mut Vec<Diagnostic>) {
     for node in nodes {
-        lint_node(node, diagnostics);
+        lint_node(node, options, diagnostics);
     }
 }
 
-fn lint_node(node: &Node, diagnostics: &mut Vec<Diagnostic>) {
+fn lint_node(node: &Node, options: LintOptions, diagnostics: &mut Vec<Diagnostic>) {
     match node {
-        Node::ErbCode(code) => lint_erb_code(code, diagnostics),
+        Node::ErbCode(code) => lint_erb_code(code, options, diagnostics),
         Node::ErbBlock {
             code,
             children,
             branches,
             ..
         } => {
-            if !children.iter().any(is_meaningful_node)
+            if options.rules.empty_erb_control_block
+                && !children.iter().any(is_meaningful_node)
                 && !branches
                     .iter()
                     .any(|branch| branch.children.iter().any(is_meaningful_node))
@@ -59,12 +99,12 @@ fn lint_node(node: &Node, diagnostics: &mut Vec<Diagnostic>) {
                 });
             }
 
-            lint_nodes(children, diagnostics);
+            lint_nodes(children, options, diagnostics);
             for branch in branches {
-                lint_nodes(&branch.children, diagnostics);
+                lint_nodes(&branch.children, options, diagnostics);
             }
         }
-        Node::HtmlElement { children, .. } => lint_nodes(children, diagnostics),
+        Node::HtmlElement { children, .. } => lint_nodes(children, options, diagnostics),
         Node::HtmlText(_)
         | Node::HtmlSelfClosing { .. }
         | Node::HtmlVoid { .. }
@@ -74,8 +114,10 @@ fn lint_node(node: &Node, diagnostics: &mut Vec<Diagnostic>) {
     }
 }
 
-fn lint_erb_code(code: &str, diagnostics: &mut Vec<Diagnostic>) {
-    if let Some("while" | "for" | "until") = first_keyword(code) {
+fn lint_erb_code(code: &str, options: LintOptions, diagnostics: &mut Vec<Diagnostic>) {
+    if options.rules.unsupported_erb_block_starter
+        && let Some("while" | "for" | "until") = first_keyword(code)
+    {
         diagnostics.push(Diagnostic {
             message: format!("unsupported ERB block starter `<% {} %>`", code.trim()),
         });
@@ -189,5 +231,34 @@ mod tests {
                 message: "unsupported ERB block starter `<% while job.running? %>`".to_string()
             }]
         );
+    }
+
+    #[test]
+    fn respects_disabled_linter() {
+        let diagnostics = lint_with_options(
+            "<% if show_empty_state %>\n<% end %>\n",
+            LintOptions {
+                enabled: false,
+                ..LintOptions::default()
+            },
+        );
+
+        assert_eq!(diagnostics, Vec::new());
+    }
+
+    #[test]
+    fn respects_disabled_empty_block_rule() {
+        let diagnostics = lint_with_options(
+            "<% if show_empty_state %>\n<% end %>\n",
+            LintOptions {
+                rules: LintRules {
+                    empty_erb_control_block: false,
+                    ..LintRules::default()
+                },
+                ..LintOptions::default()
+            },
+        );
+
+        assert_eq!(diagnostics, Vec::new());
     }
 }

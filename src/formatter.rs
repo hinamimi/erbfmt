@@ -1,18 +1,50 @@
 use crate::mixed_parser::{Document, ErbBranch, Node};
 
-const INDENT: &str = "  ";
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct FormatOptions {
     pub indent_html: bool,
+    pub indent_style: IndentStyle,
+    pub indent_width: usize,
+    pub line_ending: LineEnding,
+    pub trailing_newline: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum IndentStyle {
+    Space,
+    Tab,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum LineEnding {
+    Lf,
+    Crlf,
 }
 
 impl Default for FormatOptions {
     fn default() -> Self {
-        Self { indent_html: true }
+        Self {
+            indent_html: true,
+            indent_style: IndentStyle::Space,
+            indent_width: 2,
+            line_ending: LineEnding::Lf,
+            trailing_newline: true,
+        }
     }
 }
 
+impl LineEnding {
+    fn as_str(self) -> &'static str {
+        match self {
+            Self::Lf => "\n",
+            Self::Crlf => "\r\n",
+        }
+    }
+}
+
+#[allow(dead_code)]
 pub fn format_document(document: &Document) -> String {
     format_document_with_options(document, FormatOptions::default())
 }
@@ -114,13 +146,27 @@ impl Formatter {
             return;
         }
 
-        self.output.push_str(&INDENT.repeat(depth));
+        self.output.push_str(&self.indent(depth));
         self.output.push_str(trimmed);
         self.output.push('\n');
     }
 
-    fn finish(self) -> String {
-        self.output
+    fn indent(&self, depth: usize) -> String {
+        match self.options.indent_style {
+            IndentStyle::Space => " ".repeat(self.options.indent_width * depth),
+            IndentStyle::Tab => "\t".repeat(depth),
+        }
+    }
+
+    fn finish(mut self) -> String {
+        if !self.options.trailing_newline {
+            self.output = self.output.trim_end_matches('\n').to_string();
+        }
+
+        match self.options.line_ending {
+            LineEnding::Lf => self.output,
+            LineEnding::Crlf => self.output.replace('\n', self.options.line_ending.as_str()),
+        }
     }
 }
 
@@ -180,7 +226,20 @@ mod tests {
         let tokens = tokenize(input).unwrap();
         let document = parse(&tokens).unwrap();
 
-        format_document_with_options(&document, FormatOptions { indent_html: false })
+        format_document_with_options(
+            &document,
+            FormatOptions {
+                indent_html: false,
+                ..FormatOptions::default()
+            },
+        )
+    }
+
+    fn format_with_options(input: &str, options: FormatOptions) -> String {
+        let tokens = tokenize(input).unwrap();
+        let document = parse(&tokens).unwrap();
+
+        format_document_with_options(&document, options)
     }
 
     #[test]
@@ -224,6 +283,49 @@ mod tests {
                 "<% if user %>\n<ul>\n<% Objects.map do |obj| %>\n<li><%= obj.name %></li>\n<% end %>\n</ul>\n<% end %>\n"
             ),
             "<% if user %>\n  <ul>\n  <% Objects.map do |obj| %>\n    <li><%= obj.name %></li>\n  <% end %>\n  </ul>\n<% end %>\n"
+        );
+    }
+
+    #[test]
+    fn can_configure_indent_width() {
+        assert_eq!(
+            format_with_options(
+                "<div>\n<p>Hello</p>\n</div>\n",
+                FormatOptions {
+                    indent_width: 4,
+                    ..FormatOptions::default()
+                }
+            ),
+            "<div>\n    <p>Hello</p>\n</div>\n"
+        );
+    }
+
+    #[test]
+    fn can_configure_tab_indentation() {
+        assert_eq!(
+            format_with_options(
+                "<div>\n<p>Hello</p>\n</div>\n",
+                FormatOptions {
+                    indent_style: IndentStyle::Tab,
+                    ..FormatOptions::default()
+                }
+            ),
+            "<div>\n\t<p>Hello</p>\n</div>\n"
+        );
+    }
+
+    #[test]
+    fn can_configure_line_ending_and_trailing_newline() {
+        assert_eq!(
+            format_with_options(
+                "<div>\n<p>Hello</p>\n</div>\n",
+                FormatOptions {
+                    line_ending: LineEnding::Crlf,
+                    trailing_newline: false,
+                    ..FormatOptions::default()
+                }
+            ),
+            "<div>\r\n  <p>Hello</p>\r\n</div>"
         );
     }
 

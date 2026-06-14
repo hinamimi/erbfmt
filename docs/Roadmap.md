@@ -28,6 +28,7 @@ Implemented:
 - Release checklist and local install documentation
 - VSCode workspace language association for `*.html.erb`
 - Line/column diagnostics for lexer and ERB parser errors
+- `erbfmt.json` formatter and linter configuration
 
 Reference samples:
 
@@ -39,16 +40,16 @@ Known constraints:
 
 - Ruby code is not parsed as Ruby AST.
 - Formatting currently normalizes most non-meaningful whitespace.
-- Diagnostics do not yet include line/column spans.
-- Configuration is CLI-flag based; there is no config file yet.
+- Lint rule diagnostics do not yet include line/column spans.
 - Distribution wrappers and editor extensions are not implemented yet.
 
 ## Immediate Focus
 
 The Rust binary is documented enough for local pre-release use, the workspace
-has a basic VSCode association for `*.html.erb`, and syntax diagnostics now
-include source locations. The next milestone should audit real-template
-formatter behavior before expanding to npm/Ruby wrappers.
+has a basic VSCode association for `*.html.erb`, syntax diagnostics include
+source locations, and formatter/linter behavior can be configured through
+`erbfmt.json`. The next milestone should audit real-template formatter behavior
+before expanding to npm/Ruby wrappers.
 
 ### Milestone 19
 

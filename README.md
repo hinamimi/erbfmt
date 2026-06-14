@@ -105,6 +105,13 @@ erbfmt --version
 erbfmt --help
 ```
 
+erbfmt reads `erbfmt.json` from the current directory or a parent directory.
+Use `--config` to pass a specific file:
+
+```bash
+erbfmt --config erbfmt.json samples/sample.html.erb
+```
+
 Format a file:
 
 ```bash
@@ -151,6 +158,9 @@ cargo run -- --no-html-indent samples/sample.html.erb
 erbfmt --no-html-indent samples/sample.html.erb
 ```
 
+The same behavior can be configured with `formatter.noHtmlIndent` in
+`erbfmt.json`.
+
 ## VSCode
 
 This repository includes workspace settings for format on save.
@@ -177,3 +187,4 @@ cargo run -- samples/sample.html.erb
 ```
 
 See [docs/Release.md](docs/Release.md) for local release verification.
+See [docs/Configuration.md](docs/Configuration.md) for formatter and linter configuration.

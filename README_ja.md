@@ -70,6 +70,13 @@ erbfmt --version
 erbfmt --help
 ```
 
+erbfmt は、カレントディレクトリまたは親ディレクトリにある `erbfmt.json` を読み込みます。
+特定の設定ファイルを指定する場合は `--config` を使います。
+
+```bash
+erbfmt --config erbfmt.json samples/sample.html.erb
+```
+
 ファイルを整形します。
 
 ```bash
@@ -140,6 +147,8 @@ cargo run -- --no-html-indent samples/sample.html.erb
 erbfmt --no-html-indent samples/sample.html.erb
 ```
 
+同じ挙動は `erbfmt.json` の `formatter.noHtmlIndent` でも設定できます。
+
 ## VSCode
 
 このリポジトリには、保存時に `.html.erb` ファイルを整形する workspace 設定が含まれています。
@@ -160,3 +169,4 @@ workspace の language association と将来の拡張方針は [docs/VSCode.md](
 - Ruby Gem
 
 ローカルリリース確認手順は [docs/Release.md](docs/Release.md) にまとめています。
+formatter / linter 設定は [docs/Configuration.md](docs/Configuration.md) にまとめています。
