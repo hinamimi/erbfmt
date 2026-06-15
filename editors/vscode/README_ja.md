@@ -1,5 +1,7 @@
 # erbfmt VSCode Extension
 
+English documentation is included in `README.md`.
+
 Rust製 `erbfmt` binary を呼び出す薄いVSCode wrapperです。
 
 ## 挙動

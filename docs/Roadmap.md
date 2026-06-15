@@ -356,7 +356,7 @@ Result:
 
 VSCode Publish Metadata Pass
 
-Status: Next
+Status: Done
 
 Prepare the local VSIX for eventual marketplace or GitHub release publishing.
 
@@ -374,6 +374,42 @@ Acceptance:
   documented intentional warnings.
 - Package contents remain limited to runtime files.
 - README files explain install and local binary expectations clearly.
+
+Result:
+
+- Added VSCode package metadata for icon, categories, keywords, and gallery
+  banner.
+- Added a small runtime icon asset at `editors/vscode/media/icon.png`.
+- Kept `repository` metadata intentionally unset because this checkout has no
+  canonical git remote configured; `docs/VSCode.md` documents the remaining
+  `vsce package` warning.
+- Verified VSIX contents remain limited to runtime files.
+- Avoided README relative links until repository metadata can make them stable
+  in packaged marketplace views.
+
+### Milestone 29
+
+Release Surface Audit
+
+Status: Next
+
+Review the current CLI and VSCode wrapper as a pre-release surface before
+adding another wrapper.
+
+Target work:
+
+- Re-run the full verification command set and document any known local-only
+  failures.
+- Audit README, README_ja, docs, samples, and tasks for stale commands.
+- Confirm `erbfmt.json` schema and examples match the implemented config.
+- Decide whether the next milestone should improve formatting behavior or start
+  npm/Ruby wrapper planning.
+
+Acceptance:
+
+- Docs and sample commands agree with the current binary and extension behavior.
+- Known limitations are explicit and not scattered across old milestones.
+- The next roadmap direction is chosen from current implementation evidence.
 
 ## Later
 

@@ -8,6 +8,9 @@ const extensionSource = fs.readFileSync(path.join(extensionDir, "src", "extensio
 
 assert.strictEqual(packageJson.main, "./out/extension.js");
 assert.strictEqual(packageJson.scripts.compile, "tsc -p .");
+assert.strictEqual(packageJson.icon, "media/icon.png");
+assert(packageJson.categories.includes("Formatters"));
+assert(packageJson.keywords.includes("html-erb"));
 assert(packageJson.scripts["test:host"].includes("cargo build"));
 assert(packageJson.scripts["test:host"].includes("test/runTest.js"));
 assert(packageJson.activationEvents.includes("onLanguage:erb"));

@@ -1,5 +1,7 @@
 # erbfmt VSCode Extension
 
+Japanese documentation is included in `README_ja.md`.
+
 Thin VSCode wrapper for the Rust `erbfmt` binary.
 
 ## Behavior
