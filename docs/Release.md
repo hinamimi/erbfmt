@@ -7,6 +7,8 @@ The canonical binary name is `erbfmt`.
 For now, npm packages, Ruby gems, and editor extensions should be treated as
 future wrappers around the Rust binary instead of separate formatter engines.
 
+See [Distribution.md](Distribution.md) for the binary distribution strategy.
+
 ## Local Install
 
 Install from a checkout:

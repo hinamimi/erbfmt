@@ -206,3 +206,4 @@ VSCode extension と workspace integration の詳細は [docs/VSCode.md](docs/VS
 ローカルリリース確認手順は [docs/Release.md](docs/Release.md) にまとめています。
 formatter / linter 設定は [docs/Configuration.md](docs/Configuration.md) にまとめています。
 VSCode extension のpackageとlocal installは [docs/VSCode.md](docs/VSCode.md) にまとめています。
+バイナリ配布方針は [docs/Distribution.md](docs/Distribution.md) にまとめています。

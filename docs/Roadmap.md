@@ -39,6 +39,7 @@ Implemented:
 - VSCode ERB-safe `Ctrl+/` comment toggling
 - Focused formatter edge-case fixture coverage
 - Formatter idempotency tests for current samples
+- Binary distribution strategy documentation
 
 Reference samples:
 
@@ -60,9 +61,10 @@ Known constraints:
 
 The Rust binary and the thin VSCode wrapper are usable for local pre-release
 development. Configuration, syntax diagnostics, syntax highlighting, local VSIX
-packaging, ERB-safe comment toggling, focused edge-case coverage, and sample
-idempotency tests are in place. The next milestone should plan binary
-distribution before adding another wrapper.
+packaging, ERB-safe comment toggling, focused edge-case coverage, sample
+idempotency tests, and binary distribution strategy are in place. The next
+milestone should prepare binary release automation before adding another
+wrapper.
 
 ### Milestone 19
 
@@ -520,7 +522,7 @@ Result:
 
 Binary Distribution Strategy Pass
 
-Status: Next
+Status: Done
 
 Decide how local users and editor wrappers should obtain the Rust `erbfmt`
 binary before implementing another wrapper.
@@ -538,6 +540,39 @@ Acceptance:
 - Roadmap documents the first binary distribution path and why.
 - Docs explain what remains local-only before public releases.
 - No wrapper implementation starts until the binary boundary is clear.
+
+Result:
+
+- Chose prebuilt Rust CLI binaries attached to releases as the first public
+  distribution target.
+- Kept local development on `cargo build` and `cargo install --path .`.
+- Deferred npm, Ruby gem, and VSCode binary download/bundling work until
+  shared release binaries exist.
+- Added `docs/Distribution.md` to compare local install, release binaries, npm,
+  Ruby gem, and VSCode binary handling.
+- Documented that `0.0.0-dev` should not be used for public binary releases.
+
+### Milestone 34
+
+Binary Release Automation Prep
+
+Status: Next
+
+Prepare the repository for producing prebuilt CLI binaries without publishing
+them yet.
+
+Target work:
+
+- Decide the initial release platform matrix.
+- Decide archive names and checksum files.
+- Add or document a local release build command for the Rust binary.
+- Keep publishing and wrapper download logic out of scope.
+
+Acceptance:
+
+- Release docs describe the binary artifact names and platform matrix.
+- Local release build verification is documented or scripted.
+- Existing CLI, lint, formatter, and VSCode wrapper checks continue to pass.
 
 ## Later
 

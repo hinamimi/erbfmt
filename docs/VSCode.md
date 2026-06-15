@@ -96,6 +96,9 @@ code --install-extension erbfmt-vscode-0.0.0-dev.vsix
 The package includes the compiled extension JavaScript in `out/`, but it does
 not bundle the Rust `erbfmt` binary yet.
 
+Binary bundling or download logic is deferred until prebuilt release binaries
+exist. See [Distribution.md](Distribution.md) for the current strategy.
+
 The package currently omits `repository` metadata because this checkout has no
 canonical git remote configured. The `vsce package` repository warning is
 intentional until the public repository URL is decided.
@@ -144,5 +147,5 @@ The first-party VSCode extension still needs:
 
 - canonical `repository` metadata once the public repository URL is decided.
 - a binary distribution or download story for users who do not build erbfmt
-  locally.
+  locally, based on the shared Rust binary release strategy.
 - clearer behavior when Ruby LSP is also installed.

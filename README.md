@@ -224,3 +224,5 @@ See [docs/Release.md](docs/Release.md) for local release verification.
 See [docs/Configuration.md](docs/Configuration.md) for formatter and linter configuration.
 See [docs/VSCode.md](docs/VSCode.md) for VSCode extension packaging and local
 install notes.
+See [docs/Distribution.md](docs/Distribution.md) for binary distribution
+strategy.
