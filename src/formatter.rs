@@ -125,7 +125,7 @@ impl Formatter {
     }
 
     fn write_html_element(&mut self, open: &str, close: &str, children: &[Node], depth: usize) {
-        if can_render_inline(children) {
+        if can_render_inline(children) && self.can_keep_html_element_inline(open, depth) {
             let content = render_inline_nodes(children);
             self.write_indented_line(depth, &format!("{open}{content}{close}"));
         } else {
@@ -135,11 +135,17 @@ impl Formatter {
         }
     }
 
+    fn can_keep_html_element_inline(&self, open: &str, depth: usize) -> bool {
+        let trimmed = open.trim();
+
+        !trimmed.contains('\n') && self.fits_on_line(depth, trimmed)
+    }
+
     fn write_tag(&mut self, raw: &str, depth: usize) {
         let trimmed = raw.trim();
-        let line_width = self.options.line_width;
+        let is_multiline = trimmed.contains('\n');
 
-        if self.indent(depth).chars().count() + trimmed.chars().count() <= line_width {
+        if !is_multiline && self.fits_on_line(depth, trimmed) {
             self.write_indented_line(depth, trimmed);
             return;
         }
@@ -150,7 +156,7 @@ impl Formatter {
         };
 
         if tag.attributes.is_empty() {
-            self.write_indented_line(depth, trimmed);
+            self.write_indented_line(depth, &tag.inline());
             return;
         }
 
@@ -167,10 +173,7 @@ impl Formatter {
         let code = code.trim();
         let inline = format_erb_tag_inline(marker, code);
 
-        if !code.contains('\n')
-            && self.indent(depth).chars().count() + inline.chars().count()
-                <= self.options.line_width
-        {
+        if !code.contains('\n') && self.fits_on_line(depth, &inline) {
             self.write_indented_line(depth, &inline);
             return;
         }
@@ -186,6 +189,10 @@ impl Formatter {
 
     fn html_child_depth(&self, depth: usize) -> usize {
         depth + usize::from(self.options.indent_html)
+    }
+
+    fn fits_on_line(&self, depth: usize, text: &str) -> bool {
+        self.indent(depth).chars().count() + text.chars().count() <= self.options.line_width
     }
 
     fn write_indented_line(&mut self, depth: usize, line: &str) {
@@ -290,6 +297,14 @@ impl ParsedTag {
 
     fn closing_marker(&self) -> &'static str {
         if self.self_closing { "/>" } else { ">" }
+    }
+
+    fn inline(&self) -> String {
+        if self.self_closing {
+            format!("<{} />", self.name)
+        } else {
+            format!("<{}>", self.name)
+        }
     }
 }
 
@@ -619,6 +634,24 @@ mod tests {
     }
 
     #[test]
+    fn normalizes_existing_multiline_html_tags() {
+        assert_eq!(
+            format("<div\nclass=\"card\"\ndata-controller=\"profile\"\n>\n<p>Hello</p>\n</div>\n"),
+            "<div\n  class=\"card\"\n  data-controller=\"profile\"\n>\n  <p>Hello</p>\n</div>\n"
+        );
+    }
+
+    #[test]
+    fn normalizes_multiline_html_tags_with_erb_attributes() {
+        assert_eq!(
+            format(
+                "<a\nhref=\"/users/<%= user.id %>\"\naria-label=\"<%= user.name %>\"\n>Profile</a>\n"
+            ),
+            "<a\n  href=\"/users/<%= user.id %>\"\n  aria-label=\"<%= user.name %>\"\n>\n  Profile\n</a>\n"
+        );
+    }
+
+    #[test]
     fn wraps_long_erb_output_tags_without_splitting_ruby() {
         assert_eq!(
             format_with_options(
@@ -758,11 +791,23 @@ mod tests {
         insta::assert_snapshot!("formatter_audit_fixture", format(formatter_audit_fixture()));
     }
 
+    #[test]
+    fn snapshots_formatter_edge_cases_fixture() {
+        insta::assert_snapshot!(
+            "formatter_edge_cases_fixture",
+            format(formatter_edge_cases_fixture())
+        );
+    }
+
     fn stability_fixture() -> &'static str {
         "<!DOCTYPE html>\n<div class=\"page <%= page_class %>\">\n<!-- profile card -->\n<img src=\"<%= avatar_url %>\" alt=\"<%= user.name %>\">\n<input type=\"checkbox\" checked=\"<%= checked %>\">\n<% if user %>\n<section>\n<a href=\"/users/<%= user.id %>\"><%= user.name %></a>\n<br>\n<% unless notifications.empty? %>\n<ul>\n<% notifications.each do |notification| %>\n<li><%= notification.title %></li>\n<% end %>\n</ul>\n<% end %>\n</section>\n<% else %>\n<p>Please sign in</p>\n<% end %>\n</div>\n"
     }
 
     fn formatter_audit_fixture() -> &'static str {
         include_str!("../samples/formatter-audit.html.erb")
+    }
+
+    fn formatter_edge_cases_fixture() -> &'static str {
+        include_str!("../samples/formatter-edge-cases.html.erb")
     }
 }

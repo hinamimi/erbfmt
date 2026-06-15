@@ -35,7 +35,13 @@
     <% else %>
       <p class="muted">No validation errors.</p>
     <% end %>
-    <button type="submit" class="button button--primary" data-action="profile-form#submit">Save profile</button>
+    <button
+      type="submit"
+      class="button button--primary"
+      data-action="profile-form#submit"
+    >
+      Save profile
+    </button>
     <% begin %>
       <%= render "users/activity", user: user %>
     <% rescue => error %>

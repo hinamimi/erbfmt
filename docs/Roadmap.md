@@ -35,8 +35,9 @@ Implemented:
 - VSCode `html-erb` syntax highlighting
 - Line/column diagnostics for lexer and ERB parser errors
 - `erbfmt.json` formatter and linter configuration
-- `formatter.lineWidth` wrapping for long HTML tags
+- `formatter.lineWidth` wrapping for long HTML and standalone ERB tags
 - VSCode ERB-safe `Ctrl+/` comment toggling
+- Focused formatter edge-case fixture coverage
 
 Reference samples:
 
@@ -44,6 +45,7 @@ Reference samples:
 - `samples/lint-next.html.erb`: lint rule sample
 - `samples/stability.html.erb`: formatting stability sample
 - `samples/formatter-audit.html.erb`: real-template formatter audit sample
+- `samples/formatter-edge-cases.html.erb`: focused formatter edge-case sample
 
 Known constraints:
 
@@ -58,8 +60,7 @@ Known constraints:
 The Rust binary and the thin VSCode wrapper are usable for local pre-release
 development. Configuration, syntax diagnostics, syntax highlighting, local VSIX
 packaging, and ERB-safe comment toggling are in place. The next milestone
-should improve formatter correctness on real template edge cases before adding
-another wrapper.
+should make formatter idempotency explicit before adding another wrapper.
 
 ### Milestone 19
 
@@ -452,7 +453,7 @@ Result:
 
 Formatter Edge Case Pass
 
-Status: Next
+Status: Done
 
 Improve formatting correctness before adding npm or Ruby distribution wrappers.
 
@@ -471,6 +472,39 @@ Acceptance:
 - Unsupported patterns are documented as constraints instead of silently
   reshaped.
 - Existing CLI, lint, and VSCode wrapper checks continue to pass.
+
+Result:
+
+- Added `samples/formatter-edge-cases.html.erb` for focused formatter edge
+  cases.
+- Added snapshot coverage for multi-line HTML attributes, HTML comments around
+  ERB blocks, inline text mixed with ERB output, and helper-heavy ERB output.
+- Fixed inline HTML elements so existing multi-line opening tags are normalized
+  through the same tag formatter instead of being concatenated raw.
+- Preserved Ruby expressions inside ERB tags without Ruby semantic parsing.
+
+### Milestone 32
+
+Formatter Idempotency Pass
+
+Status: Next
+
+Make formatter stability explicit across current samples before distribution
+wrapper planning.
+
+Target work:
+
+- Add tests that formatting already-formatted sample output is stable.
+- Cover `sample`, `stability`, `formatter-audit`, and `formatter-edge-cases`
+  fixtures.
+- Document any intentional non-idempotent behavior as a bug or constraint.
+- Keep wrapper work deferred until sample stability is explicit.
+
+Acceptance:
+
+- Current formatter fixtures are covered by idempotency tests.
+- Existing CLI, lint, and VSCode wrapper checks continue to pass.
+- The next roadmap direction is chosen from formatter stability evidence.
 
 ## Later
 

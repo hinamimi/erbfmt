@@ -33,6 +33,7 @@ cargo test
 cargo clippy
 cargo run --quiet -- samples/sample.html.erb
 cargo run --quiet -- samples/stability.html.erb
+cargo run --quiet -- samples/formatter-edge-cases.html.erb
 cargo run --quiet -- --lint samples/sample.html.erb
 cargo run --quiet -- --lint samples/stability.html.erb
 npm test --prefix editors/vscode
@@ -80,6 +81,7 @@ Keep these files in the release verification surface:
   VSCode Format Document visibly change the file.
 - `samples/stability.html.erb` is a fixed stability fixture.
 - `samples/formatter-audit.html.erb` is a Rails-like formatter audit fixture.
+- `samples/formatter-edge-cases.html.erb` covers focused formatter edge cases.
 - `samples/lint-next.html.erb` intentionally contains lint issues and should
   fail `--lint`.
 

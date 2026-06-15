@@ -1,0 +1,26 @@
+<article
+  class="edge-card"
+  data-controller="edge-preview"
+  data-edge-preview-user-id-value="<%= user.id %>"
+>
+  <!-- before control flow -->
+  <% if user.present? %>
+    <p>Hello, <%= user.display_name %>. Your plan is <%= user.plan_name %>.</p>
+    <a
+      href="/users/<%= user.id %>"
+      aria-label="<%= user.display_name %>"
+    >
+      Open profile
+    </a>
+    <%=
+      link_to(
+        "Edit profile",
+        edit_user_path(user),
+        class: "button button--primary"
+      )
+    %>
+  <% else %>
+    <!-- empty state -->
+    <p>Please sign in.</p>
+  <% end %>
+</article>

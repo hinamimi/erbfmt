@@ -37,7 +37,7 @@ Early development.
 - File-scoped CLI diagnostics
 - Line/column diagnostics for syntax and lint findings
 - `erbfmt.json` formatter and linter configuration
-- Long HTML tag wrapping controlled by `formatter.lineWidth`
+- Long HTML and standalone ERB tag wrapping controlled by `formatter.lineWidth`
 - Multi-file lint, check, and write modes
 - Thin VSCode extension with formatter, diagnostics, syntax highlighting, and
   ERB-safe comment toggling
@@ -173,6 +173,7 @@ markers are expanded:
 - `samples/sample.html.erb`: intentionally unformatted formatter demo.
 - `samples/stability.html.erb`: fixed stability fixture for formatter output.
 - `samples/formatter-audit.html.erb`: Rails-like formatter audit fixture.
+- `samples/formatter-edge-cases.html.erb`: formatter edge-case fixture.
 - `samples/lint-next.html.erb`: intentionally invalid lint fixture.
 
 ## VSCode
