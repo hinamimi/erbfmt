@@ -162,6 +162,25 @@ fn config_controls_formatter_line_width() {
 }
 
 #[test]
+fn config_controls_erb_tag_line_width() {
+    let dir = TestDir::new("config_erb_line_width");
+    let config = dir.write("erbfmt.json", r#"{"formatter":{"lineWidth":60}}"#);
+    let file = dir.write(
+        "input.html.erb",
+        r#"<%= link_to "Edit profile", edit_user_path(user), class: "button button--primary", data: { turbo_frame: "_top" } %>"#,
+    );
+
+    let output = run(["--config".as_ref(), config.as_path(), file.as_path()]);
+
+    assert_success(&output);
+    assert_eq!(
+        stdout(&output),
+        "<%=\n  link_to \"Edit profile\", edit_user_path(user), class: \"button button--primary\", data: { turbo_frame: \"_top\" }\n%>\n"
+    );
+    assert_eq!(stderr(&output), "");
+}
+
+#[test]
 fn config_can_disable_html_indentation() {
     let dir = TestDir::new("config_indent_html_false");
     let config = dir.write("erbfmt.json", r#"{"formatter":{"indentHtml":false}}"#);

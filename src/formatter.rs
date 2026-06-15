@@ -91,12 +91,8 @@ impl Formatter {
             Node::HtmlComment(comment) | Node::HtmlDoctype(comment) => {
                 self.write_indented_line(depth, comment);
             }
-            Node::ErbCode(code) => {
-                self.write_indented_line(depth, &format!("<% {} %>", code.trim()))
-            }
-            Node::ErbOutput(code) => {
-                self.write_indented_line(depth, &format!("<%= {} %>", code.trim()));
-            }
+            Node::ErbCode(code) => self.write_erb_tag(depth, ErbTagMarker::Code, code),
+            Node::ErbOutput(code) => self.write_erb_tag(depth, ErbTagMarker::Output, code),
             Node::ErbBlock {
                 code,
                 output,
@@ -104,7 +100,7 @@ impl Formatter {
                 branches,
                 ..
             } => {
-                self.write_indented_line(depth, &format_erb_block_open(*output, code));
+                self.write_erb_tag(depth, ErbTagMarker::from_output(*output), code);
                 self.format_nodes(children, depth + 1);
                 self.format_erb_branches(branches, depth);
                 self.write_indented_line(depth, "<% end %>");
@@ -114,7 +110,7 @@ impl Formatter {
 
     fn format_erb_branches(&mut self, branches: &[ErbBranch], depth: usize) {
         for branch in branches {
-            self.write_indented_line(depth, &format!("<% {} %>", branch.code));
+            self.write_erb_tag(depth, ErbTagMarker::Code, &branch.code);
             self.format_nodes(&branch.children, depth + 1);
         }
     }
@@ -167,12 +163,44 @@ impl Formatter {
         self.write_indented_line(depth, tag.closing_marker());
     }
 
+    fn write_erb_tag(&mut self, depth: usize, marker: ErbTagMarker, code: &str) {
+        let code = code.trim();
+        let inline = format_erb_tag_inline(marker, code);
+
+        if !code.contains('\n')
+            && self.indent(depth).chars().count() + inline.chars().count()
+                <= self.options.line_width
+        {
+            self.write_indented_line(depth, &inline);
+            return;
+        }
+
+        self.write_indented_line(depth, marker.as_str());
+
+        for line in normalized_erb_code_lines(code) {
+            self.write_indented_code_line(depth + 1, &line);
+        }
+
+        self.write_indented_line(depth, "%>");
+    }
+
     fn html_child_depth(&self, depth: usize) -> usize {
         depth + usize::from(self.options.indent_html)
     }
 
     fn write_indented_line(&mut self, depth: usize, line: &str) {
         let trimmed = line.trim();
+        if trimmed.is_empty() {
+            return;
+        }
+
+        self.output.push_str(&self.indent(depth));
+        self.output.push_str(trimmed);
+        self.output.push('\n');
+    }
+
+    fn write_indented_code_line(&mut self, depth: usize, line: &str) {
+        let trimmed = line.trim_end();
         if trimmed.is_empty() {
             return;
         }
@@ -197,6 +225,25 @@ impl Formatter {
         match self.options.line_ending {
             LineEnding::Lf => self.output,
             LineEnding::Crlf => self.output.replace('\n', self.options.line_ending.as_str()),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ErbTagMarker {
+    Code,
+    Output,
+}
+
+impl ErbTagMarker {
+    fn from_output(output: bool) -> Self {
+        if output { Self::Output } else { Self::Code }
+    }
+
+    fn as_str(self) -> &'static str {
+        match self {
+            Self::Code => "<%",
+            Self::Output => "<%=",
         }
     }
 }
@@ -323,8 +370,8 @@ fn render_inline_node(node: &Node) -> String {
     match node {
         Node::HtmlText(text) => text.clone(),
         Node::HtmlSelfClosing { raw, .. } | Node::HtmlVoid { raw, .. } => raw.clone(),
-        Node::ErbCode(code) => format!("<% {} %>", code.trim()),
-        Node::ErbOutput(code) => format!("<%= {} %>", code.trim()),
+        Node::ErbCode(code) => format_erb_tag_inline(ErbTagMarker::Code, code.trim()),
+        Node::ErbOutput(code) => format_erb_tag_inline(ErbTagMarker::Output, code.trim()),
         Node::HtmlElement { .. }
         | Node::HtmlComment(_)
         | Node::HtmlDoctype(_)
@@ -332,12 +379,82 @@ fn render_inline_node(node: &Node) -> String {
     }
 }
 
-fn format_erb_block_open(output: bool, code: &str) -> String {
-    if output {
-        format!("<%= {} %>", code.trim())
-    } else {
-        format!("<% {} %>", code.trim())
+fn format_erb_tag_inline(marker: ErbTagMarker, code: &str) -> String {
+    if code.is_empty() {
+        return format!("{} %>", marker.as_str());
     }
+
+    format!("{} {} %>", marker.as_str(), code.trim())
+}
+
+fn normalized_erb_code_lines(code: &str) -> Vec<String> {
+    let lines = trim_blank_edges(code.lines().collect());
+    let common_indent = common_erb_code_indent(&lines);
+
+    lines
+        .into_iter()
+        .map(|line| {
+            strip_leading_whitespace(line, common_indent)
+                .trim_end()
+                .to_string()
+        })
+        .collect()
+}
+
+fn common_erb_code_indent(lines: &[&str]) -> usize {
+    let non_empty_lines = lines.iter().copied().filter(|line| !line.trim().is_empty());
+
+    if lines
+        .first()
+        .is_some_and(|line| leading_whitespace_count(line) == 0)
+    {
+        let skipped_first = lines
+            .iter()
+            .copied()
+            .skip(1)
+            .filter(|line| !line.trim().is_empty())
+            .map(leading_whitespace_count)
+            .min();
+
+        if let Some(indent) = skipped_first {
+            return indent;
+        }
+    }
+
+    non_empty_lines
+        .map(leading_whitespace_count)
+        .min()
+        .unwrap_or(0)
+}
+
+fn trim_blank_edges(mut lines: Vec<&str>) -> Vec<&str> {
+    while lines.first().is_some_and(|line| line.trim().is_empty()) {
+        lines.remove(0);
+    }
+
+    while lines.last().is_some_and(|line| line.trim().is_empty()) {
+        lines.pop();
+    }
+
+    lines
+}
+
+fn leading_whitespace_count(line: &str) -> usize {
+    line.chars().take_while(|ch| ch.is_whitespace()).count()
+}
+
+fn strip_leading_whitespace(line: &str, count: usize) -> &str {
+    if count == 0 {
+        return line;
+    }
+
+    for (stripped, (index, ch)) in line.char_indices().enumerate() {
+        if stripped == count || !ch.is_whitespace() {
+            return &line[index..];
+        }
+    }
+
+    ""
 }
 
 #[cfg(test)]
@@ -498,6 +615,58 @@ mod tests {
                 }
             ),
             "<custom-input\n  name=\"profile[display_name]\"\n  value=\"<%= user.display_name %>\"\n  data-controller=\"autosave\"\n/>\n"
+        );
+    }
+
+    #[test]
+    fn wraps_long_erb_output_tags_without_splitting_ruby() {
+        assert_eq!(
+            format_with_options(
+                r#"<%= link_to "Edit profile", edit_user_path(user), class: "button button--primary", data: { turbo_frame: "_top" } %>"#,
+                FormatOptions {
+                    line_width: 60,
+                    ..FormatOptions::default()
+                }
+            ),
+            "<%=\n  link_to \"Edit profile\", edit_user_path(user), class: \"button button--primary\", data: { turbo_frame: \"_top\" }\n%>\n"
+        );
+    }
+
+    #[test]
+    fn wraps_long_erb_code_tags_without_splitting_ruby() {
+        assert_eq!(
+            format_with_options(
+                r#"<% cache ["profile-card", user.cache_key_with_version, current_user.cache_key_with_version] %>"#,
+                FormatOptions {
+                    line_width: 60,
+                    ..FormatOptions::default()
+                }
+            ),
+            "<%\n  cache [\"profile-card\", user.cache_key_with_version, current_user.cache_key_with_version]\n%>\n"
+        );
+    }
+
+    #[test]
+    fn wraps_long_erb_block_opening_tags_without_splitting_ruby() {
+        assert_eq!(
+            format_with_options(
+                "<% if current_user.admin? && feature_enabled?(:new_dashboard) && account.active? %>\n<p>Hello</p>\n<% end %>\n",
+                FormatOptions {
+                    line_width: 60,
+                    ..FormatOptions::default()
+                }
+            ),
+            "<%\n  if current_user.admin? && feature_enabled?(:new_dashboard) && account.active?\n%>\n  <p>Hello</p>\n<% end %>\n"
+        );
+    }
+
+    #[test]
+    fn preserves_existing_multiline_erb_output_shape() {
+        assert_eq!(
+            format(
+                "<%=\n  link_to(\n    \"Edit profile\",\n    edit_user_path(user),\n    class: \"button\"\n  )\n%>\n"
+            ),
+            "<%=\n  link_to(\n    \"Edit profile\",\n    edit_user_path(user),\n    class: \"button\"\n  )\n%>\n"
         );
     }
 

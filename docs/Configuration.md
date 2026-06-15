@@ -45,7 +45,9 @@ option for the existing HTML indentation behavior.
 - `formatter.lineEnding`: `lf` or `crlf`.
 - `formatter.lineWidth`: target line width. Opening, void, and self-closing
   HTML tags that exceed this width are expanded one attribute per line, with
-  the closing marker on its own line.
+  the closing marker on its own line. Standalone ERB tags that exceed this
+  width are expanded by moving only `<%` / `<%=` and `%>` onto their own lines;
+  Ruby expressions are not split.
 - `formatter.trailingNewline`: keep or remove the final newline.
 
 ## Linter

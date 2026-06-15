@@ -9,14 +9,18 @@
     <h1 id="profile-title">Profile for <%= user.display_name %></h1>
     <p>Signed in as <%= current_user.email %></p>
   </header>
-  <%= form_with model: user, url: user_path(user), data: { turbo_frame: "profile" } do |form| %>
+  <%=
+    form_with model: user, url: user_path(user), data: { turbo_frame: "profile" } do |form|
+  %>
     <div
       class="field field--wide"
       data-field-name="display_name"
       aria-describedby="display-name-help"
     >
       <label for="display_name">Display name</label>
-      <%= form.text_field :display_name, value: user.display_name, class: "input" %>
+      <%=
+        form.text_field :display_name, value: user.display_name, class: "input"
+      %>
       <p id="display-name-help">Visible as <%= user.display_name %></p>
     </div>
     <% if user.errors.any? %>
