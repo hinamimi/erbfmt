@@ -142,5 +142,7 @@ The workspace recommends:
 
 The first-party VSCode extension still needs:
 
-- publish-time metadata and icon assets.
+- canonical `repository` metadata once the public repository URL is decided.
+- a binary distribution or download story for users who do not build erbfmt
+  locally.
 - clearer behavior when Ruby LSP is also installed.

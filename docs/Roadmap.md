@@ -36,10 +36,11 @@ Implemented:
 - Line/column diagnostics for lexer and ERB parser errors
 - `erbfmt.json` formatter and linter configuration
 - `formatter.lineWidth` wrapping for long HTML tags
+- VSCode ERB-safe `Ctrl+/` comment toggling
 
 Reference samples:
 
-- `samples/sample.html.erb`: ordinary formatting sample
+- `samples/sample.html.erb`: intentionally unformatted formatter demo
 - `samples/lint-next.html.erb`: lint rule sample
 - `samples/stability.html.erb`: formatting stability sample
 - `samples/formatter-audit.html.erb`: real-template formatter audit sample
@@ -48,20 +49,17 @@ Known constraints:
 
 - Ruby code is not parsed as Ruby AST.
 - Formatting currently normalizes most non-meaningful whitespace.
-- Lint rule diagnostics do not yet include line/column spans.
 - Distribution wrappers are not published yet.
-- The VSCode extension scaffold is not published yet.
-- Lint rule diagnostics without line/column are shown at the start of the file
-  in VSCode.
+- The VSCode extension is not published yet.
+- The VSCode extension does not bundle the Rust binary yet.
 
 ## Immediate Focus
 
-The Rust binary is documented enough for local pre-release use, the workspace
-has a thin VSCode extension scaffold, syntax diagnostics include source
-locations, formatter/linter behavior can be configured through `erbfmt.json`,
-and real-template formatter behavior is covered by an audit fixture. The next
-milestone should prepare the extension for local packaging or add editor-host
-tests.
+The Rust binary and the thin VSCode wrapper are usable for local pre-release
+development. Configuration, syntax diagnostics, syntax highlighting, local VSIX
+packaging, and ERB-safe comment toggling are in place. The next milestone
+should improve formatter correctness on real template edge cases before adding
+another wrapper.
 
 ### Milestone 19
 
@@ -420,7 +418,7 @@ Result:
 
 Release Surface Audit
 
-Status: Next
+Status: Done
 
 Review the current CLI and VSCode wrapper as a pre-release surface before
 adding another wrapper.
@@ -439,6 +437,40 @@ Acceptance:
 - Docs and sample commands agree with the current binary and extension behavior.
 - Known limitations are explicit and not scattered across old milestones.
 - The next roadmap direction is chosen from current implementation evidence.
+
+Result:
+
+- Re-ran Rust and VSCode wrapper verification, including local VSIX packaging.
+- Documented the intentional `samples/sample.html.erb` unformatted demo role.
+- Updated README, README_ja, VSCode, and release docs for current extension
+  behavior.
+- Kept the missing VSCode `repository` metadata warning as an intentional
+  pre-publication limitation.
+- Chose formatter correctness on real template edge cases as the next focus.
+
+### Milestone 31
+
+Formatter Edge Case Pass
+
+Status: Next
+
+Improve formatting correctness before adding npm or Ruby distribution wrappers.
+
+Target work:
+
+- Audit real-template patterns that still format awkwardly or too aggressively.
+- Add fixtures for inline text mixed with ERB output, multi-line attributes,
+  HTML comments around ERB blocks, and helper-heavy Rails templates.
+- Tighten formatter behavior only where snapshots clearly describe the intended
+  output.
+- Keep Ruby semantic parsing out of scope.
+
+Acceptance:
+
+- New or changed formatter behavior is covered by snapshots.
+- Unsupported patterns are documented as constraints instead of silently
+  reshaped.
+- Existing CLI, lint, and VSCode wrapper checks continue to pass.
 
 ## Later
 

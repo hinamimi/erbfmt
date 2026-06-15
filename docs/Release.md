@@ -35,11 +35,22 @@ cargo run --quiet -- samples/sample.html.erb
 cargo run --quiet -- samples/stability.html.erb
 cargo run --quiet -- --lint samples/sample.html.erb
 cargo run --quiet -- --lint samples/stability.html.erb
+npm test --prefix editors/vscode
+npm run package --prefix editors/vscode
+```
+
+Run the intentional failing lint fixture separately:
+
+```bash
 cargo run --quiet -- --lint samples/lint-next.html.erb
 ```
 
-`samples/lint-next.html.erb` is expected to exit with a failure status because
-it intentionally contains lint issues.
+This command is expected to exit with a failure status because
+`samples/lint-next.html.erb` intentionally contains lint issues.
+
+`npm run package --prefix editors/vscode` may warn that the VSCode extension
+manifest has no `repository` field. That warning is intentional until the
+canonical public repository URL is decided.
 
 ## Release Contents
 
@@ -56,6 +67,21 @@ Keep these files in the release verification surface:
 - `LICENSE.txt`
 - `docs/*.md`
 - `erbfmt.json`
+- `docs/schema/erbfmt.schema.json`
+- `editors/vscode/package.json`
+- `editors/vscode/src/**/*.ts`
+- `editors/vscode/syntaxes/*.json`
+- `editors/vscode/media/*`
+- `editors/vscode/README*.md`
+
+## Samples
+
+- `samples/sample.html.erb` is intentionally unformatted so formatter demos and
+  VSCode Format Document visibly change the file.
+- `samples/stability.html.erb` is a fixed stability fixture.
+- `samples/formatter-audit.html.erb` is a Rails-like formatter audit fixture.
+- `samples/lint-next.html.erb` intentionally contains lint issues and should
+  fail `--lint`.
 
 ## Versioning
 

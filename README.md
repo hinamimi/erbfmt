@@ -35,11 +35,12 @@ Early development.
 - Syntax lint rules for empty ERB blocks and remaining unsupported ERB block starters
 - Format checking with `--check`
 - File-scoped CLI diagnostics
+- Line/column diagnostics for syntax and lint findings
+- `erbfmt.json` formatter and linter configuration
+- Long HTML tag wrapping controlled by `formatter.lineWidth`
 - Multi-file lint, check, and write modes
-
-### Planned
-
-- Packaging preparation
+- Thin VSCode extension with formatter, diagnostics, syntax highlighting, and
+  ERB-safe comment toggling
 
 ## Example
 
@@ -157,6 +158,13 @@ and only indent ERB blocks.
 `formatter.lineWidth` controls when long HTML tags are expanded one attribute
 per line.
 
+## Samples
+
+- `samples/sample.html.erb`: intentionally unformatted formatter demo.
+- `samples/stability.html.erb`: fixed stability fixture for formatter output.
+- `samples/formatter-audit.html.erb`: Rails-like formatter audit fixture.
+- `samples/lint-next.html.erb`: intentionally invalid lint fixture.
+
 ## VSCode
 
 This repository includes a thin VSCode extension scaffold in `editors/vscode`.
@@ -164,12 +172,19 @@ It registers `erbfmt` as a document formatter for `*.html.erb` files while
 keeping the formatter and lint engines in the Rust binary. The extension also
 invokes `erbfmt --lint` on open and save to publish diagnostics.
 
-For local extension development, point the wrapper at the checkout:
+For local extension development, build the binary first:
+
+```bash
+cargo build
+```
+
+When the extension runs from this checkout, it uses `target/debug/erbfmt` if the
+binary exists. You can also point the wrapper at another command:
 
 ```json
 {
-  "erbfmt.command": "cargo",
-  "erbfmt.arguments": ["run", "--quiet", "--"]
+  "erbfmt.command": "/absolute/path/to/erbfmt",
+  "erbfmt.arguments": []
 }
 ```
 
@@ -196,3 +211,5 @@ cargo run -- samples/sample.html.erb
 
 See [docs/Release.md](docs/Release.md) for local release verification.
 See [docs/Configuration.md](docs/Configuration.md) for formatter and linter configuration.
+See [docs/VSCode.md](docs/VSCode.md) for VSCode extension packaging and local
+install notes.
