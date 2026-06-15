@@ -38,6 +38,7 @@ Implemented:
 - `formatter.lineWidth` wrapping for long HTML and standalone ERB tags
 - VSCode ERB-safe `Ctrl+/` comment toggling
 - Focused formatter edge-case fixture coverage
+- Formatter idempotency tests for current samples
 
 Reference samples:
 
@@ -59,8 +60,9 @@ Known constraints:
 
 The Rust binary and the thin VSCode wrapper are usable for local pre-release
 development. Configuration, syntax diagnostics, syntax highlighting, local VSIX
-packaging, and ERB-safe comment toggling are in place. The next milestone
-should make formatter idempotency explicit before adding another wrapper.
+packaging, ERB-safe comment toggling, focused edge-case coverage, and sample
+idempotency tests are in place. The next milestone should plan binary
+distribution before adding another wrapper.
 
 ### Milestone 19
 
@@ -487,7 +489,7 @@ Result:
 
 Formatter Idempotency Pass
 
-Status: Next
+Status: Done
 
 Make formatter stability explicit across current samples before distribution
 wrapper planning.
@@ -505,6 +507,37 @@ Acceptance:
 - Current formatter fixtures are covered by idempotency tests.
 - Existing CLI, lint, and VSCode wrapper checks continue to pass.
 - The next roadmap direction is chosen from formatter stability evidence.
+
+Result:
+
+- Added formatter idempotency tests for `sample`, `stability`,
+  `formatter-audit`, and `formatter-edge-cases` fixtures.
+- Confirmed current formatter sample outputs are stable when formatted again.
+- Chose binary distribution planning as the next step before npm or Ruby
+  wrapper implementation.
+
+### Milestone 33
+
+Binary Distribution Strategy Pass
+
+Status: Next
+
+Decide how local users and editor wrappers should obtain the Rust `erbfmt`
+binary before implementing another wrapper.
+
+Target work:
+
+- Compare local `cargo install`, prebuilt binaries, npm wrapper download, Ruby
+  gem wrapper download, and VSCode bundled/downloaded binary options.
+- Keep the Rust binary as the only formatter engine.
+- Decide which distribution path should come first.
+- Document development-version behavior for unpublished binaries.
+
+Acceptance:
+
+- Roadmap documents the first binary distribution path and why.
+- Docs explain what remains local-only before public releases.
+- No wrapper implementation starts until the binary boundary is clear.
 
 ## Later
 

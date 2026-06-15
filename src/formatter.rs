@@ -799,6 +799,37 @@ mod tests {
         );
     }
 
+    #[test]
+    fn formatted_sample_fixture_is_idempotent() {
+        assert_format_is_idempotent(sample_fixture());
+    }
+
+    #[test]
+    fn formatted_stability_fixture_is_idempotent() {
+        assert_format_is_idempotent(stability_fixture());
+    }
+
+    #[test]
+    fn formatted_formatter_audit_fixture_is_idempotent() {
+        assert_format_is_idempotent(formatter_audit_fixture());
+    }
+
+    #[test]
+    fn formatted_formatter_edge_cases_fixture_is_idempotent() {
+        assert_format_is_idempotent(formatter_edge_cases_fixture());
+    }
+
+    fn assert_format_is_idempotent(input: &str) {
+        let once = format(input);
+        let twice = format(&once);
+
+        assert_eq!(twice, once);
+    }
+
+    fn sample_fixture() -> &'static str {
+        include_str!("../samples/sample.html.erb")
+    }
+
     fn stability_fixture() -> &'static str {
         "<!DOCTYPE html>\n<div class=\"page <%= page_class %>\">\n<!-- profile card -->\n<img src=\"<%= avatar_url %>\" alt=\"<%= user.name %>\">\n<input type=\"checkbox\" checked=\"<%= checked %>\">\n<% if user %>\n<section>\n<a href=\"/users/<%= user.id %>\"><%= user.name %></a>\n<br>\n<% unless notifications.empty? %>\n<ul>\n<% notifications.each do |notification| %>\n<li><%= notification.title %></li>\n<% end %>\n</ul>\n<% end %>\n</section>\n<% else %>\n<p>Please sign in</p>\n<% end %>\n</div>\n"
     }
