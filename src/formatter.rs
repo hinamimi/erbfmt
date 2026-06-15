@@ -160,17 +160,11 @@ impl Formatter {
 
         self.write_indented_line(depth, &format!("<{}", tag.name));
 
-        let last_index = tag.attributes.len() - 1;
-        for (index, attribute) in tag.attributes.iter().enumerate() {
-            if index == last_index {
-                self.write_indented_line(
-                    depth + 1,
-                    &format!("{}{}", attribute, tag.closing_suffix()),
-                );
-            } else {
-                self.write_indented_line(depth + 1, attribute);
-            }
+        for attribute in &tag.attributes {
+            self.write_indented_line(depth + 1, attribute);
         }
+
+        self.write_indented_line(depth, tag.closing_marker());
     }
 
     fn html_child_depth(&self, depth: usize) -> usize {
@@ -247,8 +241,8 @@ impl ParsedTag {
         })
     }
 
-    fn closing_suffix(&self) -> &'static str {
-        if self.self_closing { " />" } else { ">" }
+    fn closing_marker(&self) -> &'static str {
+        if self.self_closing { "/>" } else { ">" }
     }
 }
 
@@ -475,7 +469,7 @@ mod tests {
                     ..FormatOptions::default()
                 }
             ),
-            "<article\n  class=\"card\"\n  data-user-id=\"<%= user.id %>\"\n  aria-label=\"Current user profile\">\n  <p>Hello</p>\n</article>\n"
+            "<article\n  class=\"card\"\n  data-user-id=\"<%= user.id %>\"\n  aria-label=\"Current user profile\"\n>\n  <p>Hello</p>\n</article>\n"
         );
     }
 
@@ -489,7 +483,21 @@ mod tests {
                     ..FormatOptions::default()
                 }
             ),
-            "<img\n  src=\"<%= avatar_url %>\"\n  alt=\"<%= user.name %>\"\n  data-controller=\"avatar-preview\">\n"
+            "<img\n  src=\"<%= avatar_url %>\"\n  alt=\"<%= user.name %>\"\n  data-controller=\"avatar-preview\"\n>\n"
+        );
+    }
+
+    #[test]
+    fn wraps_long_self_closing_tags_with_marker_on_own_line() {
+        assert_eq!(
+            format_with_options(
+                r#"<custom-input name="profile[display_name]" value="<%= user.display_name %>" data-controller="autosave" />"#,
+                FormatOptions {
+                    line_width: 48,
+                    ..FormatOptions::default()
+                }
+            ),
+            "<custom-input\n  name=\"profile[display_name]\"\n  value=\"<%= user.display_name %>\"\n  data-controller=\"autosave\"\n/>\n"
         );
     }
 

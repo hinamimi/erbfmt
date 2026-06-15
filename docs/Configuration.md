@@ -44,7 +44,8 @@ option for the existing HTML indentation behavior.
 - `formatter.indentHtml`: indent nested HTML tags.
 - `formatter.lineEnding`: `lf` or `crlf`.
 - `formatter.lineWidth`: target line width. Opening, void, and self-closing
-  HTML tags that exceed this width are expanded one attribute per line.
+  HTML tags that exceed this width are expanded one attribute per line, with
+  the closing marker on its own line.
 - `formatter.trailingNewline`: keep or remove the final newline.
 
 ## Linter

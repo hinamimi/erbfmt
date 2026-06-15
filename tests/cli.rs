@@ -156,7 +156,7 @@ fn config_controls_formatter_line_width() {
     assert_success(&output);
     assert_eq!(
         stdout(&output),
-        "<article\n  class=\"card\"\n  data-user-id=\"<%= user.id %>\"\n  aria-label=\"Current user profile\">\n  <p>Hello</p>\n</article>\n"
+        "<article\n  class=\"card\"\n  data-user-id=\"<%= user.id %>\"\n  aria-label=\"Current user profile\"\n>\n  <p>Hello</p>\n</article>\n"
     );
     assert_eq!(stderr(&output), "");
 }

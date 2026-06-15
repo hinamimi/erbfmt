@@ -147,7 +147,7 @@ cargo run -- --check samples/sample.html.erb samples/lint-next.html.erb
 
 HTMLタグ階層によるインデントを無効にし、ERB制御構文だけをインデントしたい場合は `erbfmt.json` の `"indentHtml": false` を設定します。
 
-`formatter.lineWidth` は、長いHTMLタグを属性ごとに複数行へ展開する基準として使われます。
+`formatter.lineWidth` は、長いHTMLタグを属性ごとの複数行へ展開し、閉じマーカーを独立行にする基準として使われます。
 
 ## サンプル
 

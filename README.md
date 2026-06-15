@@ -156,7 +156,7 @@ Set `"indentHtml": false` in `erbfmt.json` to keep HTML indentation unchanged
 and only indent ERB blocks.
 
 `formatter.lineWidth` controls when long HTML tags are expanded one attribute
-per line.
+per line with the closing marker on its own line.
 
 ## Samples
 

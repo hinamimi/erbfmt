@@ -2,7 +2,8 @@
   class="profile-card profile-card--editable"
   data-controller="profile-form autosave"
   data-profile-form-user-id-value="<%= user.id %>"
-  aria-labelledby="profile-title">
+  aria-labelledby="profile-title"
+>
   <!-- form header -->
   <header>
     <h1 id="profile-title">Profile for <%= user.display_name %></h1>
@@ -12,7 +13,8 @@
     <div
       class="field field--wide"
       data-field-name="display_name"
-      aria-describedby="display-name-help">
+      aria-describedby="display-name-help"
+    >
       <label for="display_name">Display name</label>
       <%= form.text_field :display_name, value: user.display_name, class: "input" %>
       <p id="display-name-help">Visible as <%= user.display_name %></p>
