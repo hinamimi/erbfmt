@@ -12,6 +12,7 @@ Rust製 `erbfmt` binary を呼び出す薄いVSCode wrapperです。
 - open / save 時に `erbfmt --lint` を実行し、diagnostics を表示します。
 - 設定された `erbfmt` command を呼び出し、stdout を整形結果としてdocumentへ反映します。
 - `erbfmt: Show Command` で、解決されたcommand、cwd、config pathを確認できます。
+- `Ctrl+/` でERB向けの安全な行コメントtoggleを提供します。
 - 整形ロジックはRust binary側に保持します。
 
 ## ローカル開発
@@ -63,6 +64,13 @@ diagnostics を無効にする場合は `erbfmt.lint.enabled` を `false` に設
 
 整形やdiagnosticsで `ENOENT` や `EACCES` が出る場合は、`cargo build` を実行するか、
 `erbfmt` をinstallするか、`erbfmt.command` に実行可能な絶対pathを設定してください。
+
+## コメント
+
+`erb` と `html-erb` documentでは、`Ctrl+/` で行単位のコメントtoggleを行います。
+ERB tagは `<%# if user %>` や `<%#= user.name %>` のようなERBコメントにします。
+HTML fragmentはHTMLコメントにし、HTMLとERBが混ざる行ではERB codeがHTMLコメント内で
+実行されないように分割してコメント化します。
 
 ## TypeScript
 

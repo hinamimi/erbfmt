@@ -31,7 +31,8 @@
     "onLanguage:html-erb",
     "onCommand:erbfmt.formatDocument",
     "onCommand:erbfmt.lintDocument",
-    "onCommand:erbfmt.showCommand"
+    "onCommand:erbfmt.showCommand",
+    "onCommand:erbfmt.toggleComment"
   ],
   "main": "./out/extension.js",
   "contributes": {
@@ -73,6 +74,24 @@
       {
         "command": "erbfmt.showCommand",
         "title": "erbfmt: Show Command"
+      },
+      {
+        "command": "erbfmt.toggleComment",
+        "title": "erbfmt: Toggle Comment"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "erbfmt.toggleComment",
+        "key": "ctrl+/",
+        "mac": "cmd+/",
+        "when": "editorTextFocus && !editorReadonly && editorLangId == 'html-erb'"
+      },
+      {
+        "command": "erbfmt.toggleComment",
+        "key": "ctrl+/",
+        "mac": "cmd+/",
+        "when": "editorTextFocus && !editorReadonly && editorLangId == erb"
       }
     ],
     "configuration": {
@@ -118,7 +137,7 @@
     "format": "biome format --write .",
     "lint": "biome lint .",
     "package": "vsce package --no-dependencies",
-    "test": "npm run check && npm run compile && node test/smoke.test.js",
+    "test": "npm run check && npm run compile && node test/smoke.test.js && node test/comment.test.js",
     "test:host": "npm run compile && cargo build --manifest-path ../../Cargo.toml && node test/runTest.js",
     "vscode:prepublish": "npm run compile"
   },

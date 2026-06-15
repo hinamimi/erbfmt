@@ -16,6 +16,7 @@ assert(packageJson.scripts["test:host"].includes("test/runTest.js"));
 assert(packageJson.activationEvents.includes("onLanguage:erb"));
 assert(packageJson.activationEvents.includes("onLanguage:html-erb"));
 assert(packageJson.activationEvents.includes("onCommand:erbfmt.showCommand"));
+assert(packageJson.activationEvents.includes("onCommand:erbfmt.toggleComment"));
 assert(packageJson.contributes.languages.some((language) => language.id === "html-erb"));
 assert(packageJson.contributes.grammars.some((grammar) => grammar.language === "html-erb"));
 assert(
@@ -26,6 +27,17 @@ assert(
 );
 assert(
   packageJson.contributes.commands.some((command) => command.command === "erbfmt.showCommand"),
+);
+assert(
+  packageJson.contributes.commands.some((command) => command.command === "erbfmt.toggleComment"),
+);
+assert(
+  packageJson.contributes.keybindings.some(
+    (keybinding) =>
+      keybinding.command === "erbfmt.toggleComment" &&
+      keybinding.key === "ctrl+/" &&
+      keybinding.when.includes("editorLangId == 'html-erb'"),
+  ),
 );
 assert(packageJson.contributes.configuration.properties["erbfmt.command"]);
 assert(packageJson.contributes.configuration.properties["erbfmt.arguments"]);
@@ -42,5 +54,6 @@ assert(extensionSource.includes("fullDocumentRange"));
 assert(extensionSource.includes("childProcess.execFile"));
 assert(extensionSource.includes("createOutputChannel"));
 assert(extensionSource.includes("setupHint"));
+assert(extensionSource.includes("toggleErbCommentLine"));
 
 console.log("VSCode extension smoke test passed.");

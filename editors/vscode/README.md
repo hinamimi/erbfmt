@@ -13,6 +13,7 @@ Thin VSCode wrapper for the Rust `erbfmt` binary.
 - calls the configured `erbfmt` command and replaces the document with stdout.
 - provides `erbfmt: Show Command` to inspect the resolved command, cwd, and
   config path.
+- provides `Ctrl+/` comment toggling for ERB-safe line comments.
 - keeps formatting logic in the Rust binary.
 
 ## Local Development
@@ -66,6 +67,13 @@ Set `erbfmt.lint.enabled` to `false` to disable diagnostics.
 
 If formatting or diagnostics fail with `ENOENT` or `EACCES`, run `cargo build`,
 install `erbfmt`, or set `erbfmt.command` to an executable absolute path.
+
+## Comments
+
+For `erb` and `html-erb` documents, `Ctrl+/` toggles comments line by line.
+ERB tags become ERB comments such as `<%# if user %>` or `<%#= user.name %>`.
+HTML fragments become HTML comments, and lines that mix HTML with ERB split the
+two forms so commented ERB code is not executed inside an HTML comment.
 
 ## TypeScript
 

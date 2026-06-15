@@ -31,6 +31,7 @@ The extension:
   document.
 - provides `erbfmt: Show Command` to inspect the resolved command, cwd, and
   config path for the active document.
+- provides `Ctrl+/` comment toggling for ERB-safe line comments.
 - keeps all formatting behavior in the Rust binary.
 
 For local development, build the binary first:
@@ -57,6 +58,10 @@ Set `erbfmt.lint.enabled` to `false` to disable diagnostics.
 Use `erbfmt: Show Command` from the command palette when setup fails. If the
 extension reports `ENOENT` or `EACCES`, run `cargo build`, install `erbfmt`, or
 set `erbfmt.command` to an executable absolute path.
+
+The extension overrides `Ctrl+/` for `erb` and `html-erb` documents. ERB tags
+are toggled as ERB comments, HTML fragments as HTML comments, and mixed
+HTML/ERB lines are split so ERB code is not executed inside an HTML comment.
 
 ## Local Package
 

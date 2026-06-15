@@ -389,6 +389,35 @@ Result:
 
 ### Milestone 29
 
+VSCode ERB Comment Toggle Pass
+
+Status: Done
+
+Make `Ctrl+/` useful in `*.html.erb` files without accidentally executing ERB
+inside HTML comments.
+
+Target work:
+
+- Add a VSCode command for ERB-aware comment toggling.
+- Bind `Ctrl+/` / `Cmd+/` for `erb` and `html-erb` documents.
+- Toggle ERB tags with ERB comments and HTML fragments with HTML comments.
+- Keep mixed HTML/ERB lines safe by splitting comments around ERB tags.
+
+Acceptance:
+
+- ERB control tags toggle between `<% ... %>` and `<%# ... %>`.
+- ERB output tags toggle between `<%= ... %>` and `<%#= ... %>`.
+- HTML-only lines can be toggled and untoggled.
+- Mixed HTML/ERB lines do not leave executable ERB inside HTML comments.
+
+Result:
+
+- Added `erbfmt.toggleComment` and keybindings for `erb` and `html-erb`.
+- Added a pure comment transformation module with Node tests.
+- Documented the comment behavior in VSCode docs and extension README files.
+
+### Milestone 30
+
 Release Surface Audit
 
 Status: Next

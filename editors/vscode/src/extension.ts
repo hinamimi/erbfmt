@@ -4,6 +4,7 @@ import * as fs from "node:fs/promises";
 import * as os from "node:os";
 import * as path from "node:path";
 import * as vscode from "vscode";
+import { toggleErbCommentLine } from "./comment";
 
 const FORMATTER_SELECTOR: vscode.DocumentFilter[] = [
   { scheme: "file", language: "erb" },
@@ -93,6 +94,19 @@ export function activate(context: vscode.ExtensionContext): void {
         await vscode.window.showErrorMessage(errorMessage(error));
       }
     }),
+    vscode.commands.registerCommand("erbfmt.toggleComment", async () => {
+      const editor = vscode.window.activeTextEditor;
+      if (!editor) {
+        return;
+      }
+
+      if (!isSupportedDocument(editor.document)) {
+        await vscode.commands.executeCommand("editor.action.commentLine");
+        return;
+      }
+
+      await toggleEditorComment(editor);
+    }),
     vscode.workspace.onDidOpenTextDocument((document) => {
       void lintDocument(document, diagnostics, createNullToken());
     }),
@@ -110,6 +124,57 @@ export function activate(context: vscode.ExtensionContext): void {
 }
 
 export function deactivate(): void {}
+
+async function toggleEditorComment(editor: vscode.TextEditor): Promise<void> {
+  const ranges = selectedLineRanges(editor.document, editor.selections);
+
+  await editor.edit((edit) => {
+    for (const range of ranges) {
+      for (let line = range.start; line <= range.end; line += 1) {
+        const documentLine = editor.document.lineAt(line);
+        edit.replace(documentLine.range, toggleErbCommentLine(documentLine.text));
+      }
+    }
+  });
+}
+
+type SelectedLineRange = {
+  start: number;
+  end: number;
+};
+
+function selectedLineRanges(
+  document: vscode.TextDocument,
+  selections: readonly vscode.Selection[],
+): SelectedLineRange[] {
+  const ranges = selections
+    .map((selection) => {
+      const start = selection.start.line;
+      let end = selection.end.line;
+
+      if (!selection.isEmpty && selection.end.character === 0 && end > start) {
+        end -= 1;
+      }
+
+      return {
+        start: Math.max(0, Math.min(start, document.lineCount - 1)),
+        end: Math.max(0, Math.min(end, document.lineCount - 1)),
+      };
+    })
+    .sort((left, right) => left.start - right.start || left.end - right.end);
+
+  const merged: SelectedLineRange[] = [];
+  for (const range of ranges) {
+    const previous = merged.at(-1);
+    if (previous && range.start <= previous.end + 1) {
+      previous.end = Math.max(previous.end, range.end);
+    } else {
+      merged.push({ ...range });
+    }
+  }
+
+  return merged;
+}
 
 async function formatDocument(
   document: vscode.TextDocument,
