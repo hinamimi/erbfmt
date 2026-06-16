@@ -1,0 +1,74 @@
+name: Release Binaries
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build ${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            archive: tar.gz
+            binary: erbfmt
+          - os: macos-13
+            target: x86_64-apple-darwin
+            archive: tar.gz
+            binary: erbfmt
+          - os: macos-14
+            target: aarch64-apple-darwin
+            archive: tar.gz
+            binary: erbfmt
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            archive: zip
+            binary: erbfmt.exe
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust target
+        run: rustup target add ${{ matrix.target }}
+
+      - name: Build release binary
+        run: cargo build --release --locked --target ${{ matrix.target }}
+
+      - name: Package binary
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          version="$(awk -F '"' '/^version =/ { print $2; exit }' Cargo.toml)"
+          archive_base="erbfmt-${version}-${{ matrix.target }}"
+          package_dir="dist/${archive_base}"
+
+          mkdir -p "$package_dir"
+          cp "target/${{ matrix.target }}/release/${{ matrix.binary }}" "$package_dir/${{ matrix.binary }}"
+          cp LICENSE.txt "$package_dir/LICENSE.txt"
+          cp README.md "$package_dir/README.md"
+
+          if [[ "${{ matrix.archive }}" == "zip" ]]; then
+            (cd dist && 7z a -tzip "${archive_base}.zip" "$archive_base")
+            (cd dist && sha256sum "${archive_base}.zip" > "${archive_base}.zip.sha256")
+          else
+            (cd dist && tar -czf "${archive_base}.tar.gz" "$archive_base")
+            (cd dist && sha256sum "${archive_base}.tar.gz" > "${archive_base}.tar.gz.sha256")
+          fi
+
+      - name: Upload binary archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: erbfmt-${{ matrix.target }}
+          path: |
+            dist/*.tar.gz
+            dist/*.zip
+            dist/*.sha256
+          if-no-files-found: error

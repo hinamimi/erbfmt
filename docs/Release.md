@@ -55,6 +55,40 @@ This command is expected to exit with a failure status because
 manifest has no `repository` field. That warning is intentional until the
 canonical public repository URL is decided.
 
+## Binary Artifacts
+
+The first release binary platform matrix is:
+
+- `x86_64-unknown-linux-gnu`
+- `x86_64-apple-darwin`
+- `aarch64-apple-darwin`
+- `x86_64-pc-windows-msvc`
+
+Archive names should be:
+
+- `erbfmt-${version}-x86_64-unknown-linux-gnu.tar.gz`
+- `erbfmt-${version}-x86_64-apple-darwin.tar.gz`
+- `erbfmt-${version}-aarch64-apple-darwin.tar.gz`
+- `erbfmt-${version}-x86_64-pc-windows-msvc.zip`
+
+Each archive should have a sibling `.sha256` checksum file.
+
+Build a local archive for the current host platform:
+
+```bash
+scripts/package-binary.sh
+```
+
+Build a local archive for an explicit installed Rust target:
+
+```bash
+scripts/package-binary.sh x86_64-unknown-linux-gnu
+```
+
+The `Release Binaries` GitHub Actions workflow is manual-only
+(`workflow_dispatch`) and uploads binary archives as workflow artifacts. It does
+not publish a GitHub Release yet.
+
 ## Release Contents
 
 Keep these files in the release verification surface:
@@ -69,6 +103,8 @@ Keep these files in the release verification surface:
 - `README_ja.md`
 - `LICENSE.txt`
 - `docs/*.md`
+- `.github/workflows/*.yml`
+- `scripts/*.sh`
 - `erbfmt.json`
 - `docs/schema/erbfmt.schema.json`
 - `editors/vscode/package.json`

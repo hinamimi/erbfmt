@@ -52,8 +52,22 @@ Cons:
 - Requires a canonical repository URL.
 - Requires release automation and platform decisions.
 
-Initial target platforms should be decided when release automation begins. A
-reasonable first set is Linux x64, macOS arm64, macOS x64, and Windows x64.
+Initial target platforms:
+
+- `x86_64-unknown-linux-gnu`
+- `x86_64-apple-darwin`
+- `aarch64-apple-darwin`
+- `x86_64-pc-windows-msvc`
+
+Archive names:
+
+- `erbfmt-${version}-x86_64-unknown-linux-gnu.tar.gz`
+- `erbfmt-${version}-x86_64-apple-darwin.tar.gz`
+- `erbfmt-${version}-aarch64-apple-darwin.tar.gz`
+- `erbfmt-${version}-x86_64-pc-windows-msvc.zip`
+
+Each archive should have a sibling `.sha256` file. Public releases should use
+the same artifact names that the manual release-binary workflow produces.
 
 ### npm Wrapper
 

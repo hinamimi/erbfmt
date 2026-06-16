@@ -556,7 +556,7 @@ Result:
 
 Binary Release Automation Prep
 
-Status: Next
+Status: Done
 
 Prepare the repository for producing prebuilt CLI binaries without publishing
 them yet.
@@ -573,6 +573,41 @@ Acceptance:
 - Release docs describe the binary artifact names and platform matrix.
 - Local release build verification is documented or scripted.
 - Existing CLI, lint, formatter, and VSCode wrapper checks continue to pass.
+
+Result:
+
+- Decided the initial release matrix:
+  `x86_64-unknown-linux-gnu`, `x86_64-apple-darwin`,
+  `aarch64-apple-darwin`, and `x86_64-pc-windows-msvc`.
+- Documented archive names and sibling `.sha256` checksum files.
+- Added `scripts/package-binary.sh` for local host or explicit-target binary
+  archive creation.
+- Added a manual-only `Release Binaries` workflow that builds and uploads
+  artifacts without publishing a GitHub Release.
+
+### Milestone 35
+
+Repository Publication Prep
+
+Status: Next
+
+Prepare repository metadata for the first GitHub push.
+
+Target work:
+
+- Decide and document the canonical GitHub repository URL.
+- Add repository metadata to Rust and VSCode package manifests once the URL is
+  known.
+- Check README front matter, license, CI, and release docs for public
+  repository readiness.
+- Keep package publishing out of scope.
+
+Acceptance:
+
+- Repository metadata is consistent across manifests and docs.
+- VSCode packaging no longer has intentional missing-repository warnings, or
+  the remaining warning is explicitly deferred.
+- Existing CI and release-prep checks continue to pass.
 
 ## Later
 
