@@ -5,6 +5,11 @@
   "version": "0.0.0-dev",
   "publisher": "erbfmt",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/hinamimi/erbfmt.git",
+    "directory": "editors/vscode"
+  },
   "icon": "media/icon.png",
   "engines": {
     "vscode": "^1.85.0"

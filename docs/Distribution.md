@@ -6,7 +6,7 @@ gems, and editor extensions should stay thin wrappers around that binary.
 ## Decision
 
 The first public distribution path should be prebuilt `erbfmt` binaries attached
-to a release, after the canonical repository URL is decided.
+to a release in `https://github.com/hinamimi/erbfmt`.
 
 Local development remains:
 
@@ -49,7 +49,6 @@ Pros:
 
 Cons:
 
-- Requires a canonical repository URL.
 - Requires release automation and platform decisions.
 
 Initial target platforms:
@@ -106,6 +105,6 @@ Before public binary release:
 
 - choose a real semver version,
 - update `Cargo.toml` and wrapper manifests,
-- decide the canonical repository URL,
+- confirm the canonical repository URL,
 - build release binaries from the same Git revision,
 - verify `erbfmt --version` against the release version.

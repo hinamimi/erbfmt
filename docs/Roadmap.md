@@ -383,12 +383,11 @@ Result:
 - Added VSCode package metadata for icon, categories, keywords, and gallery
   banner.
 - Added a small runtime icon asset at `editors/vscode/media/icon.png`.
-- Kept `repository` metadata intentionally unset because this checkout has no
-  canonical git remote configured; `docs/VSCode.md` documents the remaining
-  `vsce package` warning.
+- Initially kept `repository` metadata unset until the canonical repository URL
+  was known. Milestone 35 later added the GitHub repository metadata.
 - Verified VSIX contents remain limited to runtime files.
-- Avoided README relative links until repository metadata can make them stable
-  in packaged marketplace views.
+- Avoided marketplace-specific README links until repository metadata could
+  make packaged views stable.
 
 ### Milestone 29
 
@@ -589,7 +588,7 @@ Result:
 
 Repository Publication Prep
 
-Status: Next
+Status: Done
 
 Prepare repository metadata for the first GitHub push.
 
@@ -608,6 +607,36 @@ Acceptance:
 - VSCode packaging no longer has intentional missing-repository warnings, or
   the remaining warning is explicitly deferred.
 - Existing CI and release-prep checks continue to pass.
+
+Result:
+
+- Chose `https://github.com/hinamimi/erbfmt` as the canonical repository URL
+  from the configured `origin` remote.
+- Added repository metadata to `Cargo.toml` and the VSCode extension manifest.
+- Updated VSCode, release, and distribution docs so missing repository metadata
+  is no longer treated as an intentional warning.
+- Kept package publishing out of scope.
+
+### Milestone 36
+
+First GitHub Push Verification
+
+Status: Next
+
+Verify the freshly published repository after the first push.
+
+Target work:
+
+- Confirm GitHub Actions run on `main`.
+- Inspect CI failures, if any, and fix repository-specific issues.
+- Confirm README, license, workflows, and docs render correctly on GitHub.
+- Keep package publishing and release publication out of scope.
+
+Acceptance:
+
+- GitHub CI status is known.
+- Any first-push CI issues are documented or fixed.
+- Repository landing page is readable enough for early contributors.
 
 ## Later
 

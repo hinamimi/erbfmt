@@ -51,9 +51,9 @@ cargo run --quiet -- --lint samples/lint-next.html.erb
 This command is expected to exit with a failure status because
 `samples/lint-next.html.erb` intentionally contains lint issues.
 
-`npm run package --prefix editors/vscode` may warn that the VSCode extension
-manifest has no `repository` field. That warning is intentional until the
-canonical public repository URL is decided.
+`npm run package --prefix editors/vscode` should package without repository
+metadata warnings once the canonical repository URL is set in the VSCode
+manifest.
 
 ## Binary Artifacts
 

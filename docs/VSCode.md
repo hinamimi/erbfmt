@@ -99,9 +99,9 @@ not bundle the Rust `erbfmt` binary yet.
 Binary bundling or download logic is deferred until prebuilt release binaries
 exist. See [Distribution.md](Distribution.md) for the current strategy.
 
-The package currently omits `repository` metadata because this checkout has no
-canonical git remote configured. The `vsce package` repository warning is
-intentional until the public repository URL is decided.
+The package repository metadata points at
+`https://github.com/hinamimi/erbfmt`, with `editors/vscode` as the extension
+directory.
 
 Run extension-host tests when you need to verify the wrapper through VSCode
 APIs:
@@ -145,7 +145,6 @@ The workspace recommends:
 
 The first-party VSCode extension still needs:
 
-- canonical `repository` metadata once the public repository URL is decided.
 - a binary distribution or download story for users who do not build erbfmt
   locally, based on the shared Rust binary release strategy.
 - clearer behavior when Ruby LSP is also installed.

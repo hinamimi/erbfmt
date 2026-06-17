@@ -2,7 +2,12 @@
 name = "erbfmt"
 version = "0.0.0-dev"
 edition = "2024"
+description = "Formatter and linter for HTML ERB templates."
 license = "MIT"
+readme = "README.md"
+repository = "https://github.com/hinamimi/erbfmt"
+keywords = ["erb", "formatter", "linter", "rails"]
+categories = ["development-tools"]
 
 [dependencies]
 anyhow = "1.0.102"
