@@ -122,7 +122,7 @@ GitHub に公開した直後の repository 状態を確認します。
 
 Release binary artifact verification
 
-Status: Next
+Status: Done
 
 manual `Release Binaries` workflow と `scripts/package-binary.sh` の出力を確認し、
 prebuilt binary 配布の土台を固めます。
@@ -146,11 +146,25 @@ prebuilt binary 配布の土台を固めます。
 - version bump
 - binary download logic
 
+結果:
+
+- `Release Binaries` workflow を手動実行し、Linux x64 と Windows x64 の
+  artifact が作成されることを確認した。
+- 成功した artifact 名は [Distribution.md](Distribution.md) の命名規則と一致していた。
+- Linux x64 と Windows x64 の `.sha256` は検証に成功した。
+- archive の中身は binary、`LICENSE.txt`、`README.md` で揃っていた。
+- macOS arm64 は package step で `sha256sum` がなく失敗したため、
+  workflow に `shasum -a 256` fallback を追加した。
+- `actions/upload-artifact` の Node.js 20 deprecation annotation に対応するため v5 に更新した。
+- macOS x64 は失敗原因が判明したあとに残りrunをキャンセルした。
+- `scripts/package-binary.sh` は現hostで成功した。
+- 修正後の workflow は次回 push 後に再度 `workflow_dispatch` で確認する。
+
 ## Milestone 38
 
 Formatter real-template audit pass
 
-Status: Planned
+Status: Next
 
 実際の Rails / ERB template で不自然になりやすい formatter behavior を追加で確認します。
 

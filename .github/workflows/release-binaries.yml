@@ -50,6 +50,20 @@ jobs:
           archive_base="erbfmt-${version}-${{ matrix.target }}"
           package_dir="dist/${archive_base}"
 
+          write_sha256() {
+            local file="$1"
+            local checksum_file="$2"
+            local base
+
+            base="$(basename "$file")"
+
+            if command -v sha256sum >/dev/null 2>&1; then
+              (cd "$(dirname "$file")" && sha256sum "$base" > "$(basename "$checksum_file")")
+            else
+              (cd "$(dirname "$file")" && shasum -a 256 "$base" > "$(basename "$checksum_file")")
+            fi
+          }
+
           mkdir -p "$package_dir"
           cp "target/${{ matrix.target }}/release/${{ matrix.binary }}" "$package_dir/${{ matrix.binary }}"
           cp LICENSE.txt "$package_dir/LICENSE.txt"
@@ -57,14 +71,14 @@ jobs:
 
           if [[ "${{ matrix.archive }}" == "zip" ]]; then
             (cd dist && 7z a -tzip "${archive_base}.zip" "$archive_base")
-            (cd dist && sha256sum "${archive_base}.zip" > "${archive_base}.zip.sha256")
+            write_sha256 "dist/${archive_base}.zip" "dist/${archive_base}.zip.sha256"
           else
             (cd dist && tar -czf "${archive_base}.tar.gz" "$archive_base")
-            (cd dist && sha256sum "${archive_base}.tar.gz" > "${archive_base}.tar.gz.sha256")
+            write_sha256 "dist/${archive_base}.tar.gz" "dist/${archive_base}.tar.gz.sha256"
           fi
 
       - name: Upload binary archive
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: erbfmt-${{ matrix.target }}
           path: |
