@@ -16,6 +16,16 @@ for HTML/TSX.
 
 ## Architecture Principles
 
+## Local Tooling
+
+- GitHub CLI (`gh`) is installed and logged in for this workspace.
+- Use `gh` when checking GitHub Actions state, for example:
+
+```bash
+gh run list --repo hinamimi/erbfmt --branch main --limit 10
+gh run view --repo hinamimi/erbfmt --log-failed
+```
+
 ### 1. Rust First
 
 The core implementation must remain Rust.
