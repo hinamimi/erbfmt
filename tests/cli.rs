@@ -192,6 +192,29 @@ fn lint_fails_for_html_rules() {
 }
 
 #[test]
+fn lint_fails_for_invalid_html_nesting() {
+    let dir = TestDir::new("lint_invalid_html_nesting");
+    let file = dir.write(
+        "input.html.erb",
+        "<ul>\n  <div>Bad</div>\n</ul>\n<p>\n  <div>Bad</div>\n</p>\n<table>\n  <tr><div>Bad</div></tr>\n</table>\n",
+    );
+
+    let output = run(["--lint".as_ref(), file.as_path()]);
+
+    assert_failure(&output);
+    assert_eq!(stdout(&output), "");
+    assert_eq!(
+        stderr(&output),
+        format!(
+            "{}: invalid HTML nesting: <ul> cannot have <div> as a direct child at line 2, column 3\n{}: invalid HTML nesting: <p> cannot contain <div> at line 5, column 3\n{}: invalid HTML nesting: <tr> cannot have <div> as a direct child at line 8, column 7\n",
+            file.display(),
+            file.display(),
+            file.display()
+        )
+    );
+}
+
+#[test]
 fn config_controls_formatter_indent_width() {
     let dir = TestDir::new("config_indent_width");
     let config = dir.write("erbfmt.json", r#"{"formatter":{"indentWidth":4}}"#);
@@ -357,6 +380,30 @@ fn config_can_disable_html_rules() {
         r#"{"linter":{"rules":{"noDeprecatedHtmlTag":"off","noSelfClosingHtmlTag":"off"}}}"#,
     );
     let file = dir.write("input.html.erb", "<center><div /></center>\n");
+
+    let output = run([
+        "--lint".as_ref(),
+        "--config".as_ref(),
+        config.as_path(),
+        file.as_path(),
+    ]);
+
+    assert_success(&output);
+    assert_eq!(
+        stdout(&output),
+        format!("{}: no lint issues found.\n", file.display())
+    );
+    assert_eq!(stderr(&output), "");
+}
+
+#[test]
+fn config_can_disable_invalid_html_nesting_rule() {
+    let dir = TestDir::new("config_invalid_html_nesting_disabled");
+    let config = dir.write(
+        "erbfmt.json",
+        r#"{"linter":{"rules":{"noInvalidHtmlNesting":"off"}}}"#,
+    );
+    let file = dir.write("input.html.erb", "<ul><div>Bad</div></ul>\n");
 
     let output = run([
         "--lint".as_ref(),

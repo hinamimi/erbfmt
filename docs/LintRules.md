@@ -105,6 +105,77 @@ config:
 }
 ```
 
+### `noInvalidHtmlNesting`
+
+HTML content model に反する代表的な親子関係を検出します。
+
+対象例:
+
+```erb
+<ul>
+  <div>Bad</div>
+</ul>
+
+<table>
+  <tr><div>Bad</div></tr>
+</table>
+
+<p>
+  <div>Bad</div>
+</p>
+```
+
+message:
+
+```text
+invalid HTML nesting: <ul> cannot have <div> as a direct child
+invalid HTML nesting: <tr> cannot have <div> as a direct child
+invalid HTML nesting: <p> cannot contain <div>
+```
+
+range:
+
+- 問題のある子HTML tag、またはtextの開始位置
+
+現在検出するもの:
+
+- `ul`, `ol`, `menu` 直下の `li`, `script`, `template` 以外の要素または非空text
+- `table` 直下の `caption`, `colgroup`, `thead`, `tbody`, `tfoot`, `tr`, `script`,
+  `template` 以外の要素または非空text
+- `thead`, `tbody`, `tfoot` 直下の `tr`, `script`, `template` 以外の要素または非空text
+- `tr` 直下の `td`, `th`, `script`, `template` 以外の要素または非空text
+- `colgroup` 直下の `col`, `template` 以外の要素または非空text
+- `p` 内の代表的な non-phrasing HTML tag
+
+ERB block はHTMLの親子関係を壊さないtransparentな構造として扱います。
+たとえば次は許可します。
+
+```erb
+<ul>
+  <% items.each do |item| %>
+    <li><%= item.name %></li>
+  <% end %>
+</ul>
+```
+
+理由:
+
+- Rails / ERB templateで起きやすいHTML構造の崩れを早く見つけられる。
+- Ruby AST parsing や Rails semantic analysis なしで検出できる。
+- HTML parserの全面実装に入る前の、保守的なcontent model lintとして扱える。
+
+config:
+
+```json
+{
+  "linter": {
+    "rules": {
+      "noInvalidHtmlNesting": "error"
+    }
+  }
+}
+```
+
 ### `emptyErbControlBlock`
 
 空のERB control blockを検出します。
@@ -241,9 +312,9 @@ config:
 
 候補:
 
-- void HTML element の明示的な close tag 検出
 - HTML attribute duplicate detection
 - boolean attribute normalization warning
+- より広いHTML content model validation
 
 いずれも HTML-only rule として実装し、Ruby codeやERB control-flowには踏み込みません。
 

@@ -62,6 +62,9 @@
             "noDeprecatedHtmlTag": {
               "enum": ["off", "warn", "error"]
             },
+            "noInvalidHtmlNesting": {
+              "enum": ["off", "warn", "error"]
+            },
             "noSelfClosingHtmlTag": {
               "enum": ["off", "warn", "error"]
             },

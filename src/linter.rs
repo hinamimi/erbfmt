@@ -55,6 +55,7 @@ pub struct LintRules {
     pub empty_erb_code_tag: bool,
     pub empty_erb_control_block: bool,
     pub no_deprecated_html_tag: bool,
+    pub no_invalid_html_nesting: bool,
     pub no_self_closing_html_tag: bool,
     pub unsupported_erb_block_starter: bool,
 }
@@ -66,6 +67,7 @@ impl Default for LintRules {
             empty_erb_code_tag: true,
             empty_erb_control_block: true,
             no_deprecated_html_tag: true,
+            no_invalid_html_nesting: true,
             no_self_closing_html_tag: true,
             unsupported_erb_block_starter: true,
         }
@@ -111,13 +113,19 @@ struct ErbBranchLintFrame {
     has_meaningful_content: bool,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct HtmlElementLintFrame {
+    name: String,
+}
+
 fn lint_tokens(
     input: &str,
     tokens: &[lexer::SpannedToken],
     options: LintOptions,
 ) -> Vec<Diagnostic> {
     let mut diagnostics = Vec::new();
-    let mut stack: Vec<ErbBlockLintFrame> = Vec::new();
+    let mut erb_stack: Vec<ErbBlockLintFrame> = Vec::new();
+    let mut html_stack: Vec<HtmlElementLintFrame> = Vec::new();
 
     for spanned in tokens {
         match &spanned.token {
@@ -127,12 +135,13 @@ fn lint_tokens(
                     input,
                     spanned.span.start,
                     &html_tokens,
+                    &mut html_stack,
                     options,
                     &mut diagnostics,
                 );
 
                 if html_tokens_have_meaningful_content(&html_tokens) {
-                    mark_current_block_meaningful(&mut stack);
+                    mark_current_block_meaningful(&mut erb_stack);
                 }
             }
             lexer::Token::ErbCode(code) => {
@@ -145,7 +154,7 @@ fn lint_tokens(
                 );
                 lint_erb_code(code, spanned.span.location, options, &mut diagnostics);
                 if !code.trim().is_empty() {
-                    mark_current_block_meaningful(&mut stack);
+                    mark_current_block_meaningful(&mut erb_stack);
                 }
             }
             lexer::Token::ErbOutput(code) => {
@@ -157,12 +166,12 @@ fn lint_tokens(
                     &mut diagnostics,
                 );
                 if !code.trim().is_empty() {
-                    mark_current_block_meaningful(&mut stack);
+                    mark_current_block_meaningful(&mut erb_stack);
                 }
             }
             lexer::Token::ErbBlockStart { code, output, .. } => {
-                mark_current_block_meaningful(&mut stack);
-                stack.push(ErbBlockLintFrame {
+                mark_current_block_meaningful(&mut erb_stack);
+                erb_stack.push(ErbBlockLintFrame {
                     code: code.clone(),
                     output: *output,
                     location: spanned.span.location,
@@ -171,7 +180,7 @@ fn lint_tokens(
                 });
             }
             lexer::Token::ErbBranch { code, .. } => {
-                if let Some(frame) = stack.last_mut() {
+                if let Some(frame) = erb_stack.last_mut() {
                     finish_active_branch(frame, options, &mut diagnostics);
                     frame.active_branch = Some(ErbBranchLintFrame {
                         code: code.clone(),
@@ -181,7 +190,7 @@ fn lint_tokens(
                 }
             }
             lexer::Token::ErbBlockEnd(_) => {
-                let Some(mut frame) = stack.pop() else {
+                let Some(mut frame) = erb_stack.pop() else {
                     continue;
                 };
 
@@ -246,12 +255,44 @@ fn lint_html_tokens(
     input: &str,
     fragment_start: usize,
     tokens: &[html::SpannedHtmlToken],
+    stack: &mut Vec<HtmlElementLintFrame>,
     options: LintOptions,
     diagnostics: &mut Vec<Diagnostic>,
 ) {
     for spanned in tokens {
         match &spanned.token {
-            HtmlToken::OpenTag(tag) | HtmlToken::VoidTag(tag) => {
+            HtmlToken::OpenTag(tag) => {
+                lint_html_content_model(
+                    input,
+                    fragment_start,
+                    spanned.span.start,
+                    tag,
+                    stack,
+                    options,
+                    diagnostics,
+                );
+                lint_deprecated_html_tag(
+                    input,
+                    fragment_start,
+                    spanned.span.start,
+                    tag,
+                    options,
+                    diagnostics,
+                );
+                stack.push(HtmlElementLintFrame {
+                    name: tag.name.clone(),
+                });
+            }
+            HtmlToken::VoidTag(tag) => {
+                lint_html_content_model(
+                    input,
+                    fragment_start,
+                    spanned.span.start,
+                    tag,
+                    stack,
+                    options,
+                    diagnostics,
+                );
                 lint_deprecated_html_tag(
                     input,
                     fragment_start,
@@ -262,6 +303,15 @@ fn lint_html_tokens(
                 );
             }
             HtmlToken::SelfClosingTag(tag) => {
+                lint_html_content_model(
+                    input,
+                    fragment_start,
+                    spanned.span.start,
+                    tag,
+                    stack,
+                    options,
+                    diagnostics,
+                );
                 lint_self_closing_html_tag(
                     input,
                     fragment_start,
@@ -279,12 +329,209 @@ fn lint_html_tokens(
                     diagnostics,
                 );
             }
-            HtmlToken::Text(_)
-            | HtmlToken::CloseTag(_)
-            | HtmlToken::Comment(_)
-            | HtmlToken::Doctype(_) => {}
+            HtmlToken::CloseTag(tag) => close_html_lint_frame(stack, &tag.name),
+            HtmlToken::Text(text) => {
+                lint_html_text_content_model(
+                    input,
+                    fragment_start,
+                    spanned.span.start,
+                    text,
+                    stack,
+                    options,
+                    diagnostics,
+                );
+            }
+            HtmlToken::Comment(_) | HtmlToken::Doctype(_) => {}
         }
     }
+}
+
+fn close_html_lint_frame(stack: &mut Vec<HtmlElementLintFrame>, name: &str) {
+    let Some(frame) = stack.pop() else {
+        return;
+    };
+
+    if !frame.name.eq_ignore_ascii_case(name) {
+        stack.push(frame);
+    }
+}
+
+fn lint_html_content_model(
+    input: &str,
+    fragment_start: usize,
+    html_token_start: usize,
+    tag: &html::HtmlTag,
+    stack: &[HtmlElementLintFrame],
+    options: LintOptions,
+    diagnostics: &mut Vec<Diagnostic>,
+) {
+    if !options.rules.no_invalid_html_nesting {
+        return;
+    }
+
+    let Some(parent) = stack.last() else {
+        return;
+    };
+
+    let parent_name = parent.name.to_ascii_lowercase();
+    let child_name = tag.name.to_ascii_lowercase();
+    let Some(message) = invalid_html_child_message(&parent_name, &child_name) else {
+        return;
+    };
+
+    diagnostics.push(Diagnostic::located(
+        message,
+        lexer::source_location(input, fragment_start + html_token_start),
+    ));
+}
+
+fn lint_html_text_content_model(
+    input: &str,
+    fragment_start: usize,
+    html_token_start: usize,
+    text: &str,
+    stack: &[HtmlElementLintFrame],
+    options: LintOptions,
+    diagnostics: &mut Vec<Diagnostic>,
+) {
+    if !options.rules.no_invalid_html_nesting || text.trim().is_empty() {
+        return;
+    }
+
+    let Some(parent) = stack.last() else {
+        return;
+    };
+
+    let parent_name = parent.name.to_ascii_lowercase();
+
+    if !matches!(
+        parent_name.as_str(),
+        "ul" | "ol" | "menu" | "table" | "thead" | "tbody" | "tfoot" | "tr" | "colgroup"
+    ) {
+        return;
+    }
+
+    diagnostics.push(Diagnostic::located(
+        format!("invalid HTML nesting: <{parent_name}> cannot have text as a direct child"),
+        lexer::source_location(
+            input,
+            fragment_start + html_token_start + first_non_whitespace_offset(text),
+        ),
+    ));
+}
+
+fn invalid_html_child_message(parent: &str, child: &str) -> Option<String> {
+    if parent == "p" && !is_phrasing_html_tag(child) {
+        return Some(format!(
+            "invalid HTML nesting: <p> cannot contain <{child}>"
+        ));
+    }
+
+    if matches!(parent, "ul" | "ol" | "menu") && !matches!(child, "li" | "script" | "template") {
+        return Some(format!(
+            "invalid HTML nesting: <{parent}> cannot have <{child}> as a direct child"
+        ));
+    }
+
+    if parent == "table"
+        && !matches!(
+            child,
+            "caption" | "colgroup" | "thead" | "tbody" | "tfoot" | "tr" | "script" | "template"
+        )
+    {
+        return Some(format!(
+            "invalid HTML nesting: <table> cannot have <{child}> as a direct child"
+        ));
+    }
+
+    if matches!(parent, "thead" | "tbody" | "tfoot")
+        && !matches!(child, "tr" | "script" | "template")
+    {
+        return Some(format!(
+            "invalid HTML nesting: <{parent}> cannot have <{child}> as a direct child"
+        ));
+    }
+
+    if parent == "tr" && !matches!(child, "td" | "th" | "script" | "template") {
+        return Some(format!(
+            "invalid HTML nesting: <tr> cannot have <{child}> as a direct child"
+        ));
+    }
+
+    if parent == "colgroup" && !matches!(child, "col" | "template") {
+        return Some(format!(
+            "invalid HTML nesting: <colgroup> cannot have <{child}> as a direct child"
+        ));
+    }
+
+    None
+}
+
+fn is_phrasing_html_tag(name: &str) -> bool {
+    matches!(
+        name,
+        "a" | "abbr"
+            | "area"
+            | "audio"
+            | "b"
+            | "bdi"
+            | "bdo"
+            | "br"
+            | "button"
+            | "canvas"
+            | "cite"
+            | "code"
+            | "data"
+            | "datalist"
+            | "del"
+            | "dfn"
+            | "em"
+            | "embed"
+            | "i"
+            | "iframe"
+            | "img"
+            | "input"
+            | "ins"
+            | "kbd"
+            | "label"
+            | "link"
+            | "map"
+            | "mark"
+            | "math"
+            | "meta"
+            | "meter"
+            | "noscript"
+            | "object"
+            | "output"
+            | "picture"
+            | "progress"
+            | "q"
+            | "ruby"
+            | "s"
+            | "samp"
+            | "script"
+            | "select"
+            | "slot"
+            | "small"
+            | "span"
+            | "strong"
+            | "sub"
+            | "sup"
+            | "svg"
+            | "template"
+            | "textarea"
+            | "time"
+            | "u"
+            | "var"
+            | "video"
+            | "wbr"
+    )
+}
+
+fn first_non_whitespace_offset(text: &str) -> usize {
+    text.char_indices()
+        .find_map(|(index, ch)| (!ch.is_whitespace()).then_some(index))
+        .unwrap_or(0)
 }
 
 fn lint_self_closing_html_tag(
@@ -527,6 +774,77 @@ mod tests {
     }
 
     #[test]
+    fn reports_invalid_list_children() {
+        let diagnostics = lint(
+            "<ul>\n  <div>Bad</div>\n  <% items.each do |item| %>\n    <li><%= item.name %></li>\n  <% end %>\n</ul>\n<ol>\n  Text\n</ol>\n",
+        );
+
+        assert_eq!(
+            diagnostics,
+            vec![
+                Diagnostic::located(
+                    "invalid HTML nesting: <ul> cannot have <div> as a direct child",
+                    SourceLocation { line: 2, column: 3 }
+                ),
+                Diagnostic::located(
+                    "invalid HTML nesting: <ol> cannot have text as a direct child",
+                    SourceLocation { line: 8, column: 3 }
+                )
+            ]
+        );
+    }
+
+    #[test]
+    fn reports_invalid_table_structure() {
+        let diagnostics = lint(
+            "<table>\n  <div>Bad</div>\n  <thead><td>Bad</td></thead>\n  <tr><div>Bad</div></tr>\n</table>\n",
+        );
+
+        assert_eq!(
+            diagnostics,
+            vec![
+                Diagnostic::located(
+                    "invalid HTML nesting: <table> cannot have <div> as a direct child",
+                    SourceLocation { line: 2, column: 3 }
+                ),
+                Diagnostic::located(
+                    "invalid HTML nesting: <thead> cannot have <td> as a direct child",
+                    SourceLocation {
+                        line: 3,
+                        column: 10
+                    }
+                ),
+                Diagnostic::located(
+                    "invalid HTML nesting: <tr> cannot have <div> as a direct child",
+                    SourceLocation { line: 4, column: 7 }
+                )
+            ]
+        );
+    }
+
+    #[test]
+    fn reports_block_html_inside_paragraphs() {
+        let diagnostics = lint("<p>\n  <span>OK</span>\n  <div>Bad</div>\n</p>\n");
+
+        assert_eq!(
+            diagnostics,
+            vec![Diagnostic::located(
+                "invalid HTML nesting: <p> cannot contain <div>",
+                SourceLocation { line: 3, column: 3 }
+            )]
+        );
+    }
+
+    #[test]
+    fn does_not_report_valid_list_and_table_structure() {
+        let diagnostics = lint(
+            "<ul>\n  <% items.each do |item| %>\n    <li><%= item.name %></li>\n  <% end %>\n</ul>\n<table>\n  <thead><tr><th>Name</th></tr></thead>\n  <tbody><tr><td>A</td></tr></tbody>\n</table>\n<p><span>OK</span><a href=\"#\">Link</a></p>\n",
+        );
+
+        assert_eq!(diagnostics, Vec::new());
+    }
+
+    #[test]
     fn reports_html_rule_locations_after_erb_tags() {
         let diagnostics = lint("<% if user %>\n  <center>Legacy</center>\n<% end %>\n");
 
@@ -684,6 +1002,22 @@ mod tests {
                 rules: LintRules {
                     no_deprecated_html_tag: false,
                     no_self_closing_html_tag: false,
+                    ..LintRules::default()
+                },
+                ..LintOptions::default()
+            },
+        );
+
+        assert_eq!(diagnostics, Vec::new());
+    }
+
+    #[test]
+    fn respects_disabled_invalid_html_nesting_rule() {
+        let diagnostics = lint_with_options(
+            "<ul><div>Bad</div></ul>\n<p><div>Bad</div></p>\n",
+            LintOptions {
+                rules: LintRules {
+                    no_invalid_html_nesting: false,
                     ..LintRules::default()
                 },
                 ..LintOptions::default()

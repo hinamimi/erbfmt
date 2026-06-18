@@ -17,6 +17,7 @@
       "emptyErbCodeTag": "error",
       "emptyErbControlBlock": "error",
       "noDeprecatedHtmlTag": "error",
+      "noInvalidHtmlNesting": "error",
       "noSelfClosingHtmlTag": "error",
       "unsupportedErbBlockStarter": "error"
     }

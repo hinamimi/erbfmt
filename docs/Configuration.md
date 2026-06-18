@@ -32,6 +32,7 @@ option for the existing HTML indentation behavior.
       "emptyErbCodeTag": "error",
       "emptyErbControlBlock": "error",
       "noDeprecatedHtmlTag": "error",
+      "noInvalidHtmlNesting": "error",
       "noSelfClosingHtmlTag": "error",
       "unsupportedErbBlockStarter": "error"
     }
@@ -63,6 +64,7 @@ option for the existing HTML indentation behavior.
 - `linter.rules.emptyErbCodeTag`: `error`, `warn`, or `off`.
 - `linter.rules.emptyErbControlBlock`: `error`, `warn`, or `off`.
 - `linter.rules.noDeprecatedHtmlTag`: `error`, `warn`, or `off`.
+- `linter.rules.noInvalidHtmlNesting`: `error`, `warn`, or `off`.
 - `linter.rules.noSelfClosingHtmlTag`: `error`, `warn`, or `off`.
 - `linter.rules.unsupportedErbBlockStarter`: `error`, `warn`, or `off`.
 
