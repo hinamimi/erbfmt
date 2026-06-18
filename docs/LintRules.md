@@ -330,17 +330,17 @@ config:
 <div><span>Hello</div>
 ```
 
-現状のmessage:
+現在のmessage:
 
 ```text
-mismatched HTML close tag `</div>`, expected closing tag for `span`, found `div`
+mismatched HTML close tag `</div>`, expected `</span>`
 ```
 
-今後の改善:
+location:
 
-- close tag側のline / columnをより安定して出す。
-- messageをVSCode上で読んだときに短くする。
-- `unexpected close`, `mismatched close`, `unclosed open` のmessageを揃える。
+- `unexpected close`: unexpected close tag 側
+- `mismatched close`: mismatched close tag 側
+- `unclosed open`: unclosed open tag 側
 
 これは構文診断であり、通常のlint ruleとして `off` にできるものではありません。
 
@@ -356,7 +356,8 @@ mismatched HTML close tag `</div>`, expected closing tag for `span`, found `div`
 
 ## 実装順
 
-1. HTML nesting diagnostics のmessage / location改善
-2. `unsupportedErbBlockStarter` message refinement
+1. `unsupportedErbBlockStarter` message refinement
+2. HTML attribute duplicate detection
+3. boolean attribute normalization warning
 
 severity plumbingやautocorrectは後回しにします。

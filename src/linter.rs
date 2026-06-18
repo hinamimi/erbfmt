@@ -696,7 +696,7 @@ mod tests {
         assert_eq!(
             diagnostics,
             vec![Diagnostic::new(
-                "mismatched HTML close tag `</div>`, expected closing tag for `span`, found `div`"
+                "mismatched HTML close tag `</div>`, expected `</span>` at line 1, column 17"
             )]
         );
     }

@@ -488,7 +488,7 @@ Status: Done
 
 HTML diagnostics location / message refinement
 
-Status: Next
+Status: Done
 
 HTML nesting diagnostics を VSCode diagnostics と CLI の両方で読みやすくします。
 
@@ -511,6 +511,41 @@ HTML nesting diagnostics を VSCode diagnostics と CLI の両方で読みやす
 - HTML parser の全面rewrite
 - autocorrect
 - HTML linter rule化
+
+結果:
+
+- `parse_spanned` が HTML fragment 内の tag span を使ってHTML parse errorのline/columnを出せるようにした。
+- unexpected close と mismatched close は問題のあるclose tag側にdiagnosticを置く方針にした。
+- unclosed open は閉じられなかったopen tag側にdiagnosticを置く方針にした。
+- mismatched close のmessageを `expected closing tag for ... found ...` から `expected </...>` に短縮した。
+- HTML parse error のCLI integration testを追加した。
+- [LintRules.md](LintRules.md) のHTML diagnostics説明を更新した。
+
+## Milestone 47
+
+`unsupportedErbBlockStarter` message refinement
+
+Status: Next
+
+MVPでまだsupportしないERB block starterのmessageを、VSCode上で読みやすくします。
+
+やること:
+
+- `while`, `for`, `until` のunsupported messageを短く整理する。
+- docs側にsupport済みblock starter一覧を置く。
+- rule docsとCLI testを更新する。
+
+完了条件:
+
+- unsupported block starterのdiagnosticが短く分かりやすい。
+- support済み / 未対応の境界がdocsで確認できる。
+- 既存 formatter behavior に影響しない。
+
+範囲外:
+
+- Ruby AST parsing
+- `while`, `for`, `until` のformatter support
+- autocorrect
 
 ## 後で考えること
 

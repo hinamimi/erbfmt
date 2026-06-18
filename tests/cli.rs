@@ -457,6 +457,60 @@ fn lint_parser_errors_include_line_and_column() {
 }
 
 #[test]
+fn lint_unexpected_html_close_errors_include_close_tag_location() {
+    let dir = TestDir::new("lint_unexpected_html_close_location");
+    let file = dir.write("input.html.erb", "<p>Hello</p>\n</div>\n");
+
+    let output = run(["--lint".as_ref(), file.as_path()]);
+
+    assert_failure(&output);
+    assert_eq!(stdout(&output), "");
+    assert_eq!(
+        stderr(&output),
+        format!(
+            "{}: unexpected HTML close tag `</div>` at line 2, column 1\n",
+            file.display()
+        )
+    );
+}
+
+#[test]
+fn lint_mismatched_html_close_errors_include_close_tag_location() {
+    let dir = TestDir::new("lint_mismatched_html_close_location");
+    let file = dir.write("input.html.erb", "<div>\n  <span>Hello</div>\n");
+
+    let output = run(["--lint".as_ref(), file.as_path()]);
+
+    assert_failure(&output);
+    assert_eq!(stdout(&output), "");
+    assert_eq!(
+        stderr(&output),
+        format!(
+            "{}: mismatched HTML close tag `</div>`, expected `</span>` at line 2, column 14\n",
+            file.display()
+        )
+    );
+}
+
+#[test]
+fn lint_unclosed_html_tag_errors_include_open_tag_location() {
+    let dir = TestDir::new("lint_unclosed_html_location");
+    let file = dir.write("input.html.erb", "<div>\n  <p>Hello</p>\n");
+
+    let output = run(["--lint".as_ref(), file.as_path()]);
+
+    assert_failure(&output);
+    assert_eq!(stdout(&output), "");
+    assert_eq!(
+        stderr(&output),
+        format!(
+            "{}: unclosed HTML tag `<div>` at line 1, column 1\n",
+            file.display()
+        )
+    );
+}
+
+#[test]
 fn lint_rule_diagnostics_include_line_and_column() {
     let dir = TestDir::new("lint_rule_location");
     let file = dir.write(

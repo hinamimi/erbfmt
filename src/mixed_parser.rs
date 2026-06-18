@@ -2,7 +2,7 @@ use std::fmt;
 
 use crate::{
     html::{self, HtmlTag, HtmlToken},
-    lexer::{ErbBlockKind, ErbBranchKind, SourceLocation, SpannedToken, Token},
+    lexer::{self, ErbBlockKind, ErbBranchKind, SourceLocation, SpannedToken, Token},
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -64,15 +64,18 @@ pub enum ParseError {
     UnexpectedHtmlCloseTag {
         name: String,
         raw: String,
+        location: Option<SourceLocation>,
     },
     MismatchedHtmlCloseTag {
         expected: String,
         found: String,
         raw: String,
+        location: Option<SourceLocation>,
     },
     UnclosedHtmlTag {
         name: String,
         raw: String,
+        location: Option<SourceLocation>,
     },
 }
 
@@ -94,14 +97,10 @@ impl fmt::Display for ParseError {
             Self::UnexpectedHtmlCloseTag { raw, .. } => {
                 write!(f, "unexpected HTML close tag `{raw}`")
             }
-            Self::MismatchedHtmlCloseTag {
-                expected,
-                found,
-                raw,
-            } => {
+            Self::MismatchedHtmlCloseTag { expected, raw, .. } => {
                 write!(
                     f,
-                    "mismatched HTML close tag `{raw}`, expected closing tag for `{expected}`, found `{found}`"
+                    "mismatched HTML close tag `{raw}`, expected `</{expected}>`"
                 )
             }
             Self::UnclosedHtmlTag { raw, .. } => write!(f, "unclosed HTML tag `{raw}`"),
@@ -153,8 +152,20 @@ impl ParseError {
             | Self::UnclosedHtmlTag { .. } => None,
         }
     }
+
+    fn html_location(&self) -> Option<SourceLocation> {
+        match self {
+            Self::UnexpectedHtmlCloseTag { location, .. }
+            | Self::MismatchedHtmlCloseTag { location, .. }
+            | Self::UnclosedHtmlTag { location, .. } => *location,
+            Self::UnexpectedErbBlockEnd { .. }
+            | Self::UnexpectedErbBranch { .. }
+            | Self::UnclosedErbBlock { .. } => None,
+        }
+    }
 }
 
+#[allow(dead_code)]
 pub fn parse(tokens: &[Token]) -> Result<Document, ParseError> {
     let mut parser = Parser {
         stack: vec![Frame::root()],
@@ -168,19 +179,50 @@ pub fn parse(tokens: &[Token]) -> Result<Document, ParseError> {
 }
 
 pub fn parse_spanned(tokens: &[SpannedToken]) -> Result<Document, LocatedParseError> {
-    let plain_tokens = tokens
-        .iter()
-        .map(|spanned| spanned.token.clone())
-        .collect::<Vec<_>>();
+    let mut parser = Parser {
+        stack: vec![Frame::root()],
+    };
 
-    parse(&plain_tokens).map_err(|error| {
-        let location = error
+    for (token_index, spanned) in tokens.iter().enumerate() {
+        parser
+            .parse_spanned_token(token_index, spanned)
+            .map_err(|error| located_parse_error(error, tokens))?;
+    }
+
+    parser
+        .finish()
+        .map_err(|error| located_parse_error(error, tokens))
+}
+
+fn located_parse_error(error: ParseError, tokens: &[SpannedToken]) -> LocatedParseError {
+    let location = error.html_location().or_else(|| {
+        error
             .token_index()
             .and_then(|token_index| tokens.get(token_index))
-            .map(|spanned| spanned.span.location);
+            .map(|spanned| spanned.span.location)
+    });
 
-        LocatedParseError { error, location }
-    })
+    LocatedParseError { error, location }
+}
+
+fn relative_source_location(
+    base: SourceLocation,
+    fragment: &str,
+    position: usize,
+) -> SourceLocation {
+    let relative = lexer::source_location(fragment, position);
+
+    if relative.line == 1 {
+        SourceLocation {
+            line: base.line,
+            column: base.column + relative.column - 1,
+        }
+    } else {
+        SourceLocation {
+            line: base.line + relative.line - 1,
+            column: relative.column,
+        }
+    }
 }
 
 struct Parser {
@@ -209,12 +251,25 @@ impl Parser {
         }
     }
 
+    fn parse_spanned_token(
+        &mut self,
+        token_index: usize,
+        spanned: &SpannedToken,
+    ) -> Result<(), ParseError> {
+        match &spanned.token {
+            Token::Html(fragment) => {
+                self.parse_spanned_html_fragment(fragment, spanned.span.location)
+            }
+            token => self.parse_token(token_index, token),
+        }
+    }
+
     fn parse_html_fragment(&mut self, fragment: &str) -> Result<(), ParseError> {
         for token in html::tokenize(fragment) {
             match token {
                 HtmlToken::Text(text) => self.push_node(Node::HtmlText(text)),
-                HtmlToken::OpenTag(tag) => self.stack.push(Frame::html(tag)),
-                HtmlToken::CloseTag(tag) => self.close_html_tag(tag)?,
+                HtmlToken::OpenTag(tag) => self.stack.push(Frame::html(tag, None)),
+                HtmlToken::CloseTag(tag) => self.close_html_tag(tag, None)?,
                 HtmlToken::SelfClosingTag(tag) => {
                     self.push_node(Node::HtmlSelfClosing {
                         name: tag.name,
@@ -235,11 +290,52 @@ impl Parser {
         Ok(())
     }
 
-    fn close_html_tag(&mut self, tag: HtmlTag) -> Result<(), ParseError> {
+    fn parse_spanned_html_fragment(
+        &mut self,
+        fragment: &str,
+        fragment_location: SourceLocation,
+    ) -> Result<(), ParseError> {
+        for spanned in html::tokenize_with_spans(fragment) {
+            let location = Some(relative_source_location(
+                fragment_location,
+                fragment,
+                spanned.span.start,
+            ));
+
+            match spanned.token {
+                HtmlToken::Text(text) => self.push_node(Node::HtmlText(text)),
+                HtmlToken::OpenTag(tag) => self.stack.push(Frame::html(tag, location)),
+                HtmlToken::CloseTag(tag) => self.close_html_tag(tag, location)?,
+                HtmlToken::SelfClosingTag(tag) => {
+                    self.push_node(Node::HtmlSelfClosing {
+                        name: tag.name,
+                        raw: tag.raw,
+                    });
+                }
+                HtmlToken::VoidTag(tag) => {
+                    self.push_node(Node::HtmlVoid {
+                        name: tag.name,
+                        raw: tag.raw,
+                    });
+                }
+                HtmlToken::Comment(comment) => self.push_node(Node::HtmlComment(comment)),
+                HtmlToken::Doctype(doctype) => self.push_node(Node::HtmlDoctype(doctype)),
+            }
+        }
+
+        Ok(())
+    }
+
+    fn close_html_tag(
+        &mut self,
+        tag: HtmlTag,
+        location: Option<SourceLocation>,
+    ) -> Result<(), ParseError> {
         let Some(frame) = self.stack.pop() else {
             return Err(ParseError::UnexpectedHtmlCloseTag {
                 name: tag.name,
                 raw: tag.raw,
+                location,
             });
         };
 
@@ -249,6 +345,7 @@ impl Parser {
                 Err(ParseError::UnexpectedHtmlCloseTag {
                     name: tag.name,
                     raw: tag.raw,
+                    location,
                 })
             }
             FrameKind::Erb {
@@ -273,14 +370,20 @@ impl Parser {
                 Err(ParseError::UnexpectedHtmlCloseTag {
                     name: tag.name,
                     raw: tag.raw,
+                    location,
                 })
             }
-            FrameKind::Html { name, raw } => {
+            FrameKind::Html {
+                name,
+                raw,
+                location: open_location,
+            } => {
                 if !name.eq_ignore_ascii_case(&tag.name) {
                     self.stack.push(Frame {
                         kind: FrameKind::Html {
                             name: name.clone(),
                             raw,
+                            location: open_location,
                         },
                         children: frame.children,
                         initial_children: frame.initial_children,
@@ -291,6 +394,7 @@ impl Parser {
                         expected: name,
                         found: tag.name,
                         raw: tag.raw,
+                        location,
                     });
                 }
 
@@ -321,18 +425,27 @@ impl Parser {
                     code: code.to_string(),
                 })
             }
-            FrameKind::Html { name, raw } => {
+            FrameKind::Html {
+                name,
+                raw,
+                location,
+            } => {
                 self.stack.push(Frame {
                     kind: FrameKind::Html {
                         name: name.clone(),
                         raw: raw.clone(),
+                        location,
                     },
                     children: frame.children,
                     initial_children: frame.initial_children,
                     branches: frame.branches,
                     active_branch: frame.active_branch,
                 });
-                Err(ParseError::UnclosedHtmlTag { name, raw })
+                Err(ParseError::UnclosedHtmlTag {
+                    name,
+                    raw,
+                    location,
+                })
             }
             FrameKind::Erb {
                 kind,
@@ -372,9 +485,14 @@ impl Parser {
                 token_index,
                 code: code.to_string(),
             }),
-            FrameKind::Html { ref name, ref raw } => Err(ParseError::UnclosedHtmlTag {
+            FrameKind::Html {
+                ref name,
+                ref raw,
+                location,
+            } => Err(ParseError::UnclosedHtmlTag {
                 name: name.clone(),
                 raw: raw.clone(),
+                location,
             }),
             FrameKind::Erb { .. } => {
                 frame.start_erb_branch(kind, code.to_string());
@@ -394,7 +512,15 @@ impl Parser {
         let frame = self.stack.pop().expect("unclosed frame exists");
         match frame.kind {
             FrameKind::Root => unreachable!("root frame cannot be unclosed"),
-            FrameKind::Html { name, raw } => Err(ParseError::UnclosedHtmlTag { name, raw }),
+            FrameKind::Html {
+                name,
+                raw,
+                location,
+            } => Err(ParseError::UnclosedHtmlTag {
+                name,
+                raw,
+                location,
+            }),
             FrameKind::Erb {
                 token_index, code, ..
             } => Err(ParseError::UnclosedErbBlock { token_index, code }),
@@ -429,11 +555,12 @@ impl Frame {
         }
     }
 
-    fn html(tag: HtmlTag) -> Self {
+    fn html(tag: HtmlTag, location: Option<SourceLocation>) -> Self {
         Self {
             kind: FrameKind::Html {
                 name: tag.name,
                 raw: tag.raw,
+                location,
             },
             children: Vec::new(),
             initial_children: None,
@@ -497,6 +624,7 @@ enum FrameKind {
     Html {
         name: String,
         raw: String,
+        location: Option<SourceLocation>,
     },
     Erb {
         kind: ErbBlockKind,
@@ -792,7 +920,8 @@ mod tests {
             error,
             ParseError::UnexpectedHtmlCloseTag {
                 name: "div".to_string(),
-                raw: "</div>".to_string()
+                raw: "</div>".to_string(),
+                location: None
             }
         );
     }
@@ -807,7 +936,8 @@ mod tests {
             ParseError::MismatchedHtmlCloseTag {
                 expected: "div".to_string(),
                 found: "span".to_string(),
-                raw: "</span>".to_string()
+                raw: "</span>".to_string(),
+                location: None
             }
         );
     }
@@ -821,7 +951,8 @@ mod tests {
             error,
             ParseError::UnclosedHtmlTag {
                 name: "div".to_string(),
-                raw: "<div>".to_string()
+                raw: "<div>".to_string(),
+                location: None
             }
         );
     }
@@ -835,7 +966,8 @@ mod tests {
             error,
             ParseError::UnclosedHtmlTag {
                 name: "div".to_string(),
-                raw: "<div>".to_string()
+                raw: "<div>".to_string(),
+                location: None
             }
         );
     }
