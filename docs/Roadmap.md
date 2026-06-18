@@ -636,6 +636,44 @@ HTML boolean attribute の冗長または不自然な書き方を検出します
 
 ## Milestone 50
 
+Lint ignore directives
+
+Status: Done
+
+Biome / ESLint のように、局所的にlint診断を抑制するcomment directiveを追加します。
+
+やること:
+
+- HTML comment と ERB comment のignore構文を決める。
+- 次の物理行のlint診断を抑制できるようにする。
+- rule名を指定した場合は、そのruleだけを抑制できるようにする。
+- formatter ignore は別Milestoneに分ける。
+- docsとtestsを更新する。
+
+完了条件:
+
+- `<!-- erbfmt-ignore lint: reason -->` が次行のlint診断を抑制する。
+- `<%# erbfmt-ignore lint/ruleName: reason %>` がERB commentとして使える。
+- rule指定がある場合、他のruleのdiagnosticは残る。
+- CLI integration testで挙動が固定されている。
+
+範囲外:
+
+- formatter ignore
+- block-level disable / enable
+- unused ignore directive reporting
+
+結果:
+
+- `erbfmt-ignore` と `erbfmt-ignore-next-line` を追加した。
+- HTML comment と ERB comment の両方でlint ignore directiveを使えるようにした。
+- `lint/ruleName` 形式で特定ruleだけを抑制できるようにした。
+- [Ignore.md](Ignore.md) を追加した。
+- [LintRules.md](LintRules.md) と [Configuration.md](Configuration.md) からignore仕様へリンクした。
+- unit testとCLI integration testを追加した。
+
+## Milestone 51
+
 Lint severity plumbing
 
 Status: Next

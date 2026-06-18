@@ -96,8 +96,123 @@ pub fn lint_with_options(input: &str, options: LintOptions) -> Vec<Diagnostic> {
     };
 
     match mixed_parser::parse_spanned(&tokens) {
-        Ok(_) => lint_tokens(input, &tokens, options),
+        Ok(_) => apply_lint_ignore_directives(input, lint_tokens(input, &tokens, options)),
         Err(error) => vec![Diagnostic::new(error.to_string())],
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct LintIgnoreDirective {
+    target_line: usize,
+    rule: Option<String>,
+}
+
+fn apply_lint_ignore_directives(input: &str, diagnostics: Vec<Diagnostic>) -> Vec<Diagnostic> {
+    let directives = lint_ignore_directives(input);
+
+    if directives.is_empty() {
+        return diagnostics;
+    }
+
+    diagnostics
+        .into_iter()
+        .filter(|diagnostic| !is_lint_diagnostic_ignored(diagnostic, &directives))
+        .collect()
+}
+
+fn is_lint_diagnostic_ignored(diagnostic: &Diagnostic, directives: &[LintIgnoreDirective]) -> bool {
+    let Some(location) = diagnostic.location else {
+        return false;
+    };
+
+    directives.iter().any(|directive| {
+        directive.target_line == location.line
+            && directive.rule.as_deref().is_none_or(|rule| {
+                diagnostic_rule_id(&diagnostic.message).is_some_and(|id| id == rule)
+            })
+    })
+}
+
+fn lint_ignore_directives(input: &str) -> Vec<LintIgnoreDirective> {
+    input
+        .lines()
+        .enumerate()
+        .filter_map(|(index, line)| {
+            parse_lint_ignore_directive(line).map(|rule| LintIgnoreDirective {
+                target_line: index + 2,
+                rule,
+            })
+        })
+        .collect()
+}
+
+fn parse_lint_ignore_directive(line: &str) -> Option<Option<String>> {
+    let body = html_comment_body(line).or_else(|| erb_comment_body(line))?;
+    let body = body.trim();
+
+    let rest = body
+        .strip_prefix("erbfmt-ignore-next-line")
+        .or_else(|| body.strip_prefix("erbfmt-ignore"))?
+        .trim();
+
+    let selector = rest.split(':').next().unwrap_or("").trim();
+
+    if selector.is_empty() {
+        return Some(None);
+    }
+
+    let token = selector.split_whitespace().next().unwrap_or("");
+
+    if token == "lint" {
+        return Some(None);
+    }
+
+    if let Some(rule) = token.strip_prefix("lint/") {
+        return Some(Some(rule.to_string()));
+    }
+
+    if token == "format" || token.starts_with("format/") {
+        return None;
+    }
+
+    Some(Some(token.to_string()))
+}
+
+fn html_comment_body(line: &str) -> Option<&str> {
+    let line = line.trim();
+    line.strip_prefix("<!--")?.strip_suffix("-->")
+}
+
+fn erb_comment_body(line: &str) -> Option<&str> {
+    let line = line.trim();
+    line.strip_prefix("<%#")?.strip_suffix("%>")
+}
+
+fn diagnostic_rule_id(message: &str) -> Option<&'static str> {
+    if message.starts_with("empty ERB branch") {
+        Some("emptyErbBranch")
+    } else if message.starts_with("empty ERB code tag")
+        || message.starts_with("empty ERB output tag")
+    {
+        Some("emptyErbCodeTag")
+    } else if message.starts_with("empty ERB control block") {
+        Some("emptyErbControlBlock")
+    } else if message.starts_with("deprecated HTML tag") {
+        Some("noDeprecatedHtmlTag")
+    } else if message.starts_with("duplicate HTML attribute") {
+        Some("noDuplicateHtmlAttribute")
+    } else if message.starts_with("invalid HTML boolean attribute value")
+        || message.starts_with("redundant HTML boolean attribute value")
+    {
+        Some("noInvalidHtmlBooleanAttribute")
+    } else if message.starts_with("invalid HTML nesting") {
+        Some("noInvalidHtmlNesting")
+    } else if message.starts_with("self-closing HTML tag") {
+        Some("noSelfClosingHtmlTag")
+    } else if message.starts_with("unsupported ERB block starter") {
+        Some("unsupportedErbBlockStarter")
+    } else {
+        None
     }
 }
 
@@ -1237,6 +1352,37 @@ mod tests {
                 SourceLocation { line: 2, column: 3 }
             )]
         );
+    }
+
+    #[test]
+    fn ignores_lint_diagnostics_on_the_next_line() {
+        let diagnostics =
+            lint("<!-- erbfmt-ignore lint: legacy markup -->\n<center>Legacy</center>\n");
+
+        assert_eq!(diagnostics, Vec::new());
+    }
+
+    #[test]
+    fn ignores_only_the_selected_lint_rule() {
+        let diagnostics = lint(
+            "<!-- erbfmt-ignore lint/noDeprecatedHtmlTag: legacy markup -->\n<center><div /></center>\n",
+        );
+
+        assert_eq!(
+            diagnostics,
+            vec![Diagnostic::located(
+                "self-closing HTML tag `<div />` is not valid HTML5",
+                SourceLocation { line: 2, column: 9 }
+            )]
+        );
+    }
+
+    #[test]
+    fn ignores_lint_diagnostics_from_erb_comments() {
+        let diagnostics =
+            lint("<%# erbfmt-ignore lint/emptyErbCodeTag: generated placeholder %>\n<% %>\n");
+
+        assert_eq!(diagnostics, Vec::new());
     }
 
     #[test]

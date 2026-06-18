@@ -10,6 +10,7 @@
 - diagnostic は CLI と VSCode の両方で読みやすい短いmessageにする。
 - VSCode diagnostics は現時点ではすべて `Error` として表示される。
 - `warn` / `error` のseverity差分はまだ出さず、どちらもrule enabledとして扱う。
+- `erbfmt-ignore` comment directive で次行のlint診断を抑制できる。
 
 ## ruleの分類
 
@@ -26,6 +27,24 @@ lint rule は次の層に分けて管理します。
 同じ `linter.rules` に公開しつつ、実装上の責務は分けます。
 
 ## 現在のrule
+
+### ignore directive
+
+HTML comment または ERB comment で、次の物理行のlint診断を抑制できます。
+
+```erb
+<!-- erbfmt-ignore lint/noDeprecatedHtmlTag: legacy markup -->
+<center>Legacy</center>
+```
+
+```erb
+<%# erbfmt-ignore lint/emptyErbCodeTag: generated placeholder %>
+<% %>
+```
+
+rule名を省略した `erbfmt-ignore lint` は、次行のlint診断をすべて抑制します。
+
+詳しい構文は [Ignore.md](Ignore.md) を参照してください。
 
 ### `noSelfClosingHtmlTag`
 

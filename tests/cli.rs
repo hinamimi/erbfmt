@@ -258,6 +258,24 @@ fn lint_fails_for_invalid_html_nesting() {
 }
 
 #[test]
+fn lint_ignore_comment_suppresses_next_line_diagnostics() {
+    let dir = TestDir::new("lint_ignore_comment");
+    let file = dir.write(
+        "input.html.erb",
+        "<!-- erbfmt-ignore lint/noDeprecatedHtmlTag: legacy markup -->\n<center>Legacy</center>\n",
+    );
+
+    let output = run(["--lint".as_ref(), file.as_path()]);
+
+    assert_success(&output);
+    assert_eq!(
+        stdout(&output),
+        format!("{}: no lint issues found.\n", file.display())
+    );
+    assert_eq!(stderr(&output), "");
+}
+
+#[test]
 fn config_controls_formatter_indent_width() {
     let dir = TestDir::new("config_indent_width");
     let config = dir.write("erbfmt.json", r#"{"formatter":{"indentWidth":4}}"#);

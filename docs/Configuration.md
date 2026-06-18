@@ -77,3 +77,5 @@ reported yet.
 
 See [LintRules.md](LintRules.md) for the current lint rule design and the next
 planned rules.
+
+See [Ignore.md](Ignore.md) for `erbfmt-ignore` lint directives.
