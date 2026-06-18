@@ -11,7 +11,99 @@
 - VSCode diagnostics は現時点ではすべて `Error` として表示される。
 - `warn` / `error` のseverity差分はまだ出さず、どちらもrule enabledとして扱う。
 
+## ruleの分類
+
+lint rule は次の層に分けて管理します。
+
+- HTML-only rule: HTML fragment を HTML token stream として見て判定する。Ruby code
+  と ERB control-flow には踏み込まない。
+- ERB-structure rule: ERB lexer と mixed parser の block / branch 構造を使って判定する。
+- Ruby-text rule: ERB tag 内部の text を軽く見る。Ruby AST parsing はしない。
+- Common diagnostics: HTML と ERB の入れ子のように mixed parser が検出する構文診断。
+  通常の rule と違い、基本的には `off` にしない。
+
+この分類により、純粋なHTML、Ruby code、ERB control-flow、HTML/ERB共通構造を
+同じ `linter.rules` に公開しつつ、実装上の責務は分けます。
+
 ## 現在のrule
+
+### `noSelfClosingHtmlTag`
+
+HTML5では self-closing slash は HTML element を閉じません。
+そのため、self-closing HTML tagを検出します。
+
+対象:
+
+```erb
+<div />
+<br />
+```
+
+message:
+
+```text
+self-closing HTML tag `<div />` is not valid HTML5
+```
+
+range:
+
+- self-closing HTML tagの開始位置
+
+理由:
+
+- 純粋なHTML fragmentだけで検出できる。
+- 非void elementは `<div></div>` のように明示的に閉じる方が安全。
+- void elementは `<br>` のようにslashなしで書く方針に寄せる。
+
+config:
+
+```json
+{
+  "linter": {
+    "rules": {
+      "noSelfClosingHtmlTag": "error"
+    }
+  }
+}
+```
+
+### `noDeprecatedHtmlTag`
+
+HTML5で非推奨またはobsoleteなHTML tagを検出します。
+
+対象例:
+
+```erb
+<center>Legacy</center>
+<font color="red">Alert</font>
+```
+
+message:
+
+```text
+deprecated HTML tag `<center>`
+```
+
+range:
+
+- deprecated HTML tagの開始位置
+
+理由:
+
+- 純粋なHTML fragmentだけで検出できる。
+- ERBやRuby codeの意味解析なしで、古いmarkupを早めに見つけられる。
+
+config:
+
+```json
+{
+  "linter": {
+    "rules": {
+      "noDeprecatedHtmlTag": "error"
+    }
+  }
+}
+```
 
 ### `emptyErbControlBlock`
 
@@ -147,7 +239,13 @@ config:
 
 ## 次に実装するrule
 
-現時点で次の新規lint ruleはまだ決めていません。
+候補:
+
+- void HTML element の明示的な close tag 検出
+- HTML attribute duplicate detection
+- boolean attribute normalization warning
+
+いずれも HTML-only rule として実装し、Ruby codeやERB control-flowには踏み込みません。
 
 ## ruleではなくdiagnostic品質改善として扱うもの
 

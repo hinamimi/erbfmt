@@ -54,6 +54,8 @@ pub struct LintRules {
     pub empty_erb_branch: bool,
     pub empty_erb_code_tag: bool,
     pub empty_erb_control_block: bool,
+    pub no_deprecated_html_tag: bool,
+    pub no_self_closing_html_tag: bool,
     pub unsupported_erb_block_starter: bool,
 }
 
@@ -63,6 +65,8 @@ impl Default for LintRules {
             empty_erb_branch: true,
             empty_erb_code_tag: true,
             empty_erb_control_block: true,
+            no_deprecated_html_tag: true,
+            no_self_closing_html_tag: true,
             unsupported_erb_block_starter: true,
         }
     }
@@ -86,7 +90,7 @@ pub fn lint_with_options(input: &str, options: LintOptions) -> Vec<Diagnostic> {
     };
 
     match mixed_parser::parse_spanned(&tokens) {
-        Ok(_) => lint_tokens(&tokens, options),
+        Ok(_) => lint_tokens(input, &tokens, options),
         Err(error) => vec![Diagnostic::new(error.to_string())],
     }
 }
@@ -107,14 +111,27 @@ struct ErbBranchLintFrame {
     has_meaningful_content: bool,
 }
 
-fn lint_tokens(tokens: &[lexer::SpannedToken], options: LintOptions) -> Vec<Diagnostic> {
+fn lint_tokens(
+    input: &str,
+    tokens: &[lexer::SpannedToken],
+    options: LintOptions,
+) -> Vec<Diagnostic> {
     let mut diagnostics = Vec::new();
     let mut stack: Vec<ErbBlockLintFrame> = Vec::new();
 
     for spanned in tokens {
         match &spanned.token {
             lexer::Token::Html(fragment) => {
-                if html_fragment_has_meaningful_content(fragment) {
+                let html_tokens = html::tokenize_with_spans(fragment);
+                lint_html_tokens(
+                    input,
+                    spanned.span.start,
+                    &html_tokens,
+                    options,
+                    &mut diagnostics,
+                );
+
+                if html_tokens_have_meaningful_content(&html_tokens) {
                     mark_current_block_meaningful(&mut stack);
                 }
             }
@@ -213,18 +230,118 @@ fn finish_active_branch(
     }
 }
 
-fn html_fragment_has_meaningful_content(fragment: &str) -> bool {
-    html::tokenize(fragment)
-        .into_iter()
-        .any(|token| match token {
-            HtmlToken::Text(text) => !text.trim().is_empty(),
-            HtmlToken::Comment(_) => false,
-            HtmlToken::OpenTag(_)
+fn html_tokens_have_meaningful_content(tokens: &[html::SpannedHtmlToken]) -> bool {
+    tokens.iter().any(|spanned| match &spanned.token {
+        HtmlToken::Text(text) => !text.trim().is_empty(),
+        HtmlToken::Comment(_) => false,
+        HtmlToken::OpenTag(_)
+        | HtmlToken::CloseTag(_)
+        | HtmlToken::SelfClosingTag(_)
+        | HtmlToken::VoidTag(_)
+        | HtmlToken::Doctype(_) => true,
+    })
+}
+
+fn lint_html_tokens(
+    input: &str,
+    fragment_start: usize,
+    tokens: &[html::SpannedHtmlToken],
+    options: LintOptions,
+    diagnostics: &mut Vec<Diagnostic>,
+) {
+    for spanned in tokens {
+        match &spanned.token {
+            HtmlToken::OpenTag(tag) | HtmlToken::VoidTag(tag) => {
+                lint_deprecated_html_tag(
+                    input,
+                    fragment_start,
+                    spanned.span.start,
+                    tag,
+                    options,
+                    diagnostics,
+                );
+            }
+            HtmlToken::SelfClosingTag(tag) => {
+                lint_self_closing_html_tag(
+                    input,
+                    fragment_start,
+                    spanned.span.start,
+                    tag,
+                    options,
+                    diagnostics,
+                );
+                lint_deprecated_html_tag(
+                    input,
+                    fragment_start,
+                    spanned.span.start,
+                    tag,
+                    options,
+                    diagnostics,
+                );
+            }
+            HtmlToken::Text(_)
             | HtmlToken::CloseTag(_)
-            | HtmlToken::SelfClosingTag(_)
-            | HtmlToken::VoidTag(_)
-            | HtmlToken::Doctype(_) => true,
-        })
+            | HtmlToken::Comment(_)
+            | HtmlToken::Doctype(_) => {}
+        }
+    }
+}
+
+fn lint_self_closing_html_tag(
+    input: &str,
+    fragment_start: usize,
+    html_token_start: usize,
+    tag: &html::HtmlTag,
+    options: LintOptions,
+    diagnostics: &mut Vec<Diagnostic>,
+) {
+    if !options.rules.no_self_closing_html_tag {
+        return;
+    }
+
+    diagnostics.push(Diagnostic::located(
+        format!("self-closing HTML tag `{}` is not valid HTML5", tag.raw),
+        lexer::source_location(input, fragment_start + html_token_start),
+    ));
+}
+
+fn lint_deprecated_html_tag(
+    input: &str,
+    fragment_start: usize,
+    html_token_start: usize,
+    tag: &html::HtmlTag,
+    options: LintOptions,
+    diagnostics: &mut Vec<Diagnostic>,
+) {
+    if !options.rules.no_deprecated_html_tag || !is_deprecated_html_tag(&tag.name) {
+        return;
+    }
+
+    diagnostics.push(Diagnostic::located(
+        format!("deprecated HTML tag `{}`", tag.raw),
+        lexer::source_location(input, fragment_start + html_token_start),
+    ));
+}
+
+fn is_deprecated_html_tag(name: &str) -> bool {
+    matches!(
+        name.to_ascii_lowercase().as_str(),
+        "acronym"
+            | "applet"
+            | "basefont"
+            | "big"
+            | "center"
+            | "dir"
+            | "font"
+            | "frame"
+            | "frameset"
+            | "isindex"
+            | "marquee"
+            | "noframes"
+            | "strike"
+            | "tt"
+            | "xmp"
+    )
 }
 
 fn format_erb_block_open(output: bool, code: &str) -> String {
@@ -370,6 +487,59 @@ mod tests {
     }
 
     #[test]
+    fn reports_self_closing_html_tags() {
+        let diagnostics = lint("<section>\n  <div />\n  <br />\n</section>\n");
+
+        assert_eq!(
+            diagnostics,
+            vec![
+                Diagnostic::located(
+                    "self-closing HTML tag `<div />` is not valid HTML5",
+                    SourceLocation { line: 2, column: 3 }
+                ),
+                Diagnostic::located(
+                    "self-closing HTML tag `<br />` is not valid HTML5",
+                    SourceLocation { line: 3, column: 3 }
+                )
+            ]
+        );
+    }
+
+    #[test]
+    fn reports_deprecated_html_tags() {
+        let diagnostics = lint(
+            "<main>\n  <center>Legacy</center>\n  <font color=\"red\">Alert</font>\n</main>\n",
+        );
+
+        assert_eq!(
+            diagnostics,
+            vec![
+                Diagnostic::located(
+                    "deprecated HTML tag `<center>`",
+                    SourceLocation { line: 2, column: 3 }
+                ),
+                Diagnostic::located(
+                    "deprecated HTML tag `<font color=\"red\">`",
+                    SourceLocation { line: 3, column: 3 }
+                )
+            ]
+        );
+    }
+
+    #[test]
+    fn reports_html_rule_locations_after_erb_tags() {
+        let diagnostics = lint("<% if user %>\n  <center>Legacy</center>\n<% end %>\n");
+
+        assert_eq!(
+            diagnostics,
+            vec![Diagnostic::located(
+                "deprecated HTML tag `<center>`",
+                SourceLocation { line: 2, column: 3 }
+            )]
+        );
+    }
+
+    #[test]
     fn empty_erb_code_tags_do_not_count_as_meaningful_block_content() {
         let diagnostics = lint("<% if show_empty_state %>\n  <% %>\n<% end %>\n");
 
@@ -497,6 +667,23 @@ mod tests {
             LintOptions {
                 rules: LintRules {
                     empty_erb_branch: false,
+                    ..LintRules::default()
+                },
+                ..LintOptions::default()
+            },
+        );
+
+        assert_eq!(diagnostics, Vec::new());
+    }
+
+    #[test]
+    fn respects_disabled_html_rules() {
+        let diagnostics = lint_with_options(
+            "<center><div /></center>\n",
+            LintOptions {
+                rules: LintRules {
+                    no_deprecated_html_tag: false,
+                    no_self_closing_html_tag: false,
                     ..LintRules::default()
                 },
                 ..LintOptions::default()

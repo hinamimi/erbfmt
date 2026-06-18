@@ -16,6 +16,8 @@
       "emptyErbBranch": "error",
       "emptyErbCodeTag": "error",
       "emptyErbControlBlock": "error",
+      "noDeprecatedHtmlTag": "error",
+      "noSelfClosingHtmlTag": "error",
       "unsupportedErbBlockStarter": "error"
     }
   }

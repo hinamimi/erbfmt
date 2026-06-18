@@ -170,6 +170,28 @@ fn lint_fails_for_empty_erb_branches() {
 }
 
 #[test]
+fn lint_fails_for_html_rules() {
+    let dir = TestDir::new("lint_html_rules");
+    let file = dir.write(
+        "input.html.erb",
+        "<main>\n  <center>Legacy</center>\n  <div />\n</main>\n",
+    );
+
+    let output = run(["--lint".as_ref(), file.as_path()]);
+
+    assert_failure(&output);
+    assert_eq!(stdout(&output), "");
+    assert_eq!(
+        stderr(&output),
+        format!(
+            "{}: deprecated HTML tag `<center>` at line 2, column 3\n{}: self-closing HTML tag `<div />` is not valid HTML5 at line 3, column 3\n",
+            file.display(),
+            file.display()
+        )
+    );
+}
+
+#[test]
 fn config_controls_formatter_indent_width() {
     let dir = TestDir::new("config_indent_width");
     let config = dir.write("erbfmt.json", r#"{"formatter":{"indentWidth":4}}"#);
@@ -311,6 +333,30 @@ fn config_can_disable_empty_erb_branch_rule() {
         "input.html.erb",
         "<% if current_user %>\n<p>Hello</p>\n<% else %>\n<% end %>\n",
     );
+
+    let output = run([
+        "--lint".as_ref(),
+        "--config".as_ref(),
+        config.as_path(),
+        file.as_path(),
+    ]);
+
+    assert_success(&output);
+    assert_eq!(
+        stdout(&output),
+        format!("{}: no lint issues found.\n", file.display())
+    );
+    assert_eq!(stderr(&output), "");
+}
+
+#[test]
+fn config_can_disable_html_rules() {
+    let dir = TestDir::new("config_html_rules_disabled");
+    let config = dir.write(
+        "erbfmt.json",
+        r#"{"linter":{"rules":{"noDeprecatedHtmlTag":"off","noSelfClosingHtmlTag":"off"}}}"#,
+    );
+    let file = dir.write("input.html.erb", "<center><div /></center>\n");
 
     let output = run([
         "--lint".as_ref(),

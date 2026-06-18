@@ -172,6 +172,8 @@ struct RawLintRules {
     empty_erb_branch: Option<RuleSetting>,
     empty_erb_code_tag: Option<RuleSetting>,
     empty_erb_control_block: Option<RuleSetting>,
+    no_deprecated_html_tag: Option<RuleSetting>,
+    no_self_closing_html_tag: Option<RuleSetting>,
     unsupported_erb_block_starter: Option<RuleSetting>,
 }
 
@@ -190,6 +192,14 @@ impl RawLintRules {
                 .unwrap_or(recommended),
             empty_erb_control_block: self
                 .empty_erb_control_block
+                .map(RuleSetting::is_enabled)
+                .unwrap_or(recommended),
+            no_deprecated_html_tag: self
+                .no_deprecated_html_tag
+                .map(RuleSetting::is_enabled)
+                .unwrap_or(recommended),
+            no_self_closing_html_tag: self
+                .no_self_closing_html_tag
                 .map(RuleSetting::is_enabled)
                 .unwrap_or(recommended),
             unsupported_erb_block_starter: self

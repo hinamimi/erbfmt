@@ -59,6 +59,12 @@
             "emptyErbControlBlock": {
               "enum": ["off", "warn", "error"]
             },
+            "noDeprecatedHtmlTag": {
+              "enum": ["off", "warn", "error"]
+            },
+            "noSelfClosingHtmlTag": {
+              "enum": ["off", "warn", "error"]
+            },
             "unsupportedErbBlockStarter": {
               "enum": ["off", "warn", "error"]
             }

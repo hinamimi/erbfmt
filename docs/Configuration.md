@@ -31,6 +31,8 @@ option for the existing HTML indentation behavior.
       "emptyErbBranch": "error",
       "emptyErbCodeTag": "error",
       "emptyErbControlBlock": "error",
+      "noDeprecatedHtmlTag": "error",
+      "noSelfClosingHtmlTag": "error",
       "unsupportedErbBlockStarter": "error"
     }
   }
@@ -60,6 +62,8 @@ option for the existing HTML indentation behavior.
 - `linter.rules.emptyErbBranch`: `error`, `warn`, or `off`.
 - `linter.rules.emptyErbCodeTag`: `error`, `warn`, or `off`.
 - `linter.rules.emptyErbControlBlock`: `error`, `warn`, or `off`.
+- `linter.rules.noDeprecatedHtmlTag`: `error`, `warn`, or `off`.
+- `linter.rules.noSelfClosingHtmlTag`: `error`, `warn`, or `off`.
 - `linter.rules.unsupportedErbBlockStarter`: `error`, `warn`, or `off`.
 
 Currently `warn` and `error` both enable the rule. Diagnostic severity is not

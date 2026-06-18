@@ -15,7 +15,26 @@ pub struct HtmlTag {
     pub raw: String,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct HtmlSpan {
+    pub start: usize,
+    pub end: usize,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SpannedHtmlToken {
+    pub token: HtmlToken,
+    pub span: HtmlSpan,
+}
+
 pub fn tokenize(input: &str) -> Vec<HtmlToken> {
+    tokenize_with_spans(input)
+        .into_iter()
+        .map(|spanned| spanned.token)
+        .collect()
+}
+
+pub fn tokenize_with_spans(input: &str) -> Vec<SpannedHtmlToken> {
     let mut tokens = Vec::new();
     let mut cursor = 0;
 
@@ -23,35 +42,59 @@ pub fn tokenize(input: &str) -> Vec<HtmlToken> {
         let start = cursor + relative_start;
 
         if start > cursor {
-            tokens.push(HtmlToken::Text(input[cursor..start].to_string()));
+            tokens.push(spanned_html_token(
+                cursor,
+                start,
+                HtmlToken::Text(input[cursor..start].to_string()),
+            ));
         }
 
         if input[start..].starts_with("<!--") {
             let Some(relative_end) = input[start + "<!--".len()..].find("-->") else {
-                tokens.push(HtmlToken::Text(input[start..].to_string()));
+                tokens.push(spanned_html_token(
+                    start,
+                    input.len(),
+                    HtmlToken::Text(input[start..].to_string()),
+                ));
                 return tokens;
             };
 
             let end = start + "<!--".len() + relative_end + "-->".len();
-            tokens.push(HtmlToken::Comment(input[start..end].to_string()));
+            tokens.push(spanned_html_token(
+                start,
+                end,
+                HtmlToken::Comment(input[start..end].to_string()),
+            ));
             cursor = end;
             continue;
         }
 
         if input[start..].starts_with("<%") {
             let Some(relative_end) = input[start + "<%".len()..].find("%>") else {
-                tokens.push(HtmlToken::Text(input[start..].to_string()));
+                tokens.push(spanned_html_token(
+                    start,
+                    input.len(),
+                    HtmlToken::Text(input[start..].to_string()),
+                ));
                 return tokens;
             };
 
             let end = start + "<%".len() + relative_end + "%>".len();
-            tokens.push(HtmlToken::Text(input[start..end].to_string()));
+            tokens.push(spanned_html_token(
+                start,
+                end,
+                HtmlToken::Text(input[start..end].to_string()),
+            ));
             cursor = end;
             continue;
         }
 
         let Some(end) = find_tag_end(input, start) else {
-            tokens.push(HtmlToken::Text(input[start..].to_string()));
+            tokens.push(spanned_html_token(
+                start,
+                input.len(),
+                HtmlToken::Text(input[start..].to_string()),
+            ));
             return tokens;
         };
 
@@ -60,9 +103,17 @@ pub fn tokenize(input: &str) -> Vec<HtmlToken> {
 
         if body.starts_with('%') || body.starts_with('?') || body.starts_with('!') {
             if is_doctype(body) {
-                tokens.push(HtmlToken::Doctype(raw.to_string()));
+                tokens.push(spanned_html_token(
+                    start,
+                    end,
+                    HtmlToken::Doctype(raw.to_string()),
+                ));
             } else {
-                tokens.push(HtmlToken::Text(raw.to_string()));
+                tokens.push(spanned_html_token(
+                    start,
+                    end,
+                    HtmlToken::Text(raw.to_string()),
+                ));
             }
 
             cursor = end;
@@ -70,10 +121,14 @@ pub fn tokenize(input: &str) -> Vec<HtmlToken> {
         }
 
         if let Some(close_body) = body.strip_prefix('/') {
-            tokens.push(HtmlToken::CloseTag(HtmlTag {
-                name: tag_name(close_body).to_string(),
-                raw: raw.to_string(),
-            }));
+            tokens.push(spanned_html_token(
+                start,
+                end,
+                HtmlToken::CloseTag(HtmlTag {
+                    name: tag_name(close_body).to_string(),
+                    raw: raw.to_string(),
+                }),
+            ));
         } else {
             let name = tag_name(body).to_string();
             let tag = HtmlTag {
@@ -82,11 +137,15 @@ pub fn tokenize(input: &str) -> Vec<HtmlToken> {
             };
 
             if body.ends_with('/') {
-                tokens.push(HtmlToken::SelfClosingTag(tag));
+                tokens.push(spanned_html_token(
+                    start,
+                    end,
+                    HtmlToken::SelfClosingTag(tag),
+                ));
             } else if is_void_tag(&tag.name) {
-                tokens.push(HtmlToken::VoidTag(tag));
+                tokens.push(spanned_html_token(start, end, HtmlToken::VoidTag(tag)));
             } else {
-                tokens.push(HtmlToken::OpenTag(tag));
+                tokens.push(spanned_html_token(start, end, HtmlToken::OpenTag(tag)));
             }
         }
 
@@ -94,10 +153,21 @@ pub fn tokenize(input: &str) -> Vec<HtmlToken> {
     }
 
     if cursor < input.len() {
-        tokens.push(HtmlToken::Text(input[cursor..].to_string()));
+        tokens.push(spanned_html_token(
+            cursor,
+            input.len(),
+            HtmlToken::Text(input[cursor..].to_string()),
+        ));
     }
 
     tokens
+}
+
+fn spanned_html_token(start: usize, end: usize, token: HtmlToken) -> SpannedHtmlToken {
+    SpannedHtmlToken {
+        token,
+        span: HtmlSpan { start, end },
+    }
 }
 
 fn find_tag_end(input: &str, start: usize) -> Option<usize> {
@@ -236,6 +306,39 @@ mod tests {
                     name: "custom".to_string(),
                     raw: "<custom />".to_string()
                 })
+            ]
+        );
+    }
+
+    #[test]
+    fn tokenizes_with_relative_spans() {
+        let tokens = tokenize_with_spans("Hi <center>Legacy</center>");
+
+        assert_eq!(
+            tokens,
+            vec![
+                SpannedHtmlToken {
+                    token: HtmlToken::Text("Hi ".to_string()),
+                    span: HtmlSpan { start: 0, end: 3 }
+                },
+                SpannedHtmlToken {
+                    token: HtmlToken::OpenTag(HtmlTag {
+                        name: "center".to_string(),
+                        raw: "<center>".to_string()
+                    }),
+                    span: HtmlSpan { start: 3, end: 11 }
+                },
+                SpannedHtmlToken {
+                    token: HtmlToken::Text("Legacy".to_string()),
+                    span: HtmlSpan { start: 11, end: 17 }
+                },
+                SpannedHtmlToken {
+                    token: HtmlToken::CloseTag(HtmlTag {
+                        name: "center".to_string(),
+                        raw: "</center>".to_string()
+                    }),
+                    span: HtmlSpan { start: 17, end: 26 }
+                }
             ]
         );
     }
