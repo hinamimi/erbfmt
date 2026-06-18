@@ -105,6 +105,47 @@ config:
 }
 ```
 
+### `noDuplicateHtmlAttribute`
+
+同じHTML tag内の重複attributeを検出します。
+
+対象例:
+
+```erb
+<article class="card" id="one" class="wide"></article>
+<button data-action="save" data-action="submit"></button>
+```
+
+message:
+
+```text
+duplicate HTML attribute `class`
+duplicate HTML attribute `data-action`
+```
+
+range:
+
+- 重複している2つ目以降のattribute名の開始位置
+
+方針:
+
+- attribute名はASCII case-insensitiveに扱います。
+- `class`, `id`, `data-*`, `aria-*` などを同じruleで検出します。
+- tag内にERB fragmentを含む場合は、Ruby/ERB側でattributeが生成される可能性があるため、
+  このruleでは診断しません。
+
+config:
+
+```json
+{
+  "linter": {
+    "rules": {
+      "noDuplicateHtmlAttribute": "error"
+    }
+  }
+}
+```
+
 ### `noInvalidHtmlNesting`
 
 HTML content model に反する代表的な親子関係を検出します。
@@ -332,7 +373,6 @@ config:
 
 候補:
 
-- HTML attribute duplicate detection
 - boolean attribute normalization warning
 - より広いHTML content model validation
 

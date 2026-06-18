@@ -55,6 +55,7 @@ pub struct LintRules {
     pub empty_erb_code_tag: bool,
     pub empty_erb_control_block: bool,
     pub no_deprecated_html_tag: bool,
+    pub no_duplicate_html_attribute: bool,
     pub no_invalid_html_nesting: bool,
     pub no_self_closing_html_tag: bool,
     pub unsupported_erb_block_starter: bool,
@@ -67,6 +68,7 @@ impl Default for LintRules {
             empty_erb_code_tag: true,
             empty_erb_control_block: true,
             no_deprecated_html_tag: true,
+            no_duplicate_html_attribute: true,
             no_invalid_html_nesting: true,
             no_self_closing_html_tag: true,
             unsupported_erb_block_starter: true,
@@ -279,6 +281,14 @@ fn lint_html_tokens(
                     options,
                     diagnostics,
                 );
+                lint_duplicate_html_attributes(
+                    input,
+                    fragment_start,
+                    spanned.span.start,
+                    tag,
+                    options,
+                    diagnostics,
+                );
                 stack.push(HtmlElementLintFrame {
                     name: tag.name.clone(),
                 });
@@ -294,6 +304,14 @@ fn lint_html_tokens(
                     diagnostics,
                 );
                 lint_deprecated_html_tag(
+                    input,
+                    fragment_start,
+                    spanned.span.start,
+                    tag,
+                    options,
+                    diagnostics,
+                );
+                lint_duplicate_html_attributes(
                     input,
                     fragment_start,
                     spanned.span.start,
@@ -321,6 +339,14 @@ fn lint_html_tokens(
                     diagnostics,
                 );
                 lint_deprecated_html_tag(
+                    input,
+                    fragment_start,
+                    spanned.span.start,
+                    tag,
+                    options,
+                    diagnostics,
+                );
+                lint_duplicate_html_attributes(
                     input,
                     fragment_start,
                     spanned.span.start,
@@ -570,6 +596,163 @@ fn lint_deprecated_html_tag(
     ));
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct HtmlAttributeName {
+    name: String,
+    offset: usize,
+}
+
+fn lint_duplicate_html_attributes(
+    input: &str,
+    fragment_start: usize,
+    html_token_start: usize,
+    tag: &html::HtmlTag,
+    options: LintOptions,
+    diagnostics: &mut Vec<Diagnostic>,
+) {
+    if !options.rules.no_duplicate_html_attribute || tag.raw.contains("<%") {
+        return;
+    }
+
+    let attributes = html_attribute_names(tag);
+    let mut seen: Vec<HtmlAttributeName> = Vec::new();
+
+    for attribute in attributes {
+        if seen
+            .iter()
+            .any(|seen_attribute| seen_attribute.name == attribute.name)
+        {
+            diagnostics.push(Diagnostic::located(
+                format!("duplicate HTML attribute `{}`", attribute.name),
+                lexer::source_location(input, fragment_start + html_token_start + attribute.offset),
+            ));
+        } else {
+            seen.push(attribute);
+        }
+    }
+}
+
+fn html_attribute_names(tag: &html::HtmlTag) -> Vec<HtmlAttributeName> {
+    let Some(mut cursor) = tag.raw.find(&tag.name).map(|index| index + tag.name.len()) else {
+        return Vec::new();
+    };
+
+    let mut attributes = Vec::new();
+    let raw = tag.raw.as_str();
+
+    while cursor < raw.len() {
+        cursor = skip_html_attribute_spacing(raw, cursor);
+
+        if cursor >= raw.len() || raw[cursor..].starts_with('>') || raw[cursor..].starts_with("/>")
+        {
+            break;
+        }
+
+        let name_start = cursor;
+        let Some(name_end) = read_html_attribute_name_end(raw, name_start) else {
+            break;
+        };
+
+        if name_end == name_start {
+            break;
+        }
+
+        attributes.push(HtmlAttributeName {
+            name: raw[name_start..name_end].to_ascii_lowercase(),
+            offset: name_start,
+        });
+
+        cursor = skip_html_attribute_spacing(raw, name_end);
+
+        if raw[cursor..].starts_with('=') {
+            cursor = skip_html_attribute_value(raw, cursor + '='.len_utf8());
+        }
+    }
+
+    attributes
+}
+
+fn skip_html_attribute_spacing(raw: &str, mut cursor: usize) -> usize {
+    while cursor < raw.len() {
+        let ch = raw[cursor..]
+            .chars()
+            .next()
+            .expect("cursor is inside raw tag");
+
+        if !ch.is_whitespace() {
+            break;
+        }
+
+        cursor += ch.len_utf8();
+    }
+
+    cursor
+}
+
+fn read_html_attribute_name_end(raw: &str, start: usize) -> Option<usize> {
+    let mut cursor = start;
+
+    while cursor < raw.len() {
+        let ch = raw[cursor..]
+            .chars()
+            .next()
+            .expect("cursor is inside raw tag");
+
+        if ch.is_whitespace() || matches!(ch, '=' | '>' | '/') {
+            break;
+        }
+
+        if matches!(ch, '"' | '\'' | '<') {
+            return None;
+        }
+
+        cursor += ch.len_utf8();
+    }
+
+    Some(cursor)
+}
+
+fn skip_html_attribute_value(raw: &str, cursor: usize) -> usize {
+    let mut cursor = skip_html_attribute_spacing(raw, cursor);
+
+    let Some(first) = raw[cursor..].chars().next() else {
+        return cursor;
+    };
+
+    if first == '"' || first == '\'' {
+        cursor += first.len_utf8();
+
+        while cursor < raw.len() {
+            let ch = raw[cursor..]
+                .chars()
+                .next()
+                .expect("cursor is inside raw tag");
+            cursor += ch.len_utf8();
+
+            if ch == first {
+                break;
+            }
+        }
+
+        return cursor;
+    }
+
+    while cursor < raw.len() {
+        let ch = raw[cursor..]
+            .chars()
+            .next()
+            .expect("cursor is inside raw tag");
+
+        if ch.is_whitespace() || ch == '>' {
+            break;
+        }
+
+        cursor += ch.len_utf8();
+    }
+
+    cursor
+}
+
 fn is_deprecated_html_tag(name: &str) -> bool {
     matches!(
         name.to_ascii_lowercase().as_str(),
@@ -771,6 +954,40 @@ mod tests {
                 )
             ]
         );
+    }
+
+    #[test]
+    fn reports_duplicate_html_attributes() {
+        let diagnostics = lint(
+            "<main>\n  <article class=\"card\" id=\"one\" class=\"wide\" data-user-id=\"1\" DATA-USER-ID=\"2\"></article>\n</main>\n",
+        );
+
+        assert_eq!(
+            diagnostics,
+            vec![
+                Diagnostic::located(
+                    "duplicate HTML attribute `class`",
+                    SourceLocation {
+                        line: 2,
+                        column: 34
+                    }
+                ),
+                Diagnostic::located(
+                    "duplicate HTML attribute `data-user-id`",
+                    SourceLocation {
+                        line: 2,
+                        column: 64
+                    }
+                )
+            ]
+        );
+    }
+
+    #[test]
+    fn does_not_report_duplicate_html_attributes_when_tag_contains_erb() {
+        let diagnostics = lint(r#"<div class="card" <%= tag_options %> class="wide"></div>"#);
+
+        assert_eq!(diagnostics, Vec::new());
     }
 
     #[test]
@@ -1023,6 +1240,22 @@ mod tests {
                 rules: LintRules {
                     no_deprecated_html_tag: false,
                     no_self_closing_html_tag: false,
+                    ..LintRules::default()
+                },
+                ..LintOptions::default()
+            },
+        );
+
+        assert_eq!(diagnostics, Vec::new());
+    }
+
+    #[test]
+    fn respects_disabled_duplicate_html_attribute_rule() {
+        let diagnostics = lint_with_options(
+            r#"<div class="card" class="wide"></div>"#,
+            LintOptions {
+                rules: LintRules {
+                    no_duplicate_html_attribute: false,
                     ..LintRules::default()
                 },
                 ..LintOptions::default()

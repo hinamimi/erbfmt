@@ -192,6 +192,27 @@ fn lint_fails_for_html_rules() {
 }
 
 #[test]
+fn lint_fails_for_duplicate_html_attributes() {
+    let dir = TestDir::new("lint_duplicate_html_attributes");
+    let file = dir.write(
+        "input.html.erb",
+        "<article class=\"card\" id=\"one\" class=\"wide\"></article>\n",
+    );
+
+    let output = run(["--lint".as_ref(), file.as_path()]);
+
+    assert_failure(&output);
+    assert_eq!(stdout(&output), "");
+    assert_eq!(
+        stderr(&output),
+        format!(
+            "{}: duplicate HTML attribute `class` at line 1, column 32\n",
+            file.display()
+        )
+    );
+}
+
+#[test]
 fn lint_fails_for_invalid_html_nesting() {
     let dir = TestDir::new("lint_invalid_html_nesting");
     let file = dir.write(
@@ -380,6 +401,30 @@ fn config_can_disable_html_rules() {
         r#"{"linter":{"rules":{"noDeprecatedHtmlTag":"off","noSelfClosingHtmlTag":"off"}}}"#,
     );
     let file = dir.write("input.html.erb", "<center><div /></center>\n");
+
+    let output = run([
+        "--lint".as_ref(),
+        "--config".as_ref(),
+        config.as_path(),
+        file.as_path(),
+    ]);
+
+    assert_success(&output);
+    assert_eq!(
+        stdout(&output),
+        format!("{}: no lint issues found.\n", file.display())
+    );
+    assert_eq!(stderr(&output), "");
+}
+
+#[test]
+fn config_can_disable_duplicate_html_attribute_rule() {
+    let dir = TestDir::new("config_duplicate_html_attribute_disabled");
+    let config = dir.write(
+        "erbfmt.json",
+        r#"{"linter":{"rules":{"noDuplicateHtmlAttribute":"off"}}}"#,
+    );
+    let file = dir.write("input.html.erb", r#"<div class="card" class="wide"></div>"#);
 
     let output = run([
         "--lint".as_ref(),
