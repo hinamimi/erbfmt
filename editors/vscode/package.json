@@ -105,7 +105,7 @@
         "erbfmt.command": {
           "type": "string",
           "default": "erbfmt",
-          "description": "Command used to run the erbfmt binary."
+          "description": "Executable used to run erbfmt. Use an absolute binary path for pinned local setups; put extra arguments in erbfmt.arguments."
         },
         "erbfmt.arguments": {
           "type": "array",
@@ -113,7 +113,7 @@
           "items": {
             "type": "string"
           },
-          "description": "Arguments inserted before erbfmt's own formatter arguments. Use this for local development, for example [\"run\", \"--quiet\", \"--\"]."
+          "description": "Arguments inserted before erbfmt's own formatter arguments. Keep the executable itself in erbfmt.command."
         },
         "erbfmt.configPath": {
           "type": "string",

@@ -15,9 +15,19 @@ type CommandContext = {
   command: string;
   cwd: string;
   extraArguments: string[];
+  resolution: CommandResolution;
+  checkoutRoot: string | undefined;
+  localBinary: string | undefined;
   settings: vscode.WorkspaceConfiguration;
   workspaceFolder: vscode.WorkspaceFolder | undefined;
 };
+
+type CommandResolution =
+  | "configured"
+  | "checkoutBinary"
+  | "checkoutCargoFallback"
+  | "pathCargo"
+  | "pathErbfmt";
 
 type ExecResult = {
   stdout: string;
@@ -82,12 +92,23 @@ export function activate(context: vscode.ExtensionContext): void {
         output.clear();
         output.appendLine("erbfmt command resolution");
         output.appendLine("");
+        output.appendLine(`resolution: ${commandResolutionLabel(commandInfo.resolution)}`);
         output.appendLine(`command: ${commandInfo.commandLine}`);
         output.appendLine(`cwd: ${commandInfo.cwd}`);
+        if (commandInfo.checkoutRoot) {
+          output.appendLine(`checkout: ${commandInfo.checkoutRoot}`);
+        }
+        if (commandInfo.localBinary) {
+          output.appendLine(`checkout binary: ${commandInfo.localBinary}`);
+        }
         if (commandInfo.configPath) {
           output.appendLine(`config: ${commandInfo.configPath}`);
         } else {
           output.appendLine("config: <none>");
+        }
+        if (commandInfo.setupHint) {
+          output.appendLine("");
+          output.appendLine(commandInfo.setupHint);
         }
         output.show(true);
       } catch (error) {
@@ -269,6 +290,10 @@ type CommandDescription = {
   commandLine: string;
   cwd: string;
   configPath: string | undefined;
+  resolution: CommandResolution;
+  checkoutRoot: string | undefined;
+  localBinary: string | undefined;
+  setupHint: string | undefined;
 };
 
 async function describeCommand(document: vscode.TextDocument): Promise<CommandDescription> {
@@ -290,6 +315,10 @@ async function describeCommand(document: vscode.TextDocument): Promise<CommandDe
     commandLine: commandLine(context.command, args),
     cwd: context.cwd,
     configPath,
+    resolution: context.resolution,
+    checkoutRoot: context.checkoutRoot,
+    localBinary: context.localBinary,
+    setupHint: commandContextSetupHint(context),
   };
 }
 
@@ -302,6 +331,9 @@ async function getCommandContext(document: vscode.TextDocument): Promise<Command
   let extraArguments = Array.isArray(configuredArguments)
     ? configuredArguments.filter((argument): argument is string => typeof argument === "string")
     : [];
+  let resolution: CommandResolution = "configured";
+  let checkoutRoot: string | undefined;
+  let localBinary: string | undefined;
   const inspectedCommand = settings.inspect<string>("command");
   const commandIsDefault =
     inspectedCommand &&
@@ -310,26 +342,36 @@ async function getCommandContext(document: vscode.TextDocument): Promise<Command
     inspectedCommand.workspaceFolderValue === undefined &&
     inspectedCommand.defaultValue === command;
 
-  const checkoutRoot = await findNearestErbfmtCheckout(cwd);
+  checkoutRoot = await findNearestErbfmtCheckout(cwd);
   if (commandIsDefault && checkoutRoot) {
-    const localBinary = path.join(checkoutRoot, "target", "debug", "erbfmt");
+    localBinary = path.join(checkoutRoot, "target", "debug", "erbfmt");
     if (await isExecutableFile(localBinary)) {
       command = localBinary;
+      resolution = "checkoutBinary";
     } else {
       command = await findCargoCommand();
       extraArguments = ["run", "--quiet", "--", ...extraArguments];
+      resolution = "checkoutCargoFallback";
     }
     cwd = checkoutRoot;
+  } else if (commandIsDefault) {
+    resolution = "pathErbfmt";
   }
 
   if (command === "cargo") {
     command = await findCargoCommand();
+    if (resolution === "configured") {
+      resolution = "pathCargo";
+    }
   }
 
   return {
     command,
     cwd,
     extraArguments,
+    resolution,
+    checkoutRoot,
+    localBinary,
     settings,
     workspaceFolder,
   };
@@ -587,6 +629,37 @@ function setupHint(context: CommandContext, result: ExecResult): string | undefi
   }
 
   return undefined;
+}
+
+function commandContextSetupHint(context: CommandContext): string | undefined {
+  if (context.resolution === "checkoutCargoFallback") {
+    return "Hint: run `cargo build` in the erbfmt checkout to use `target/debug/erbfmt` directly instead of `cargo run --quiet --`.";
+  }
+
+  if (context.resolution === "pathErbfmt") {
+    return "Hint: using `erbfmt` from PATH. Set `erbfmt.command` to an absolute binary path for a pinned local setup.";
+  }
+
+  if (context.resolution === "pathCargo") {
+    return "Hint: using cargo from PATH or ~/.cargo/bin. Prefer `cargo build` plus the checkout binary for local extension development.";
+  }
+
+  return undefined;
+}
+
+function commandResolutionLabel(resolution: CommandResolution): string {
+  switch (resolution) {
+    case "configured":
+      return "configured command";
+    case "checkoutBinary":
+      return "checkout target/debug/erbfmt";
+    case "checkoutCargoFallback":
+      return "checkout cargo fallback";
+    case "pathCargo":
+      return "cargo from PATH";
+    case "pathErbfmt":
+      return "erbfmt from PATH";
+  }
 }
 
 function commandLine(command: string, args: string[]): string {

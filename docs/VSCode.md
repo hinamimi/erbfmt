@@ -34,6 +34,22 @@ The extension:
 - provides `Ctrl+/` comment toggling for ERB-safe line comments.
 - keeps all formatting behavior in the Rust binary.
 
+## Binary Resolution
+
+The extension resolves the command in this order:
+
+1. If `erbfmt.command` is configured, use that executable and pass
+   `erbfmt.arguments` before erbfmt's own arguments.
+2. If the active file is inside this checkout and `target/debug/erbfmt` exists,
+   use that binary.
+3. If the active file is inside this checkout but `target/debug/erbfmt` does not
+   exist yet, run `cargo run --quiet --` from the checkout root.
+4. Otherwise, use `erbfmt` from `PATH`.
+
+Use `erbfmt: Show Command` from the command palette to inspect the resolution
+source, command line, working directory, checkout path, local binary path, and
+config path for the active document.
+
 For local development, build the binary first:
 
 ```bash
@@ -58,6 +74,11 @@ Set `erbfmt.lint.enabled` to `false` to disable diagnostics.
 Use `erbfmt: Show Command` from the command palette when setup fails. If the
 extension reports `ENOENT` or `EACCES`, run `cargo build`, install `erbfmt`, or
 set `erbfmt.command` to an executable absolute path.
+
+Future binary download support should use the shared release artifacts described
+in [Distribution.md](Distribution.md): resolve the host platform, download the
+matching archive to extension global storage, verify the sibling `.sha256`, and
+fall back to `erbfmt.command` for users who want a pinned binary.
 
 The extension overrides `Ctrl+/` for `erb` and `html-erb` documents. ERB tags
 are toggled as ERB comments, HTML fragments as HTML comments, and mixed

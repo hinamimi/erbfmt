@@ -47,12 +47,19 @@ binary exists. If it does not exist yet, it falls back to `cargo run --quiet --`
 Running `cargo build` first is the most reliable local setup because VSCode may
 not be able to spawn `cargo` in every environment.
 
+Command resolution order:
+
+1. configured `erbfmt.command`
+2. checkout `target/debug/erbfmt`
+3. checkout `cargo run --quiet --`
+4. `erbfmt` from `PATH`
+
 `erbfmt.command` must be the executable only. Put extra command-line arguments
 in `erbfmt.arguments`.
 
 Use `erbfmt: Show Command` from the command palette to inspect which command,
-working directory, and config path the extension resolved for the active
-document.
+resolution source, working directory, checkout binary, and config path the
+extension resolved for the active document.
 
 Alternatively, install the Rust binary first:
 
@@ -67,6 +74,10 @@ Set `erbfmt.lint.enabled` to `false` to disable diagnostics.
 
 If formatting or diagnostics fail with `ENOENT` or `EACCES`, run `cargo build`,
 install `erbfmt`, or set `erbfmt.command` to an executable absolute path.
+
+Future binary download support should use release artifacts from the Rust CLI,
+verify the sibling `.sha256`, cache the binary in extension global storage, and
+leave `erbfmt.command` as an override for pinned local binaries.
 
 ## Comments
 
