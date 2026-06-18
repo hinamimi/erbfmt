@@ -211,12 +211,32 @@ MVPでまだsupportしないERB block starterを検出します。
 message:
 
 ```text
-unsupported ERB block starter `<% while job.running? %>`
+unsupported ERB block starter `while`
 ```
 
 range:
 
 - unsupported block開始tagの開始位置
+
+現在supportするERB block starter:
+
+- `if`
+- `unless`
+- `case`
+- `do`
+- `begin`
+- output ERB do-block, for example `<%= form_with ... do |form| %>`
+
+現在このruleで検出する未対応starter:
+
+- `while`
+- `for`
+- `until`
+
+理由:
+
+- Ruby AST parsing なしで安全に検出できる。
+- 未対応blockをformatterが誤って整形するより、lintで明示した方が安全。
 
 ### `emptyErbCodeTag`
 

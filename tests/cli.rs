@@ -525,7 +525,7 @@ fn lint_rule_diagnostics_include_line_and_column() {
     assert_eq!(
         stderr(&output),
         format!(
-            "{}: unsupported ERB block starter `<% while job.running? %>` at line 2, column 3\n",
+            "{}: unsupported ERB block starter `while` at line 2, column 3\n",
             file.display()
         )
     );

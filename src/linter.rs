@@ -631,10 +631,10 @@ fn lint_erb_code(
     diagnostics: &mut Vec<Diagnostic>,
 ) {
     if options.rules.unsupported_erb_block_starter
-        && let Some("while" | "for" | "until") = first_keyword(code)
+        && let Some(keyword @ ("while" | "for" | "until")) = first_keyword(code)
     {
         diagnostics.push(Diagnostic::located(
-            format!("unsupported ERB block starter `<% {} %>`", code.trim()),
+            format!("unsupported ERB block starter `{keyword}`"),
             location,
         ));
     }
@@ -943,9 +943,30 @@ mod tests {
         assert_eq!(
             diagnostics,
             vec![Diagnostic::located(
-                "unsupported ERB block starter `<% while job.running? %>`",
+                "unsupported ERB block starter `while`",
                 SourceLocation { line: 1, column: 1 }
             )]
+        );
+    }
+
+    #[test]
+    fn reports_unsupported_erb_block_starter_keywords() {
+        let diagnostics = lint(
+            "<% for user in users %>\n<p><%= user.name %></p>\n<% until done? %>\n<p>Waiting</p>\n",
+        );
+
+        assert_eq!(
+            diagnostics,
+            vec![
+                Diagnostic::located(
+                    "unsupported ERB block starter `for`",
+                    SourceLocation { line: 1, column: 1 }
+                ),
+                Diagnostic::located(
+                    "unsupported ERB block starter `until`",
+                    SourceLocation { line: 3, column: 1 }
+                )
+            ]
         );
     }
 
