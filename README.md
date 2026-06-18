@@ -176,6 +176,7 @@ markers are expanded:
 - `samples/formatter-edge-cases.html.erb`: formatter edge-case fixture.
 - `samples/real-template-audit.html.erb`: table, turbo-frame, and render-heavy audit fixture.
 - `samples/lint-next.html.erb`: intentionally invalid lint fixture.
+- `samples/html-parse-errors.html.erb`: intentionally invalid HTML close tag fixture.
 
 ## VSCode
 

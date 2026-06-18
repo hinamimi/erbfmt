@@ -330,6 +330,12 @@ config:
 <div><span>Hello</div>
 ```
 
+確認用fixture:
+
+```bash
+cargo run --quiet -- --lint samples/html-parse-errors.html.erb
+```
+
 現在のmessage:
 
 ```text

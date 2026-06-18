@@ -48,10 +48,13 @@ Run the intentional failing lint fixture separately:
 
 ```bash
 cargo run --quiet -- --lint samples/lint-next.html.erb
+cargo run --quiet -- --lint samples/html-parse-errors.html.erb
 ```
 
-This command is expected to exit with a failure status because
-`samples/lint-next.html.erb` intentionally contains lint issues.
+These commands are expected to exit with a failure status because
+`samples/lint-next.html.erb` intentionally contains lint issues and
+`samples/html-parse-errors.html.erb` intentionally contains an HTML close tag
+mismatch.
 
 `npm run package --prefix editors/vscode` should package without repository
 metadata warnings once the canonical repository URL is set in the VSCode
