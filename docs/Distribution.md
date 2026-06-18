@@ -108,3 +108,6 @@ Before public binary release:
 - confirm the canonical repository URL,
 - build release binaries from the same Git revision,
 - verify `erbfmt --version` against the release version.
+
+The first public version should be `0.1.0`. See [FirstRelease.md](FirstRelease.md)
+for the concrete first-release plan.

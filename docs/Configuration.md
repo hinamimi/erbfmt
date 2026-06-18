@@ -28,6 +28,7 @@ option for the existing HTML indentation behavior.
     "enabled": true,
     "rules": {
       "recommended": true,
+      "emptyErbCodeTag": "error",
       "emptyErbControlBlock": "error",
       "unsupportedErbBlockStarter": "error"
     }
@@ -55,6 +56,7 @@ option for the existing HTML indentation behavior.
 - `linter.enabled`: enable or disable lint diagnostics.
 - `linter.rules.recommended`: default state for lint rules when a rule is not
   configured explicitly.
+- `linter.rules.emptyErbCodeTag`: `error`, `warn`, or `off`.
 - `linter.rules.emptyErbControlBlock`: `error`, `warn`, or `off`.
 - `linter.rules.unsupportedErbBlockStarter`: `error`, `warn`, or `off`.
 

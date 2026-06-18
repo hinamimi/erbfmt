@@ -130,6 +130,25 @@ fn lint_fails_for_invalid_file() {
 }
 
 #[test]
+fn lint_fails_for_empty_erb_code_tags() {
+    let dir = TestDir::new("lint_empty_erb_code_tag");
+    let file = dir.write("input.html.erb", "<p>Before</p>\n  <% %>\n  <%=   %>\n");
+
+    let output = run(["--lint".as_ref(), file.as_path()]);
+
+    assert_failure(&output);
+    assert_eq!(stdout(&output), "");
+    assert_eq!(
+        stderr(&output),
+        format!(
+            "{}: empty ERB code tag `<% %>` at line 2, column 3\n{}: empty ERB output tag `<%= %>` at line 3, column 3\n",
+            file.display(),
+            file.display()
+        )
+    );
+}
+
+#[test]
 fn config_controls_formatter_indent_width() {
     let dir = TestDir::new("config_indent_width");
     let config = dir.write("erbfmt.json", r#"{"formatter":{"indentWidth":4}}"#);
@@ -220,6 +239,30 @@ fn config_can_disable_linter_rule() {
         r#"{"linter":{"rules":{"emptyErbControlBlock":"off"}}}"#,
     );
     let file = dir.write("input.html.erb", "<% if show_empty_state %>\n<% end %>\n");
+
+    let output = run([
+        "--lint".as_ref(),
+        "--config".as_ref(),
+        config.as_path(),
+        file.as_path(),
+    ]);
+
+    assert_success(&output);
+    assert_eq!(
+        stdout(&output),
+        format!("{}: no lint issues found.\n", file.display())
+    );
+    assert_eq!(stderr(&output), "");
+}
+
+#[test]
+fn config_can_disable_empty_erb_code_tag_rule() {
+    let dir = TestDir::new("config_empty_erb_code_tag_disabled");
+    let config = dir.write(
+        "erbfmt.json",
+        r#"{"linter":{"rules":{"emptyErbCodeTag":"off"}}}"#,
+    );
+    let file = dir.write("input.html.erb", "<% %>\n<%= %>\n");
 
     let output = run([
         "--lint".as_ref(),

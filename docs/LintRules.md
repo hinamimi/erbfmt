@@ -55,9 +55,7 @@ range:
 
 - unsupported block開始tagの開始位置
 
-## 次に実装するrule
-
-### 1. `emptyErbCodeTag`
+### `emptyErbCodeTag`
 
 空のERB tagを検出します。
 
@@ -97,7 +95,9 @@ config:
 }
 ```
 
-### 2. `emptyErbBranch`
+## 次に実装するrule
+
+### 1. `emptyErbBranch`
 
 空のERB branchを検出します。
 
@@ -185,8 +185,7 @@ mismatched HTML close tag `</div>`, expected closing tag for `span`, found `div`
 
 ## 実装順
 
-1. `emptyErbCodeTag`
-2. `emptyErbBranch`
-3. HTML nesting diagnostics のmessage / location改善
+1. `emptyErbBranch`
+2. HTML nesting diagnostics のmessage / location改善
 
-`emptyErbCodeTag` と `emptyErbBranch` を先に実装し、severity plumbingやautocorrectは後回しにします。
+`emptyErbBranch` を先に実装し、severity plumbingやautocorrectは後回しにします。

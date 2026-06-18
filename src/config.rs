@@ -169,6 +169,7 @@ impl RawLinterConfig {
 #[serde(rename_all = "camelCase")]
 struct RawLintRules {
     recommended: Option<bool>,
+    empty_erb_code_tag: Option<RuleSetting>,
     empty_erb_control_block: Option<RuleSetting>,
     unsupported_erb_block_starter: Option<RuleSetting>,
 }
@@ -178,6 +179,10 @@ impl RawLintRules {
         let recommended = self.recommended.unwrap_or(true);
 
         LintRules {
+            empty_erb_code_tag: self
+                .empty_erb_code_tag
+                .map(RuleSetting::is_enabled)
+                .unwrap_or(recommended),
             empty_erb_control_block: self
                 .empty_erb_control_block
                 .map(RuleSetting::is_enabled)

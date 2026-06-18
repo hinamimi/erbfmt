@@ -50,6 +50,9 @@
             "recommended": {
               "type": "boolean"
             },
+            "emptyErbCodeTag": {
+              "enum": ["off", "warn", "error"]
+            },
             "emptyErbControlBlock": {
               "enum": ["off", "warn", "error"]
             },

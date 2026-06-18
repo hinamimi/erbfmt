@@ -51,6 +51,7 @@ impl Default for LintOptions {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct LintRules {
+    pub empty_erb_code_tag: bool,
     pub empty_erb_control_block: bool,
     pub unsupported_erb_block_starter: bool,
 }
@@ -58,6 +59,7 @@ pub struct LintRules {
 impl Default for LintRules {
     fn default() -> Self {
         Self {
+            empty_erb_code_tag: true,
             empty_erb_control_block: true,
             unsupported_erb_block_starter: true,
         }
@@ -107,11 +109,29 @@ fn lint_tokens(tokens: &[lexer::SpannedToken], options: LintOptions) -> Vec<Diag
                 }
             }
             lexer::Token::ErbCode(code) => {
+                lint_empty_erb_code_tag(
+                    ErbCodeTagKind::Code,
+                    code,
+                    spanned.span.location,
+                    options,
+                    &mut diagnostics,
+                );
                 lint_erb_code(code, spanned.span.location, options, &mut diagnostics);
-                mark_current_block_meaningful(&mut stack);
+                if !code.trim().is_empty() {
+                    mark_current_block_meaningful(&mut stack);
+                }
             }
-            lexer::Token::ErbOutput(_) => {
-                mark_current_block_meaningful(&mut stack);
+            lexer::Token::ErbOutput(code) => {
+                lint_empty_erb_code_tag(
+                    ErbCodeTagKind::Output,
+                    code,
+                    spanned.span.location,
+                    options,
+                    &mut diagnostics,
+                );
+                if !code.trim().is_empty() {
+                    mark_current_block_meaningful(&mut stack);
+                }
             }
             lexer::Token::ErbBlockStart { code, output, .. } => {
                 mark_current_block_meaningful(&mut stack);
@@ -170,6 +190,31 @@ fn format_erb_block_open(output: bool, code: &str) -> String {
     } else {
         format!("<% {} %>", code.trim())
     }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ErbCodeTagKind {
+    Code,
+    Output,
+}
+
+fn lint_empty_erb_code_tag(
+    kind: ErbCodeTagKind,
+    code: &str,
+    location: SourceLocation,
+    options: LintOptions,
+    diagnostics: &mut Vec<Diagnostic>,
+) {
+    if !options.rules.empty_erb_code_tag || !code.trim().is_empty() {
+        return;
+    }
+
+    let message = match kind {
+        ErbCodeTagKind::Code => "empty ERB code tag `<% %>`",
+        ErbCodeTagKind::Output => "empty ERB output tag `<%= %>`",
+    };
+
+    diagnostics.push(Diagnostic::located(message, location));
 }
 
 fn lint_erb_code(
@@ -263,6 +308,44 @@ mod tests {
     }
 
     #[test]
+    fn reports_empty_erb_code_tags() {
+        let diagnostics = lint("<p>Before</p>\n  <% %>\n  <%=   %>\n");
+
+        assert_eq!(
+            diagnostics,
+            vec![
+                Diagnostic::located(
+                    "empty ERB code tag `<% %>`",
+                    SourceLocation { line: 2, column: 3 }
+                ),
+                Diagnostic::located(
+                    "empty ERB output tag `<%= %>`",
+                    SourceLocation { line: 3, column: 3 }
+                )
+            ]
+        );
+    }
+
+    #[test]
+    fn empty_erb_code_tags_do_not_count_as_meaningful_block_content() {
+        let diagnostics = lint("<% if show_empty_state %>\n  <% %>\n<% end %>\n");
+
+        assert_eq!(
+            diagnostics,
+            vec![
+                Diagnostic::located(
+                    "empty ERB code tag `<% %>`",
+                    SourceLocation { line: 2, column: 3 }
+                ),
+                Diagnostic::located(
+                    "empty ERB control block `<% if show_empty_state %>`",
+                    SourceLocation { line: 1, column: 1 }
+                )
+            ]
+        );
+    }
+
+    #[test]
     fn does_not_report_supported_erb_branches() {
         let diagnostics =
             lint("<% if current_user %>\n<% else %>\n<p>Please sign in</p>\n<% end %>");
@@ -303,6 +386,22 @@ mod tests {
             LintOptions {
                 rules: LintRules {
                     empty_erb_control_block: false,
+                    ..LintRules::default()
+                },
+                ..LintOptions::default()
+            },
+        );
+
+        assert_eq!(diagnostics, Vec::new());
+    }
+
+    #[test]
+    fn respects_disabled_empty_erb_code_tag_rule() {
+        let diagnostics = lint_with_options(
+            "<% %>\n<%= %>\n",
+            LintOptions {
+                rules: LintRules {
+                    empty_erb_code_tag: false,
                     ..LintRules::default()
                 },
                 ..LintOptions::default()

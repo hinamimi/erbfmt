@@ -8,6 +8,7 @@ For now, npm packages, Ruby gems, and editor extensions should be treated as
 future wrappers around the Rust binary instead of separate formatter engines.
 
 See [Distribution.md](Distribution.md) for the binary distribution strategy.
+See [FirstRelease.md](FirstRelease.md) for the first public release plan.
 
 ## Local Install
 
@@ -133,6 +134,8 @@ version `0.0.0-dev` for both the Rust crate and the VSCode extension. Do not
 bump minor versions for ordinary milestone work while the project is still in
 this phase.
 
+The first public release should use `0.1.0`.
+
 The CLI version is read from `Cargo.toml`. The VSCode extension version is read
 from `editors/vscode/package.json`.
 
@@ -143,3 +146,5 @@ Before a public release:
 - Regenerate the lockfiles if needed.
 - Confirm `cargo run --quiet -- --version` prints the new version.
 - Confirm `erbfmt --version` after local install.
+- Confirm the manual `Release Binaries` workflow produced all four expected
+  archives and sibling `.sha256` files from the release tag or tagged commit.

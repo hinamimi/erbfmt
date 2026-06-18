@@ -224,6 +224,7 @@ cargo run -- samples/sample.html.erb
 See [docs/Release.md](docs/Release.md) for local release verification.
 See [docs/Configuration.md](docs/Configuration.md) for formatter and linter configuration.
 See [docs/LintRules.md](docs/LintRules.md) for current and planned lint rules.
+See [docs/FirstRelease.md](docs/FirstRelease.md) for the first public release plan.
 See [docs/VSCode.md](docs/VSCode.md) for VSCode extension packaging and local
 install notes.
 See [docs/Distribution.md](docs/Distribution.md) for binary distribution
