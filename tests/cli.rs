@@ -383,6 +383,61 @@ fn config_can_disable_linter_rule() {
 }
 
 #[test]
+fn config_lint_warning_rule_does_not_fail_cli() {
+    let dir = TestDir::new("config_lint_warning_rule");
+    let config = dir.write(
+        "erbfmt.json",
+        r#"{"linter":{"rules":{"noDeprecatedHtmlTag":"warn"}}}"#,
+    );
+    let file = dir.write("input.html.erb", "<center>Legacy</center>\n");
+
+    let output = run([
+        "--lint".as_ref(),
+        "--config".as_ref(),
+        config.as_path(),
+        file.as_path(),
+    ]);
+
+    assert_success(&output);
+    assert_eq!(stdout(&output), "");
+    assert_eq!(
+        stderr(&output),
+        format!(
+            "{}: warning: deprecated HTML tag `<center>` at line 1, column 1\n",
+            file.display()
+        )
+    );
+}
+
+#[test]
+fn config_lint_warning_and_error_rules_still_fail_cli() {
+    let dir = TestDir::new("config_lint_warning_and_error_rules");
+    let config = dir.write(
+        "erbfmt.json",
+        r#"{"linter":{"rules":{"noDeprecatedHtmlTag":"warn","noSelfClosingHtmlTag":"error"}}}"#,
+    );
+    let file = dir.write("input.html.erb", "<center><div /></center>\n");
+
+    let output = run([
+        "--lint".as_ref(),
+        "--config".as_ref(),
+        config.as_path(),
+        file.as_path(),
+    ]);
+
+    assert_failure(&output);
+    assert_eq!(stdout(&output), "");
+    assert_eq!(
+        stderr(&output),
+        format!(
+            "{}: warning: deprecated HTML tag `<center>` at line 1, column 1\n{}: self-closing HTML tag `<div />` is not valid HTML5 at line 1, column 9\n",
+            file.display(),
+            file.display()
+        )
+    );
+}
+
+#[test]
 fn config_can_disable_empty_erb_code_tag_rule() {
     let dir = TestDir::new("config_empty_erb_code_tag_disabled");
     let config = dir.write(

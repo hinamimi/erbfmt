@@ -113,11 +113,25 @@ fn run_lint(file: &Path, content: &str, config: &config::Config) -> Result<FileS
         return Ok(FileStatus::Passed);
     }
 
-    for diagnostic in diagnostics {
-        eprintln!("{}: {}", file.display(), diagnostic.message_with_location());
+    let has_errors = diagnostics.iter().any(linter::Diagnostic::is_error);
+
+    for diagnostic in &diagnostics {
+        if diagnostic.severity == linter::DiagnosticSeverity::Warning {
+            eprintln!(
+                "{}: warning: {}",
+                file.display(),
+                diagnostic.message_with_location()
+            );
+        } else {
+            eprintln!("{}: {}", file.display(), diagnostic.message_with_location());
+        }
     }
 
-    Ok(FileStatus::Failed)
+    Ok(if has_errors {
+        FileStatus::Failed
+    } else {
+        FileStatus::Passed
+    })
 }
 
 fn format_content(file: &Path, content: &str, config: &config::Config) -> Result<String> {

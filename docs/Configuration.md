@@ -72,8 +72,9 @@ option for the existing HTML indentation behavior.
 - `linter.rules.noSelfClosingHtmlTag`: `error`, `warn`, or `off`.
 - `linter.rules.unsupportedErbBlockStarter`: `error`, `warn`, or `off`.
 
-Currently `warn` and `error` both enable the rule. Diagnostic severity is not
-reported yet.
+`error` diagnostics make `erbfmt --lint` exit with a failure status. `warn`
+diagnostics are reported, but warning-only lint results exit successfully.
+VSCode diagnostics use the matching warning or error severity.
 
 See [LintRules.md](LintRules.md) for the current lint rule design and the next
 planned rules.

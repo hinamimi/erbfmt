@@ -8,8 +8,8 @@
 - Rails semantic analysis はしない。
 - まずは lexer / mixed parser が既に持っている構造だけを使う。
 - diagnostic は CLI と VSCode の両方で読みやすい短いmessageにする。
-- VSCode diagnostics は現時点ではすべて `Error` として表示される。
-- `warn` / `error` のseverity差分はまだ出さず、どちらもrule enabledとして扱う。
+- `warn` / `error` はCLIとVSCode diagnosticsのseverityに反映する。
+- CLIは `error` diagnostic があれば失敗し、warningだけなら成功する。
 - `erbfmt-ignore` comment directive で次行のlint診断を抑制できる。
 
 ## ruleの分類

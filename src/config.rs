@@ -8,7 +8,7 @@ use serde::Deserialize;
 
 use crate::{
     formatter::{FormatOptions, IndentStyle, LineEnding},
-    linter::{LintOptions, LintRules},
+    linter::{DiagnosticSeverity, LintOptions, LintRuleSeverities, LintRules},
 };
 
 const CONFIG_FILE: &str = "erbfmt.json";
@@ -158,7 +158,9 @@ impl RawLinterConfig {
         }
 
         if let Some(rules) = self.rules {
-            config.options.rules = rules.into_rules();
+            let rule_config = rules.into_rule_config();
+            config.options.rules = rule_config.rules;
+            config.options.rule_severities = rule_config.severities;
         }
 
         config
@@ -180,47 +182,50 @@ struct RawLintRules {
     unsupported_erb_block_starter: Option<RuleSetting>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct LintRuleConfig {
+    rules: LintRules,
+    severities: LintRuleSeverities,
+}
+
 impl RawLintRules {
-    fn into_rules(self) -> LintRules {
+    fn into_rule_config(self) -> LintRuleConfig {
         let recommended = self.recommended.unwrap_or(true);
 
-        LintRules {
-            empty_erb_branch: self
-                .empty_erb_branch
-                .map(RuleSetting::is_enabled)
-                .unwrap_or(recommended),
-            empty_erb_code_tag: self
-                .empty_erb_code_tag
-                .map(RuleSetting::is_enabled)
-                .unwrap_or(recommended),
-            empty_erb_control_block: self
-                .empty_erb_control_block
-                .map(RuleSetting::is_enabled)
-                .unwrap_or(recommended),
-            no_deprecated_html_tag: self
-                .no_deprecated_html_tag
-                .map(RuleSetting::is_enabled)
-                .unwrap_or(recommended),
-            no_duplicate_html_attribute: self
-                .no_duplicate_html_attribute
-                .map(RuleSetting::is_enabled)
-                .unwrap_or(recommended),
-            no_invalid_html_boolean_attribute: self
-                .no_invalid_html_boolean_attribute
-                .map(RuleSetting::is_enabled)
-                .unwrap_or(recommended),
-            no_invalid_html_nesting: self
-                .no_invalid_html_nesting
-                .map(RuleSetting::is_enabled)
-                .unwrap_or(recommended),
-            no_self_closing_html_tag: self
-                .no_self_closing_html_tag
-                .map(RuleSetting::is_enabled)
-                .unwrap_or(recommended),
-            unsupported_erb_block_starter: self
-                .unsupported_erb_block_starter
-                .map(RuleSetting::is_enabled)
-                .unwrap_or(recommended),
+        LintRuleConfig {
+            rules: LintRules {
+                empty_erb_branch: rule_enabled(self.empty_erb_branch, recommended),
+                empty_erb_code_tag: rule_enabled(self.empty_erb_code_tag, recommended),
+                empty_erb_control_block: rule_enabled(self.empty_erb_control_block, recommended),
+                no_deprecated_html_tag: rule_enabled(self.no_deprecated_html_tag, recommended),
+                no_duplicate_html_attribute: rule_enabled(
+                    self.no_duplicate_html_attribute,
+                    recommended,
+                ),
+                no_invalid_html_boolean_attribute: rule_enabled(
+                    self.no_invalid_html_boolean_attribute,
+                    recommended,
+                ),
+                no_invalid_html_nesting: rule_enabled(self.no_invalid_html_nesting, recommended),
+                no_self_closing_html_tag: rule_enabled(self.no_self_closing_html_tag, recommended),
+                unsupported_erb_block_starter: rule_enabled(
+                    self.unsupported_erb_block_starter,
+                    recommended,
+                ),
+            },
+            severities: LintRuleSeverities {
+                empty_erb_branch: rule_severity(self.empty_erb_branch),
+                empty_erb_code_tag: rule_severity(self.empty_erb_code_tag),
+                empty_erb_control_block: rule_severity(self.empty_erb_control_block),
+                no_deprecated_html_tag: rule_severity(self.no_deprecated_html_tag),
+                no_duplicate_html_attribute: rule_severity(self.no_duplicate_html_attribute),
+                no_invalid_html_boolean_attribute: rule_severity(
+                    self.no_invalid_html_boolean_attribute,
+                ),
+                no_invalid_html_nesting: rule_severity(self.no_invalid_html_nesting),
+                no_self_closing_html_tag: rule_severity(self.no_self_closing_html_tag),
+                unsupported_erb_block_starter: rule_severity(self.unsupported_erb_block_starter),
+            },
         }
     }
 }
@@ -237,6 +242,23 @@ impl RuleSetting {
     fn is_enabled(self) -> bool {
         !matches!(self, Self::Off)
     }
+
+    fn diagnostic_severity(self) -> DiagnosticSeverity {
+        match self {
+            Self::Warn => DiagnosticSeverity::Warning,
+            Self::Error | Self::Off => DiagnosticSeverity::Error,
+        }
+    }
+}
+
+fn rule_enabled(setting: Option<RuleSetting>, recommended: bool) -> bool {
+    setting.map(RuleSetting::is_enabled).unwrap_or(recommended)
+}
+
+fn rule_severity(setting: Option<RuleSetting>) -> DiagnosticSeverity {
+    setting
+        .map(RuleSetting::diagnostic_severity)
+        .unwrap_or(DiagnosticSeverity::Error)
 }
 
 fn find_config() -> Option<PathBuf> {

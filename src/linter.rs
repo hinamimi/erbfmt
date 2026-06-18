@@ -9,6 +9,13 @@ use crate::{
 pub struct Diagnostic {
     pub message: String,
     pub location: Option<SourceLocation>,
+    pub severity: DiagnosticSeverity,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DiagnosticSeverity {
+    Warning,
+    Error,
 }
 
 impl Diagnostic {
@@ -16,13 +23,24 @@ impl Diagnostic {
         Self {
             message: message.into(),
             location: None,
+            severity: DiagnosticSeverity::Error,
         }
     }
 
+    #[cfg(test)]
     fn located(message: impl Into<String>, location: SourceLocation) -> Self {
+        Self::located_with_severity(message, location, DiagnosticSeverity::Error)
+    }
+
+    fn located_with_severity(
+        message: impl Into<String>,
+        location: SourceLocation,
+        severity: DiagnosticSeverity,
+    ) -> Self {
         Self {
             message: message.into(),
             location: Some(location),
+            severity,
         }
     }
 
@@ -32,12 +50,17 @@ impl Diagnostic {
             None => self.message.clone(),
         }
     }
+
+    pub fn is_error(&self) -> bool {
+        self.severity == DiagnosticSeverity::Error
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct LintOptions {
     pub enabled: bool,
     pub rules: LintRules,
+    pub rule_severities: LintRuleSeverities,
 }
 
 impl Default for LintOptions {
@@ -45,6 +68,7 @@ impl Default for LintOptions {
         Self {
             enabled: true,
             rules: LintRules::default(),
+            rule_severities: LintRuleSeverities::default(),
         }
     }
 }
@@ -74,6 +98,35 @@ impl Default for LintRules {
             no_invalid_html_nesting: true,
             no_self_closing_html_tag: true,
             unsupported_erb_block_starter: true,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct LintRuleSeverities {
+    pub empty_erb_branch: DiagnosticSeverity,
+    pub empty_erb_code_tag: DiagnosticSeverity,
+    pub empty_erb_control_block: DiagnosticSeverity,
+    pub no_deprecated_html_tag: DiagnosticSeverity,
+    pub no_duplicate_html_attribute: DiagnosticSeverity,
+    pub no_invalid_html_boolean_attribute: DiagnosticSeverity,
+    pub no_invalid_html_nesting: DiagnosticSeverity,
+    pub no_self_closing_html_tag: DiagnosticSeverity,
+    pub unsupported_erb_block_starter: DiagnosticSeverity,
+}
+
+impl Default for LintRuleSeverities {
+    fn default() -> Self {
+        Self {
+            empty_erb_branch: DiagnosticSeverity::Error,
+            empty_erb_code_tag: DiagnosticSeverity::Error,
+            empty_erb_control_block: DiagnosticSeverity::Error,
+            no_deprecated_html_tag: DiagnosticSeverity::Error,
+            no_duplicate_html_attribute: DiagnosticSeverity::Error,
+            no_invalid_html_boolean_attribute: DiagnosticSeverity::Error,
+            no_invalid_html_nesting: DiagnosticSeverity::Error,
+            no_self_closing_html_tag: DiagnosticSeverity::Error,
+            unsupported_erb_block_starter: DiagnosticSeverity::Error,
         }
     }
 }
@@ -316,12 +369,13 @@ fn lint_tokens(
                 finish_active_branch(&mut frame, options, &mut diagnostics);
 
                 if options.rules.empty_erb_control_block && !frame.has_meaningful_content {
-                    diagnostics.push(Diagnostic::located(
+                    diagnostics.push(Diagnostic::located_with_severity(
                         format!(
                             "empty ERB control block `{}`",
                             format_erb_block_open(frame.output, &frame.code)
                         ),
                         frame.location,
+                        options.rule_severities.empty_erb_control_block,
                     ));
                 }
             }
@@ -351,9 +405,10 @@ fn finish_active_branch(
     };
 
     if options.rules.empty_erb_branch && !branch.has_meaningful_content {
-        diagnostics.push(Diagnostic::located(
+        diagnostics.push(Diagnostic::located_with_severity(
             format!("empty ERB branch `<% {} %>`", branch.code.trim()),
             branch.location,
+            options.rule_severities.empty_erb_branch,
         ));
     }
 }
@@ -546,9 +601,10 @@ fn lint_html_content_model(
         return;
     };
 
-    diagnostics.push(Diagnostic::located(
+    diagnostics.push(Diagnostic::located_with_severity(
         message,
         lexer::source_location(input, fragment_start + html_token_start),
+        options.rule_severities.no_invalid_html_nesting,
     ));
 }
 
@@ -578,12 +634,13 @@ fn lint_html_text_content_model(
         return;
     }
 
-    diagnostics.push(Diagnostic::located(
+    diagnostics.push(Diagnostic::located_with_severity(
         format!("invalid HTML nesting: <{parent_name}> cannot have text as a direct child"),
         lexer::source_location(
             input,
             fragment_start + html_token_start + first_non_whitespace_offset(text),
         ),
+        options.rule_severities.no_invalid_html_nesting,
     ));
 }
 
@@ -713,9 +770,10 @@ fn lint_self_closing_html_tag(
         return;
     }
 
-    diagnostics.push(Diagnostic::located(
+    diagnostics.push(Diagnostic::located_with_severity(
         format!("self-closing HTML tag `{}` is not valid HTML5", tag.raw),
         lexer::source_location(input, fragment_start + html_token_start),
+        options.rule_severities.no_self_closing_html_tag,
     ));
 }
 
@@ -731,9 +789,10 @@ fn lint_deprecated_html_tag(
         return;
     }
 
-    diagnostics.push(Diagnostic::located(
+    diagnostics.push(Diagnostic::located_with_severity(
         format!("deprecated HTML tag `{}`", tag.raw),
         lexer::source_location(input, fragment_start + html_token_start),
+        options.rule_severities.no_deprecated_html_tag,
     ));
 }
 
@@ -769,9 +828,10 @@ fn lint_duplicate_html_attributes(
             .iter()
             .any(|seen_attribute| seen_attribute.name == attribute.name)
         {
-            diagnostics.push(Diagnostic::located(
+            diagnostics.push(Diagnostic::located_with_severity(
                 format!("duplicate HTML attribute `{}`", attribute.name),
                 lexer::source_location(input, fragment_start + html_token_start + attribute.offset),
+                options.rule_severities.no_duplicate_html_attribute,
             ));
         } else {
             seen.push(attribute);
@@ -815,9 +875,10 @@ fn lint_invalid_html_boolean_attributes(
         };
 
         if let Some(message) = message {
-            diagnostics.push(Diagnostic::located(
+            diagnostics.push(Diagnostic::located_with_severity(
                 message,
                 lexer::source_location(input, fragment_start + html_token_start + attribute.offset),
+                options.rule_severities.no_invalid_html_boolean_attribute,
             ));
         }
     }
@@ -1054,7 +1115,11 @@ fn lint_empty_erb_code_tag(
         ErbCodeTagKind::Output => "empty ERB output tag `<%= %>`",
     };
 
-    diagnostics.push(Diagnostic::located(message, location));
+    diagnostics.push(Diagnostic::located_with_severity(
+        message,
+        location,
+        options.rule_severities.empty_erb_code_tag,
+    ));
 }
 
 fn lint_erb_code(
@@ -1066,9 +1131,10 @@ fn lint_erb_code(
     if options.rules.unsupported_erb_block_starter
         && let Some(keyword @ ("while" | "for" | "until")) = first_keyword(code)
     {
-        diagnostics.push(Diagnostic::located(
+        diagnostics.push(Diagnostic::located_with_severity(
             format!("unsupported ERB block starter `{keyword}`"),
             location,
+            options.rule_severities.unsupported_erb_block_starter,
         ));
     }
 }
@@ -1203,6 +1269,29 @@ mod tests {
                     SourceLocation { line: 3, column: 3 }
                 )
             ]
+        );
+    }
+
+    #[test]
+    fn reports_rule_warning_severity() {
+        let diagnostics = lint_with_options(
+            "<center>Legacy</center>\n",
+            LintOptions {
+                rule_severities: LintRuleSeverities {
+                    no_deprecated_html_tag: DiagnosticSeverity::Warning,
+                    ..LintRuleSeverities::default()
+                },
+                ..LintOptions::default()
+            },
+        );
+
+        assert_eq!(
+            diagnostics,
+            vec![Diagnostic::located_with_severity(
+                "deprecated HTML tag `<center>`",
+                SourceLocation { line: 1, column: 1 },
+                DiagnosticSeverity::Warning
+            )]
         );
     }
 

@@ -254,25 +254,25 @@ async function lintDocument(
     await fs.writeFile(tempFile, document.getText(), "utf8");
     const args = await buildErbfmtArgs(context, document, ["--lint", tempFile]);
     const result = await execFile(context.command, args, { cwd: context.cwd }, token);
+    const parsedDiagnostics = parseDiagnostics(document, tempFile, result.stderr);
+
+    if (parsedDiagnostics.length > 0) {
+      diagnostics.set(document.uri, parsedDiagnostics);
+      return;
+    }
 
     if (result.exitCode === 0) {
       diagnostics.delete(document.uri);
       return;
     }
 
-    const parsedDiagnostics = parseDiagnostics(document, tempFile, result.stderr);
-    diagnostics.set(
-      document.uri,
-      parsedDiagnostics.length > 0
-        ? parsedDiagnostics
-        : [
-            new vscode.Diagnostic(
-              firstCharacterRange(document),
-              formatFailureMessage(context, args, result),
-              vscode.DiagnosticSeverity.Error,
-            ),
-          ],
-    );
+    diagnostics.set(document.uri, [
+      new vscode.Diagnostic(
+        firstCharacterRange(document),
+        formatFailureMessage(context, args, result),
+        vscode.DiagnosticSeverity.Error,
+      ),
+    ]);
   } catch (error) {
     diagnostics.set(document.uri, [
       new vscode.Diagnostic(
@@ -495,16 +495,36 @@ function parseDiagnostics(
     }
 
     const message = line.startsWith(`${filePath}: `) ? line.slice(filePath.length + 2) : line;
+    const parsed = parseDiagnosticMessage(message);
     const diagnostic = new vscode.Diagnostic(
-      rangeFromMessage(document, message),
-      message,
-      vscode.DiagnosticSeverity.Error,
+      rangeFromMessage(document, parsed.message),
+      parsed.message,
+      parsed.severity,
     );
     diagnostic.source = "erbfmt";
     diagnostics.push(diagnostic);
   }
 
   return diagnostics;
+}
+
+type ParsedDiagnosticMessage = {
+  message: string;
+  severity: vscode.DiagnosticSeverity;
+};
+
+function parseDiagnosticMessage(message: string): ParsedDiagnosticMessage {
+  if (message.startsWith("warning: ")) {
+    return {
+      message: message.slice("warning: ".length),
+      severity: vscode.DiagnosticSeverity.Warning,
+    };
+  }
+
+  return {
+    message,
+    severity: vscode.DiagnosticSeverity.Error,
+  };
 }
 
 function rangeFromMessage(document: vscode.TextDocument, message: string): vscode.Range {

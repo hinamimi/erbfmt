@@ -676,7 +676,7 @@ Biome / ESLint のように、局所的にlint診断を抑制するcomment direc
 
 Lint severity plumbing
 
-Status: Next
+Status: Done
 
 `erbfmt.json` の `warn` / `error` を、内部diagnosticとCLI / VSCode表示へ反映する土台を作ります。
 
@@ -699,6 +699,44 @@ Status: Next
 - autocorrect
 - ruleごとの細かいcategory taxonomy
 - LSP implementation
+
+結果:
+
+- `Diagnostic` に `DiagnosticSeverity` を追加した。
+- `erbfmt.json` の `warn` / `error` を内部diagnostic severityへ反映するようにした。
+- 未指定ruleと `recommended` で有効化されたruleは、従来どおり `error` として扱う方針にした。
+- CLIは `error` diagnostic があれば失敗し、warningだけなら成功するようにした。
+- CLIのwarning出力は `warning:` prefix を付け、既存のerror出力形式は維持した。
+- VSCode wrapperは `warning:` prefix を `DiagnosticSeverity.Warning` として表示するようにした。
+- docsとtestsを更新した。
+
+## Milestone 52
+
+Formatter ignore design
+
+Status: Next
+
+`erbfmt-ignore` のformatter対応を設計します。
+
+やること:
+
+- formatter ignore を next-line に限定するか、node/subtree単位にするか決める。
+- mixed AST に source range を持たせる必要があるか確認する。
+- HTML comment / ERB comment のどちらで指定できるか決める。
+- formatter ignoreがlint ignoreと衝突しない構文を整理する。
+- docsと小さなfixtureで期待する挙動を固定する。
+
+完了条件:
+
+- formatter ignore の最小仕様がdocsにある。
+- 実装に必要なAST/source range変更が整理されている。
+- すぐ実装に入れるテストケースが決まっている。
+
+範囲外:
+
+- block-level formatter disable / enable
+- unused ignore directive reporting
+- Ruby AST parsing
 
 ## 後で考えること
 
