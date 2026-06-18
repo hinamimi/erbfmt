@@ -174,6 +174,7 @@ markers are expanded:
 - `samples/stability.html.erb`: fixed stability fixture for formatter output.
 - `samples/formatter-audit.html.erb`: Rails-like formatter audit fixture.
 - `samples/formatter-edge-cases.html.erb`: formatter edge-case fixture.
+- `samples/real-template-audit.html.erb`: table, turbo-frame, and render-heavy audit fixture.
 - `samples/lint-next.html.erb`: intentionally invalid lint fixture.
 
 ## VSCode

@@ -800,6 +800,14 @@ mod tests {
     }
 
     #[test]
+    fn snapshots_real_template_audit_fixture() {
+        insta::assert_snapshot!(
+            "real_template_audit_fixture",
+            format(real_template_audit_fixture())
+        );
+    }
+
+    #[test]
     fn formatted_sample_fixture_is_idempotent() {
         assert_format_is_idempotent(sample_fixture());
     }
@@ -817,6 +825,11 @@ mod tests {
     #[test]
     fn formatted_formatter_edge_cases_fixture_is_idempotent() {
         assert_format_is_idempotent(formatter_edge_cases_fixture());
+    }
+
+    #[test]
+    fn formatted_real_template_audit_fixture_is_idempotent() {
+        assert_format_is_idempotent(real_template_audit_fixture());
     }
 
     fn assert_format_is_idempotent(input: &str) {
@@ -840,5 +853,9 @@ mod tests {
 
     fn formatter_edge_cases_fixture() -> &'static str {
         include_str!("../samples/formatter-edge-cases.html.erb")
+    }
+
+    fn real_template_audit_fixture() -> &'static str {
+        include_str!("../samples/real-template-audit.html.erb")
     }
 }

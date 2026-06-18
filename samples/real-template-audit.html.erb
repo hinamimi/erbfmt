@@ -1,0 +1,41 @@
+<section class="orders-page orders-page--compact" aria-labelledby="orders-title" data-controller="orders filters" data-orders-refresh-interval-value="<%= refresh_interval %>">
+<header class="orders-page__header">
+<div>
+<h1 id="orders-title">Orders for <%= current_account.name %></h1>
+<p>Showing <%= orders.size %> orders updated <%= time_ago_in_words(updated_at) %> ago.</p>
+</div>
+<%= render "orders/filter_button", selected_status: selected_status, account: current_account %>
+</header>
+<turbo-frame id="orders" target="_top" data-controller="orders-list" data-orders-list-empty-class="orders-list--empty" aria-live="polite">
+<% if orders.any? %>
+<table class="orders-table" data-controller="selectable-rows" data-action="keydown.enter->selectable-rows#open">
+<thead>
+<tr>
+<th scope="col">Customer</th>
+<th scope="col">Status</th>
+<th scope="col">Total</th>
+<th scope="col">Placed</th>
+</tr>
+</thead>
+<tbody>
+<% orders.each do |order| %>
+<tr id="<%= dom_id(order) %>" class="<%= order.cancelled? ? "is-muted" : "" %>">
+<td>
+<%= render partial: "customers/name", locals: { customer: order.customer, account: current_account } %>
+<span class="muted"><%= order.customer.email %></span>
+</td>
+<td><%= order.status.humanize %></td>
+<td><%= number_to_currency(order.total) %></td>
+<td><%= l(order.created_at, format: :short) %></td>
+</tr>
+<% end %>
+</tbody>
+</table>
+<% else %>
+<%= render "orders/empty_state", status: selected_status, account: current_account %>
+<% end %>
+</turbo-frame>
+<footer>
+<%= render partial: "orders/summary", locals: { orders: orders, selected_status: selected_status, current_user: current_user } %>
+</footer>
+</section>
