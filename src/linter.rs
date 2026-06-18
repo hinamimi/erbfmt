@@ -56,6 +56,7 @@ pub struct LintRules {
     pub empty_erb_control_block: bool,
     pub no_deprecated_html_tag: bool,
     pub no_duplicate_html_attribute: bool,
+    pub no_invalid_html_boolean_attribute: bool,
     pub no_invalid_html_nesting: bool,
     pub no_self_closing_html_tag: bool,
     pub unsupported_erb_block_starter: bool,
@@ -69,6 +70,7 @@ impl Default for LintRules {
             empty_erb_control_block: true,
             no_deprecated_html_tag: true,
             no_duplicate_html_attribute: true,
+            no_invalid_html_boolean_attribute: true,
             no_invalid_html_nesting: true,
             no_self_closing_html_tag: true,
             unsupported_erb_block_starter: true,
@@ -289,6 +291,14 @@ fn lint_html_tokens(
                     options,
                     diagnostics,
                 );
+                lint_invalid_html_boolean_attributes(
+                    input,
+                    fragment_start,
+                    spanned.span.start,
+                    tag,
+                    options,
+                    diagnostics,
+                );
                 stack.push(HtmlElementLintFrame {
                     name: tag.name.clone(),
                 });
@@ -312,6 +322,14 @@ fn lint_html_tokens(
                     diagnostics,
                 );
                 lint_duplicate_html_attributes(
+                    input,
+                    fragment_start,
+                    spanned.span.start,
+                    tag,
+                    options,
+                    diagnostics,
+                );
+                lint_invalid_html_boolean_attributes(
                     input,
                     fragment_start,
                     spanned.span.start,
@@ -347,6 +365,14 @@ fn lint_html_tokens(
                     diagnostics,
                 );
                 lint_duplicate_html_attributes(
+                    input,
+                    fragment_start,
+                    spanned.span.start,
+                    tag,
+                    options,
+                    diagnostics,
+                );
+                lint_invalid_html_boolean_attributes(
                     input,
                     fragment_start,
                     spanned.span.start,
@@ -597,9 +623,15 @@ fn lint_deprecated_html_tag(
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-struct HtmlAttributeName {
+struct HtmlAttribute {
     name: String,
     offset: usize,
+    value: Option<HtmlAttributeValue>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct HtmlAttributeValue {
+    raw: String,
 }
 
 fn lint_duplicate_html_attributes(
@@ -614,8 +646,8 @@ fn lint_duplicate_html_attributes(
         return;
     }
 
-    let attributes = html_attribute_names(tag);
-    let mut seen: Vec<HtmlAttributeName> = Vec::new();
+    let attributes = html_attributes(tag);
+    let mut seen: Vec<HtmlAttribute> = Vec::new();
 
     for attribute in attributes {
         if seen
@@ -632,7 +664,51 @@ fn lint_duplicate_html_attributes(
     }
 }
 
-fn html_attribute_names(tag: &html::HtmlTag) -> Vec<HtmlAttributeName> {
+fn lint_invalid_html_boolean_attributes(
+    input: &str,
+    fragment_start: usize,
+    html_token_start: usize,
+    tag: &html::HtmlTag,
+    options: LintOptions,
+    diagnostics: &mut Vec<Diagnostic>,
+) {
+    if !options.rules.no_invalid_html_boolean_attribute || tag.raw.contains("<%") {
+        return;
+    }
+
+    for attribute in html_attributes(tag) {
+        if !is_html_boolean_attribute(&attribute.name) {
+            continue;
+        }
+
+        let Some(value) = attribute.value else {
+            continue;
+        };
+
+        let message = if value.raw.eq_ignore_ascii_case("false") {
+            Some(format!(
+                "invalid HTML boolean attribute value `{}=\"{}\"`",
+                attribute.name, value.raw
+            ))
+        } else if value.raw.eq_ignore_ascii_case(&attribute.name) {
+            Some(format!(
+                "redundant HTML boolean attribute value `{}=\"{}\"`",
+                attribute.name, value.raw
+            ))
+        } else {
+            None
+        };
+
+        if let Some(message) = message {
+            diagnostics.push(Diagnostic::located(
+                message,
+                lexer::source_location(input, fragment_start + html_token_start + attribute.offset),
+            ));
+        }
+    }
+}
+
+fn html_attributes(tag: &html::HtmlTag) -> Vec<HtmlAttribute> {
     let Some(mut cursor) = tag.raw.find(&tag.name).map(|index| index + tag.name.len()) else {
         return Vec::new();
     };
@@ -657,16 +733,21 @@ fn html_attribute_names(tag: &html::HtmlTag) -> Vec<HtmlAttributeName> {
             break;
         }
 
-        attributes.push(HtmlAttributeName {
+        let mut attribute = HtmlAttribute {
             name: raw[name_start..name_end].to_ascii_lowercase(),
             offset: name_start,
-        });
+            value: None,
+        };
 
         cursor = skip_html_attribute_spacing(raw, name_end);
 
         if raw[cursor..].starts_with('=') {
-            cursor = skip_html_attribute_value(raw, cursor + '='.len_utf8());
+            let (next_cursor, value) = read_html_attribute_value(raw, cursor + '='.len_utf8());
+            attribute.value = value;
+            cursor = next_cursor;
         }
+
+        attributes.push(attribute);
     }
 
     attributes
@@ -712,15 +793,16 @@ fn read_html_attribute_name_end(raw: &str, start: usize) -> Option<usize> {
     Some(cursor)
 }
 
-fn skip_html_attribute_value(raw: &str, cursor: usize) -> usize {
+fn read_html_attribute_value(raw: &str, cursor: usize) -> (usize, Option<HtmlAttributeValue>) {
     let mut cursor = skip_html_attribute_spacing(raw, cursor);
 
     let Some(first) = raw[cursor..].chars().next() else {
-        return cursor;
+        return (cursor, None);
     };
 
     if first == '"' || first == '\'' {
         cursor += first.len_utf8();
+        let value_start = cursor;
 
         while cursor < raw.len() {
             let ch = raw[cursor..]
@@ -730,12 +812,25 @@ fn skip_html_attribute_value(raw: &str, cursor: usize) -> usize {
             cursor += ch.len_utf8();
 
             if ch == first {
-                break;
+                let value_end = cursor - ch.len_utf8();
+                return (
+                    cursor,
+                    Some(HtmlAttributeValue {
+                        raw: raw[value_start..value_end].to_string(),
+                    }),
+                );
             }
         }
 
-        return cursor;
+        return (
+            cursor,
+            Some(HtmlAttributeValue {
+                raw: raw[value_start..cursor].to_string(),
+            }),
+        );
     }
+
+    let value_start = cursor;
 
     while cursor < raw.len() {
         let ch = raw[cursor..]
@@ -750,7 +845,47 @@ fn skip_html_attribute_value(raw: &str, cursor: usize) -> usize {
         cursor += ch.len_utf8();
     }
 
-    cursor
+    if cursor == value_start {
+        (cursor, None)
+    } else {
+        (
+            cursor,
+            Some(HtmlAttributeValue {
+                raw: raw[value_start..cursor].to_string(),
+            }),
+        )
+    }
+}
+
+fn is_html_boolean_attribute(name: &str) -> bool {
+    matches!(
+        name,
+        "allowfullscreen"
+            | "async"
+            | "autofocus"
+            | "autoplay"
+            | "checked"
+            | "controls"
+            | "default"
+            | "defer"
+            | "disabled"
+            | "formnovalidate"
+            | "hidden"
+            | "inert"
+            | "ismap"
+            | "itemscope"
+            | "loop"
+            | "multiple"
+            | "muted"
+            | "nomodule"
+            | "novalidate"
+            | "open"
+            | "playsinline"
+            | "readonly"
+            | "required"
+            | "reversed"
+            | "selected"
+    )
 }
 
 fn is_deprecated_html_tag(name: &str) -> bool {
@@ -986,6 +1121,36 @@ mod tests {
     #[test]
     fn does_not_report_duplicate_html_attributes_when_tag_contains_erb() {
         let diagnostics = lint(r#"<div class="card" <%= tag_options %> class="wide"></div>"#);
+
+        assert_eq!(diagnostics, Vec::new());
+    }
+
+    #[test]
+    fn reports_invalid_html_boolean_attribute_values() {
+        let diagnostics =
+            lint(r#"<button disabled="false" checked="checked" hidden>Save</button>"#);
+
+        assert_eq!(
+            diagnostics,
+            vec![
+                Diagnostic::located(
+                    "invalid HTML boolean attribute value `disabled=\"false\"`",
+                    SourceLocation { line: 1, column: 9 }
+                ),
+                Diagnostic::located(
+                    "redundant HTML boolean attribute value `checked=\"checked\"`",
+                    SourceLocation {
+                        line: 1,
+                        column: 26
+                    }
+                )
+            ]
+        );
+    }
+
+    #[test]
+    fn does_not_report_html_boolean_attribute_values_when_tag_contains_erb() {
+        let diagnostics = lint(r#"<input disabled="<%= disabled? %>" checked="checked">"#);
 
         assert_eq!(diagnostics, Vec::new());
     }
@@ -1256,6 +1421,22 @@ mod tests {
             LintOptions {
                 rules: LintRules {
                     no_duplicate_html_attribute: false,
+                    ..LintRules::default()
+                },
+                ..LintOptions::default()
+            },
+        );
+
+        assert_eq!(diagnostics, Vec::new());
+    }
+
+    #[test]
+    fn respects_disabled_invalid_html_boolean_attribute_rule() {
+        let diagnostics = lint_with_options(
+            r#"<button disabled="false" checked="checked">Save</button>"#,
+            LintOptions {
+                rules: LintRules {
+                    no_invalid_html_boolean_attribute: false,
                     ..LintRules::default()
                 },
                 ..LintOptions::default()

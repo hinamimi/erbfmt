@@ -146,6 +146,50 @@ config:
 }
 ```
 
+### `noInvalidHtmlBooleanAttribute`
+
+HTML boolean attribute の危険または冗長な値を検出します。
+
+対象例:
+
+```erb
+<button disabled="false">Save</button>
+<input checked="checked">
+```
+
+message:
+
+```text
+invalid HTML boolean attribute value `disabled="false"`
+redundant HTML boolean attribute value `checked="checked"`
+```
+
+range:
+
+- 対象attribute名の開始位置
+
+方針:
+
+- `disabled`, `checked`, `selected`, `readonly`, `required` などのHTML boolean
+  attributeを対象にします。
+- `disabled="false"` は属性が存在する時点で有効扱いになるため、危険な値として検出します。
+- `checked="checked"` のように属性名と同じ値は、HTMLとしては動作しますが冗長な値として検出します。
+- 値なしの `disabled` や `checked` は許可します。
+- tag内にERB fragmentを含む場合は、Ruby/ERB側で値が生成される可能性があるため、
+  このruleでは診断しません。
+
+config:
+
+```json
+{
+  "linter": {
+    "rules": {
+      "noInvalidHtmlBooleanAttribute": "error"
+    }
+  }
+}
+```
+
 ### `noInvalidHtmlNesting`
 
 HTML content model に反する代表的な親子関係を検出します。
@@ -373,8 +417,9 @@ config:
 
 候補:
 
-- boolean attribute normalization warning
+- HTML attribute parser boundary hardening
 - より広いHTML content model validation
+- lint severity plumbing
 
 いずれも HTML-only rule として実装し、Ruby codeやERB control-flowには踏み込みません。
 
@@ -424,6 +469,7 @@ location:
 
 1. `unsupportedErbBlockStarter` message refinement
 2. HTML attribute duplicate detection
-3. boolean attribute normalization warning
+3. HTML boolean attribute validation
+4. lint severity plumbing
 
-severity plumbingやautocorrectは後回しにします。
+autocorrectは後回しにします。

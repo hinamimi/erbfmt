@@ -65,6 +65,9 @@
             "noDuplicateHtmlAttribute": {
               "enum": ["off", "warn", "error"]
             },
+            "noInvalidHtmlBooleanAttribute": {
+              "enum": ["off", "warn", "error"]
+            },
             "noInvalidHtmlNesting": {
               "enum": ["off", "warn", "error"]
             },

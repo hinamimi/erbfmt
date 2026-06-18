@@ -213,6 +213,28 @@ fn lint_fails_for_duplicate_html_attributes() {
 }
 
 #[test]
+fn lint_fails_for_invalid_html_boolean_attributes() {
+    let dir = TestDir::new("lint_invalid_html_boolean_attributes");
+    let file = dir.write(
+        "input.html.erb",
+        "<button disabled=\"false\" checked=\"checked\" hidden>Save</button>\n",
+    );
+
+    let output = run(["--lint".as_ref(), file.as_path()]);
+
+    assert_failure(&output);
+    assert_eq!(stdout(&output), "");
+    assert_eq!(
+        stderr(&output),
+        format!(
+            "{}: invalid HTML boolean attribute value `disabled=\"false\"` at line 1, column 9\n{}: redundant HTML boolean attribute value `checked=\"checked\"` at line 1, column 26\n",
+            file.display(),
+            file.display()
+        )
+    );
+}
+
+#[test]
 fn lint_fails_for_invalid_html_nesting() {
     let dir = TestDir::new("lint_invalid_html_nesting");
     let file = dir.write(
@@ -425,6 +447,33 @@ fn config_can_disable_duplicate_html_attribute_rule() {
         r#"{"linter":{"rules":{"noDuplicateHtmlAttribute":"off"}}}"#,
     );
     let file = dir.write("input.html.erb", r#"<div class="card" class="wide"></div>"#);
+
+    let output = run([
+        "--lint".as_ref(),
+        "--config".as_ref(),
+        config.as_path(),
+        file.as_path(),
+    ]);
+
+    assert_success(&output);
+    assert_eq!(
+        stdout(&output),
+        format!("{}: no lint issues found.\n", file.display())
+    );
+    assert_eq!(stderr(&output), "");
+}
+
+#[test]
+fn config_can_disable_invalid_html_boolean_attribute_rule() {
+    let dir = TestDir::new("config_invalid_html_boolean_attribute_disabled");
+    let config = dir.write(
+        "erbfmt.json",
+        r#"{"linter":{"rules":{"noInvalidHtmlBooleanAttribute":"off"}}}"#,
+    );
+    let file = dir.write(
+        "input.html.erb",
+        r#"<button disabled="false" checked="checked">Save</button>"#,
+    );
 
     let output = run([
         "--lint".as_ref(),
