@@ -203,7 +203,7 @@ Status: Done
 
 Lint rule design pass
 
-Status: Next
+Status: Done
 
 現在の parser / diagnostics を前提に、次に増やす lint rule を設計します。
 
@@ -227,11 +227,21 @@ Status: Next
 - autocorrect
 - LSP implementation
 
+結果:
+
+- [LintRules.md](LintRules.md) を追加した。
+- 次に実装するlint ruleを `emptyErbCodeTag` と `emptyErbBranch` に絞った。
+- `emptyErbCodeTag` は空の `<% %>` / `<%= %>` をtag開始位置で診断する。
+- `emptyErbBranch` は空の `else`, `elsif`, `when`, `rescue`, `ensure` branchを
+  branch tag開始位置で診断する。
+- HTML nesting diagnostics は通常のlint ruleではなく、parser diagnostic品質改善として扱う。
+- `warn` / `error` のseverity差分とautocorrectは後回しにした。
+
 ## Milestone 40
 
 VSCode binary resolution UX
 
-Status: Planned
+Status: Next
 
 VSCode extension が `erbfmt` binary を見つけられないときの体験を改善します。
 

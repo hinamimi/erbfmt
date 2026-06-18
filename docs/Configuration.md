@@ -60,3 +60,6 @@ option for the existing HTML indentation behavior.
 
 Currently `warn` and `error` both enable the rule. Diagnostic severity is not
 reported yet.
+
+See [LintRules.md](LintRules.md) for the current lint rule design and the next
+planned rules.
