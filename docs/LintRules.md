@@ -95,9 +95,7 @@ config:
 }
 ```
 
-## 次に実装するrule
-
-### 1. `emptyErbBranch`
+### `emptyErbBranch`
 
 空のERB branchを検出します。
 
@@ -147,6 +145,10 @@ config:
 }
 ```
 
+## 次に実装するrule
+
+現時点で次の新規lint ruleはまだ決めていません。
+
 ## ruleではなくdiagnostic品質改善として扱うもの
 
 ### HTML nesting diagnostics
@@ -185,7 +187,7 @@ mismatched HTML close tag `</div>`, expected closing tag for `span`, found `div`
 
 ## 実装順
 
-1. `emptyErbBranch`
-2. HTML nesting diagnostics のmessage / location改善
+1. HTML nesting diagnostics のmessage / location改善
+2. `unsupportedErbBlockStarter` message refinement
 
-`emptyErbBranch` を先に実装し、severity plumbingやautocorrectは後回しにします。
+severity plumbingやautocorrectは後回しにします。

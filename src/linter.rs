@@ -51,6 +51,7 @@ impl Default for LintOptions {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct LintRules {
+    pub empty_erb_branch: bool,
     pub empty_erb_code_tag: bool,
     pub empty_erb_control_block: bool,
     pub unsupported_erb_block_starter: bool,
@@ -59,6 +60,7 @@ pub struct LintRules {
 impl Default for LintRules {
     fn default() -> Self {
         Self {
+            empty_erb_branch: true,
             empty_erb_code_tag: true,
             empty_erb_control_block: true,
             unsupported_erb_block_starter: true,
@@ -93,6 +95,14 @@ pub fn lint_with_options(input: &str, options: LintOptions) -> Vec<Diagnostic> {
 struct ErbBlockLintFrame {
     code: String,
     output: bool,
+    location: SourceLocation,
+    has_meaningful_content: bool,
+    active_branch: Option<ErbBranchLintFrame>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct ErbBranchLintFrame {
+    code: String,
     location: SourceLocation,
     has_meaningful_content: bool,
 }
@@ -140,13 +150,25 @@ fn lint_tokens(tokens: &[lexer::SpannedToken], options: LintOptions) -> Vec<Diag
                     output: *output,
                     location: spanned.span.location,
                     has_meaningful_content: false,
+                    active_branch: None,
                 });
             }
-            lexer::Token::ErbBranch { .. } => {}
+            lexer::Token::ErbBranch { code, .. } => {
+                if let Some(frame) = stack.last_mut() {
+                    finish_active_branch(frame, options, &mut diagnostics);
+                    frame.active_branch = Some(ErbBranchLintFrame {
+                        code: code.clone(),
+                        location: spanned.span.location,
+                        has_meaningful_content: false,
+                    });
+                }
+            }
             lexer::Token::ErbBlockEnd(_) => {
-                let Some(frame) = stack.pop() else {
+                let Some(mut frame) = stack.pop() else {
                     continue;
                 };
+
+                finish_active_branch(&mut frame, options, &mut diagnostics);
 
                 if options.rules.empty_erb_control_block && !frame.has_meaningful_content {
                     diagnostics.push(Diagnostic::located(
@@ -167,6 +189,27 @@ fn lint_tokens(tokens: &[lexer::SpannedToken], options: LintOptions) -> Vec<Diag
 fn mark_current_block_meaningful(stack: &mut [ErbBlockLintFrame]) {
     if let Some(frame) = stack.last_mut() {
         frame.has_meaningful_content = true;
+
+        if let Some(branch) = &mut frame.active_branch {
+            branch.has_meaningful_content = true;
+        }
+    }
+}
+
+fn finish_active_branch(
+    frame: &mut ErbBlockLintFrame,
+    options: LintOptions,
+    diagnostics: &mut Vec<Diagnostic>,
+) {
+    let Some(branch) = frame.active_branch.take() else {
+        return;
+    };
+
+    if options.rules.empty_erb_branch && !branch.has_meaningful_content {
+        diagnostics.push(Diagnostic::located(
+            format!("empty ERB branch `<% {} %>`", branch.code.trim()),
+            branch.location,
+        ));
     }
 }
 
@@ -354,6 +397,58 @@ mod tests {
     }
 
     #[test]
+    fn reports_empty_erb_branches() {
+        let diagnostics = lint(
+            "<% if current_user %>\n<p>Hello</p>\n<% else %>\n<% end %>\n\
+             <% case role %>\n<% when \"admin\" %>\n<% when \"member\" %>\n<p>Member</p>\n<% end %>\n",
+        );
+
+        assert_eq!(
+            diagnostics,
+            vec![
+                Diagnostic::located(
+                    "empty ERB branch `<% else %>`",
+                    SourceLocation { line: 3, column: 1 }
+                ),
+                Diagnostic::located(
+                    "empty ERB branch `<% when \"admin\" %>`",
+                    SourceLocation { line: 6, column: 1 }
+                )
+            ]
+        );
+    }
+
+    #[test]
+    fn empty_erb_code_tags_do_not_count_as_meaningful_branch_content() {
+        let diagnostics =
+            lint("<% if current_user %>\n<p>Hello</p>\n<% else %>\n  <% %>\n<% end %>\n");
+
+        assert_eq!(
+            diagnostics,
+            vec![
+                Diagnostic::located(
+                    "empty ERB code tag `<% %>`",
+                    SourceLocation { line: 4, column: 3 }
+                ),
+                Diagnostic::located(
+                    "empty ERB branch `<% else %>`",
+                    SourceLocation { line: 3, column: 1 }
+                )
+            ]
+        );
+    }
+
+    #[test]
+    fn does_not_report_non_empty_erb_branches() {
+        let diagnostics = lint(
+            "<% if current_user %>\n<p>Hello</p>\n<% elsif guest? %>\n<p>Guest</p>\n<% else %>\n<p>Please sign in</p>\n<% end %>\n\
+             <% begin %>\n<% rescue StandardError %>\n<p>Failed</p>\n<% ensure %>\n<% cleanup %>\n<% end %>\n",
+        );
+
+        assert_eq!(diagnostics, Vec::new());
+    }
+
+    #[test]
     fn reports_unsupported_erb_block_starters() {
         let diagnostics = lint("<% while job.running? %>\n<p>Waiting</p>\n");
 
@@ -386,6 +481,22 @@ mod tests {
             LintOptions {
                 rules: LintRules {
                     empty_erb_control_block: false,
+                    ..LintRules::default()
+                },
+                ..LintOptions::default()
+            },
+        );
+
+        assert_eq!(diagnostics, Vec::new());
+    }
+
+    #[test]
+    fn respects_disabled_empty_erb_branch_rule() {
+        let diagnostics = lint_with_options(
+            "<% if current_user %>\n<p>Hello</p>\n<% else %>\n<% end %>\n",
+            LintOptions {
+                rules: LintRules {
+                    empty_erb_branch: false,
                     ..LintRules::default()
                 },
                 ..LintOptions::default()

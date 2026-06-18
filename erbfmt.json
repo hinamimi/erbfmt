@@ -13,6 +13,7 @@
     "enabled": true,
     "rules": {
       "recommended": true,
+      "emptyErbBranch": "error",
       "emptyErbCodeTag": "error",
       "emptyErbControlBlock": "error",
       "unsupportedErbBlockStarter": "error"
