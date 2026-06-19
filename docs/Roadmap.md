@@ -816,7 +816,6 @@ Status: Next
 
 ## 後で考えること
 
-- npm package
 - Ruby gem
 - VSCode Marketplace publishing
 - GitHub Release automation
