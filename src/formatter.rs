@@ -71,8 +71,25 @@ impl Formatter {
     }
 
     fn format_nodes(&mut self, nodes: &[Node], depth: usize) {
-        for node in nodes {
-            self.format_node(node, depth);
+        let mut index = 0;
+
+        while index < nodes.len() {
+            if is_inline_node(&nodes[index]) {
+                let start = index;
+
+                while index < nodes.len() && is_inline_node(&nodes[index]) {
+                    index += 1;
+                }
+
+                if index - start == 1 {
+                    self.format_node(&nodes[start], depth);
+                } else {
+                    self.write_inline_nodes(&nodes[start..index], depth);
+                }
+            } else {
+                self.format_node(&nodes[index], depth);
+                index += 1;
+            }
         }
     }
 
@@ -80,11 +97,12 @@ impl Formatter {
         match node {
             Node::HtmlText(text) => self.write_text(text, depth),
             Node::HtmlElement {
+                name,
                 open,
                 close,
                 children,
                 ..
-            } => self.write_html_element(open, close, children, depth),
+            } => self.write_html_element(name, open, close, children, depth),
             Node::HtmlSelfClosing { raw, .. } | Node::HtmlVoid { raw, .. } => {
                 self.write_tag(raw, depth)
             }
@@ -142,7 +160,22 @@ impl Formatter {
         }
     }
 
-    fn write_html_element(&mut self, open: &str, close: &str, children: &[Node], depth: usize) {
+    fn write_html_element(
+        &mut self,
+        name: &str,
+        open: &str,
+        close: &str,
+        children: &[Node],
+        depth: usize,
+    ) {
+        if is_format_sensitive_html_tag(name) {
+            self.write_preserved_block(
+                depth,
+                &render_preserved_html_element(open, close, children),
+            );
+            return;
+        }
+
         if can_render_inline(children) && self.can_keep_html_element_inline(open, depth) {
             let content = render_inline_nodes(children);
             self.write_indented_line(depth, &format!("{open}{content}{close}"));
@@ -151,6 +184,16 @@ impl Formatter {
             self.format_nodes(children, self.html_child_depth(depth));
             self.write_indented_line(depth, close);
         }
+    }
+
+    fn write_inline_nodes(&mut self, nodes: &[Node], depth: usize) {
+        let inline = render_inline_nodes(nodes);
+
+        if inline.is_empty() {
+            return;
+        }
+
+        self.write_indented_line(depth, &inline);
     }
 
     fn can_keep_html_element_inline(&self, open: &str, depth: usize) -> bool {
@@ -222,6 +265,19 @@ impl Formatter {
         self.output.push_str(&self.indent(depth));
         self.output.push_str(trimmed);
         self.output.push('\n');
+    }
+
+    fn write_preserved_block(&mut self, depth: usize, block: &str) {
+        if block.is_empty() {
+            return;
+        }
+
+        self.output.push_str(&self.indent(depth));
+        self.output.push_str(block);
+
+        if !block.ends_with('\n') {
+            self.output.push('\n');
+        }
     }
 
     fn write_blank_line(&mut self) {
@@ -424,6 +480,55 @@ fn render_inline_node(node: &Node) -> String {
     }
 }
 
+fn render_preserved_html_element(open: &str, close: &str, children: &[Node]) -> String {
+    format!("{open}{}{close}", render_preserved_nodes(children))
+}
+
+fn render_preserved_nodes(nodes: &[Node]) -> String {
+    nodes.iter().map(render_preserved_node).collect()
+}
+
+fn render_preserved_node(node: &Node) -> String {
+    match node {
+        Node::HtmlText(text) => text.clone(),
+        Node::HtmlElement {
+            open,
+            close,
+            children,
+            ..
+        } => render_preserved_html_element(open, close, children),
+        Node::HtmlSelfClosing { raw, .. } | Node::HtmlVoid { raw, .. } => raw.clone(),
+        Node::HtmlComment(comment) | Node::HtmlDoctype(comment) => comment.clone(),
+        Node::ErbCode(code) => format_erb_tag_inline(ErbTagMarker::Code, code.trim()),
+        Node::ErbOutput(code) => format_erb_tag_inline(ErbTagMarker::Output, code.trim()),
+        Node::ErbBlock {
+            code,
+            output,
+            children,
+            branches,
+            ..
+        } => {
+            let mut rendered = format_erb_tag_inline(ErbTagMarker::from_output(*output), code);
+            rendered.push_str(&render_preserved_nodes(children));
+
+            for branch in branches {
+                rendered.push_str(&format_erb_tag_inline(ErbTagMarker::Code, &branch.code));
+                rendered.push_str(&render_preserved_nodes(&branch.children));
+            }
+
+            rendered.push_str("<% end %>");
+            rendered
+        }
+    }
+}
+
+fn is_format_sensitive_html_tag(name: &str) -> bool {
+    matches!(
+        name.to_ascii_lowercase().as_str(),
+        "pre" | "textarea" | "script" | "style" | "xmp" | "listing"
+    )
+}
+
 fn format_erb_tag_inline(marker: ErbTagMarker, code: &str) -> String {
     if code.is_empty() {
         return format!("{} %>", marker.as_str());
@@ -563,6 +668,58 @@ mod tests {
         assert_eq!(
             format("<h1><%= page_title %></h1>\n<p>Hello, <%= user.name %></p>\n"),
             "<h1><%= page_title %></h1>\n<p>Hello, <%= user.name %></p>\n"
+        );
+    }
+
+    #[test]
+    fn preserves_adjacent_erb_outputs_on_one_line() {
+        assert_eq!(
+            format("<%= form.radio_button :status, :draft %><%= form.label :status_draft %>\n"),
+            "<%= form.radio_button :status, :draft %><%= form.label :status_draft %>\n"
+        );
+    }
+
+    #[test]
+    fn preserves_adjacent_erb_outputs_inside_blocks() {
+        assert_eq!(
+            format(
+                "<% if form %>\n<%= form.radio_button :status, :draft %><%= form.label :status_draft %>\n<% end %>\n"
+            ),
+            "<% if form %>\n  <%= form.radio_button :status, :draft %><%= form.label :status_draft %>\n<% end %>\n"
+        );
+    }
+
+    #[test]
+    fn preserves_preformatted_html_content() {
+        assert_eq!(
+            format("<div>\n<pre>\n  line one\n    line two\n</pre>\n</div>\n"),
+            "<div>\n  <pre>\n  line one\n    line two\n</pre>\n</div>\n"
+        );
+    }
+
+    #[test]
+    fn preserves_inline_preformatted_html_content() {
+        assert_eq!(
+            format("<pre>  line one\n    line two</pre>\n"),
+            "<pre>  line one\n    line two</pre>\n"
+        );
+    }
+
+    #[test]
+    fn preserves_textarea_content() {
+        assert_eq!(
+            format("<form>\n<textarea>\n  keep me\n</textarea>\n</form>\n"),
+            "<form>\n  <textarea>\n  keep me\n</textarea>\n</form>\n"
+        );
+    }
+
+    #[test]
+    fn preserves_script_and_style_content() {
+        assert_eq!(
+            format(
+                "<script>\n  console.log(\"hello\");\n</script>\n<style>\n  body { color: red; }\n</style>\n"
+            ),
+            "<script>\n  console.log(\"hello\");\n</script>\n<style>\n  body { color: red; }\n</style>\n"
         );
     }
 
