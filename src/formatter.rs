@@ -116,11 +116,29 @@ impl Formatter {
     }
 
     fn write_text(&mut self, text: &str, depth: usize) {
-        for line in text.lines() {
+        let mut pending_line_breaks = 0;
+
+        for segment in text.split_inclusive('\n') {
+            let has_line_break = segment.ends_with('\n');
+            let line = segment.strip_suffix('\n').unwrap_or(segment);
             let trimmed = line.trim();
+
             if !trimmed.is_empty() {
+                if pending_line_breaks >= 2 {
+                    self.write_blank_line();
+                }
+
                 self.write_indented_line(depth, trimmed);
+                pending_line_breaks = usize::from(has_line_break);
+            } else if has_line_break {
+                pending_line_breaks += 1;
+            } else {
+                // Whitespace after a newline is indentation, not another blank line.
             }
+        }
+
+        if pending_line_breaks >= 2 {
+            self.write_blank_line();
         }
     }
 
@@ -203,6 +221,18 @@ impl Formatter {
 
         self.output.push_str(&self.indent(depth));
         self.output.push_str(trimmed);
+        self.output.push('\n');
+    }
+
+    fn write_blank_line(&mut self) {
+        if self.output.is_empty() || self.output.ends_with("\n\n") {
+            return;
+        }
+
+        if !self.output.ends_with('\n') {
+            self.output.push('\n');
+        }
+
         self.output.push('\n');
     }
 
@@ -509,6 +539,22 @@ mod tests {
         assert_eq!(
             format("<div>\n<p>Hello</p>\n</div>\n"),
             "<div>\n  <p>Hello</p>\n</div>\n"
+        );
+    }
+
+    #[test]
+    fn preserves_single_intentional_blank_lines() {
+        assert_eq!(
+            format("<section>\n<h1>Title</h1>\n\n<p>Body</p>\n</section>\n"),
+            "<section>\n  <h1>Title</h1>\n\n  <p>Body</p>\n</section>\n"
+        );
+    }
+
+    #[test]
+    fn collapses_multiple_blank_lines_to_one() {
+        assert_eq!(
+            format("<section>\n<h1>Title</h1>\n\n\n<p>Body</p>\n</section>\n"),
+            "<section>\n  <h1>Title</h1>\n\n  <p>Body</p>\n</section>\n"
         );
     }
 
