@@ -135,28 +135,10 @@ This command builds the Rust binary first and may download a test VSCode build
 on first run. It needs an environment where VSCode/Electron can launch;
 headless Linux environments may need `xvfb-run` or an equivalent display setup.
 
-## Format On Save Fallback
-
-The workspace uses `emeraldwalk.RunOnSave` to format `.html.erb` files:
-
-```json
-{
-  "emeraldwalk.runonsave": {
-    "commands": [
-      {
-        "match": "\\.html\\.erb$",
-        "cmd": "cargo run --quiet -- --write \"${file}\""
-      }
-    ]
-  }
-}
-```
-
 ## Recommended Extensions
 
 The workspace recommends:
 
-- `emeraldwalk.RunOnSave` for format-on-save wiring.
 - `Shopify.ruby-lsp` for Ruby and ERB language support.
 - `rust-lang.rust-analyzer` for erbfmt development.
 - `editorconfig.editorconfig` and `streetsidesoftware.code-spell-checker` for

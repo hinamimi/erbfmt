@@ -35,6 +35,83 @@ fn help_describes_core_modes() {
     assert!(stdout.contains("--check"), "{stdout}");
     assert!(stdout.contains("--lint"), "{stdout}");
     assert!(stdout.contains("--config"), "{stdout}");
+    assert!(stdout.contains("init"), "{stdout}");
+    assert_eq!(stderr(&output), "");
+}
+
+#[test]
+fn init_creates_default_config() {
+    let dir = TestDir::new("init");
+
+    let output = run_in_dir(["init"], &dir.path);
+
+    assert_success(&output);
+    assert_eq!(stdout(&output), "erbfmt.json: created config file.\n");
+    assert_eq!(stderr(&output), "");
+
+    let config = fs::read_to_string(dir.path.join("erbfmt.json")).unwrap();
+    let value: serde_json::Value = serde_json::from_str(&config).unwrap();
+
+    assert_eq!(
+        value["$schema"],
+        "https://raw.githubusercontent.com/hinamimi/erbfmt/main/docs/schema/erbfmt.schema.json"
+    );
+    assert_eq!(value["formatter"]["indentWidth"], 2);
+    assert_eq!(value["formatter"]["indentHtml"], true);
+    assert_eq!(
+        value["linter"]["rules"]["noInvalidHtmlBooleanAttribute"],
+        "error"
+    );
+}
+
+#[test]
+fn init_fails_when_config_exists() {
+    let dir = TestDir::new("init_exists");
+    dir.write("erbfmt.json", "{}\n");
+
+    let output = run_in_dir(["init"], &dir.path);
+
+    assert_failure(&output);
+    assert_eq!(stdout(&output), "");
+    assert!(
+        stderr(&output).contains("erbfmt.json already exists"),
+        "{}",
+        stderr(&output)
+    );
+    assert_eq!(
+        fs::read_to_string(dir.path.join("erbfmt.json")).unwrap(),
+        "{}\n"
+    );
+}
+
+#[test]
+fn init_force_overwrites_existing_config() {
+    let dir = TestDir::new("init_force");
+    dir.write("erbfmt.json", "{}\n");
+
+    let output = run_in_dir(["init", "--force"], &dir.path);
+
+    assert_success(&output);
+    assert_eq!(stdout(&output), "erbfmt.json: created config file.\n");
+    assert_eq!(stderr(&output), "");
+
+    let config = fs::read_to_string(dir.path.join("erbfmt.json")).unwrap();
+    assert!(config.contains("\"formatter\""));
+    assert_ne!(config, "{}\n");
+}
+
+#[test]
+fn lint_can_target_file_named_init() {
+    let dir = TestDir::new("lint_file_named_init");
+    let file = dir.write("init", FORMATTED);
+
+    let output = run(["--lint".as_ref(), file.as_path()]);
+
+    assert_success(&output);
+    assert_eq!(
+        stdout(&output),
+        format!("{}: no lint issues found.\n", file.display())
+    );
     assert_eq!(stderr(&output), "");
 }
 
@@ -807,6 +884,18 @@ where
     P: AsRef<OsStr>,
 {
     Command::new(env!("CARGO_BIN_EXE_erbfmt"))
+        .args(args)
+        .output()
+        .unwrap()
+}
+
+fn run_in_dir<I, P>(args: I, directory: &PathBuf) -> Output
+where
+    I: IntoIterator<Item = P>,
+    P: AsRef<OsStr>,
+{
+    Command::new(env!("CARGO_BIN_EXE_erbfmt"))
+        .current_dir(directory)
         .args(args)
         .output()
         .unwrap()

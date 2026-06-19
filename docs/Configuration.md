@@ -1,6 +1,13 @@
 # Configuration
 
 erbfmt reads `erbfmt.json` from the current directory or a parent directory.
+Create a default config file in the current directory:
+
+```bash
+erbfmt init
+erbfmt init --force
+```
+
 You can also pass an explicit path:
 
 ```bash

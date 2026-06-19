@@ -76,6 +76,13 @@ erbfmt --help
 ```
 
 erbfmt は、カレントディレクトリまたは親ディレクトリにある `erbfmt.json` を読み込みます。
+カレントディレクトリに設定ファイルを作る場合は `init` を使います。
+
+```bash
+erbfmt init
+erbfmt init --force
+```
+
 特定の設定ファイルを指定する場合は `--config` を使います。
 
 ```bash
@@ -191,7 +198,7 @@ cargo build
 
 workspace には fallback として RunOnSave 設定も含まれています。
 
-推奨拡張の `emeraldwalk.RunOnSave` をインストールすると、`.html.erb` ファイル保存時に以下のコマンドが実行されます。
+`.html.erb` ファイル保存時に以下のコマンドが実行されます。
 
 ```bash
 cargo run --quiet -- --write "${file}"

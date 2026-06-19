@@ -1,7 +1,6 @@
 {
   "recommendations": [
     "editorconfig.editorconfig",
-    "emeraldwalk.RunOnSave",
     "rust-lang.rust-analyzer",
     "Shopify.ruby-lsp",
     "streetsidesoftware.code-spell-checker"

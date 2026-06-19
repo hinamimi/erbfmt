@@ -1,24 +1,12 @@
 {
   "files.associations": {
-    "*.html.erb": "html-erb"
+    "*.html.erb": "erb"
   },
   "[erb]": {
     "editor.defaultFormatter": "erbfmt.erbfmt-vscode"
   },
-  "[html-erb]": {
-    "editor.defaultFormatter": "erbfmt.erbfmt-vscode"
-  },
   "erbfmt.lint.enabled": true,
-  "emeraldwalk.runonsave": {
-    "commands": [
-      {
-        "match": "\\.html\\.erb$",
-        "cmd": "cargo run --quiet -- --write \"${file}\""
-      }
-    ]
-  },
   "cSpell.words": [
-    "erbfmt",
-    "runonsave"
+    "erbfmt"
   ]
 }

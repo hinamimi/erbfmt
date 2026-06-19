@@ -108,6 +108,13 @@ erbfmt --help
 ```
 
 erbfmt reads `erbfmt.json` from the current directory or a parent directory.
+Create a config file in the current directory:
+
+```bash
+erbfmt init
+erbfmt init --force
+```
+
 Use `--config` to pass a specific file:
 
 ```bash
@@ -203,7 +210,7 @@ binary exists. You can also point the wrapper at another command:
 
 The workspace also includes RunOnSave settings as a fallback.
 
-Install the recommended `emeraldwalk.RunOnSave` extension, then saving a `.html.erb` file runs:
+Saving a `.html.erb` file runs:
 
 ```bash
 cargo run --quiet -- --write "${file}"

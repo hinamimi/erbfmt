@@ -9,15 +9,47 @@ mod parser;
 
 use anyhow::{Context, Result, bail};
 use clap::{ArgGroup, Parser};
+use std::ffi::OsString;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
+
+const CONFIG_FILE: &str = "erbfmt.json";
+const DEFAULT_CONFIG: &str = r#"{
+  "$schema": "https://raw.githubusercontent.com/hinamimi/erbfmt/main/docs/schema/erbfmt.schema.json",
+  "formatter": {
+    "enabled": true,
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "indentHtml": true,
+    "lineEnding": "lf",
+    "lineWidth": 80,
+    "trailingNewline": true
+  },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "recommended": true,
+      "emptyErbBranch": "error",
+      "emptyErbCodeTag": "error",
+      "emptyErbControlBlock": "error",
+      "noDeprecatedHtmlTag": "error",
+      "noDuplicateHtmlAttribute": "error",
+      "noInvalidHtmlBooleanAttribute": "error",
+      "noInvalidHtmlNesting": "error",
+      "noSelfClosingHtmlTag": "error",
+      "unsupportedErbBlockStarter": "error"
+    }
+  }
+}
+"#;
 
 #[derive(Parser)]
 #[command(
     name = "erbfmt",
     version,
     about = "Format and lint Ruby ERB templates",
+    after_help = "Commands:\n  init  Create an erbfmt.json config file\n",
     group(
     ArgGroup::new("mode")
         .args(["write", "check", "lint"])
@@ -25,7 +57,7 @@ use std::process::ExitCode;
     )
 )]
 struct Args {
-    #[arg(required = true, value_name = "FILE")]
+    #[arg(value_name = "FILE")]
     files: Vec<PathBuf>,
 
     #[arg(long, help = "Write formatted output back to files")]
@@ -41,8 +73,23 @@ struct Args {
     config: Option<PathBuf>,
 }
 
+#[derive(Parser)]
+#[command(name = "erbfmt init", about = "Create an erbfmt.json config file")]
+struct InitArgs {
+    #[arg(long, help = "Overwrite an existing erbfmt.json")]
+    force: bool,
+}
+
 fn main() -> Result<ExitCode> {
+    if let Some(init_args) = parse_init_args() {
+        return run_init(init_args.force);
+    }
+
     let args = Args::parse();
+
+    if args.files.is_empty() {
+        bail!("at least one file is required unless a subcommand is used");
+    }
 
     if args.files.len() > 1 && !args.write && !args.check && !args.lint {
         bail!("multiple files require --write, --check, or --lint");
@@ -62,6 +109,43 @@ fn main() -> Result<ExitCode> {
     } else {
         ExitCode::SUCCESS
     })
+}
+
+fn parse_init_args() -> Option<InitArgs> {
+    let mut args = std::env::args_os();
+    let binary = args.next()?;
+
+    if args.next().as_deref() != Some(std::ffi::OsStr::new("init")) {
+        return None;
+    }
+
+    let init_args = std::iter::once(OsString::from(format!(
+        "{} init",
+        PathBuf::from(binary)
+            .file_name()
+            .and_then(|name| name.to_str())
+            .unwrap_or("erbfmt")
+    )))
+    .chain(args);
+
+    Some(InitArgs::parse_from(init_args))
+}
+
+fn run_init(force: bool) -> Result<ExitCode> {
+    let path = PathBuf::from(CONFIG_FILE);
+
+    if path.exists() && !force {
+        bail!(
+            "{} already exists. Use `erbfmt init --force` to overwrite it.",
+            CONFIG_FILE
+        );
+    }
+
+    fs::write(&path, DEFAULT_CONFIG)
+        .with_context(|| format!("failed to write `{}`", path.display()))?;
+    println!("{}: created config file.", path.display());
+
+    Ok(ExitCode::SUCCESS)
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
