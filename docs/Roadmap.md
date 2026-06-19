@@ -790,7 +790,7 @@ command-style method call だけを複数行へ折りたたみます。
 
 Formatter ignore design
 
-Status: Next
+Status: Done
 
 `erbfmt-ignore` のformatter対応を設計します。
 
@@ -811,6 +811,50 @@ Status: Next
 範囲外:
 
 - block-level formatter disable / enable
+- unused ignore directive reporting
+- Ruby AST parsing
+
+結果:
+
+- formatter ignore は次の物理行から始まる、同じ親の次の非空白AST node/subtreeを対象にすると決めた。
+- directive は `erbfmt-ignore format` とし、HTML commentとERB commentの両方を対象にした。
+- `lint` と `format` は1つのcomment内で組み合わせず、両方必要な場合はdirectiveを2つ置く方針にした。
+- target subtreeの物理行を原文からbyte-for-byteで保持し、判定が曖昧な場合は通常formatする方針にした。
+- inline fragment、HTML attribute単位、block-level disable/enableは初期範囲外にした。
+- mixed AST nodeへのabsolute byte range、parser frameの開始/終了range、formatterへの原文引き渡しが必要と整理した。
+- ignored raw sourceのline endingを守るため、formatter最後の一括line ending変換も整理が必要と確認した。
+- ERB commentは現在通常のERB codeとしてtokenizeされるため、明示的なcomment tokenが必要と確認した。
+- [FormatterIgnoreDesign.md](FormatterIgnoreDesign.md) と `samples/formatter-ignore-next.html.erb` を追加した。
+
+## Milestone 54
+
+Formatter ignore implementation
+
+Status: Next
+
+Milestone 53で決めた最小仕様に沿って、formatter ignoreを実装します。
+
+やること:
+
+- lexerにERB comment tokenを追加し、`<%# ... %>`を原形のまま扱えるようにする。
+- mixed AST nodeへoptionalなabsolute byte rangeを持たせる。
+- HTML elementとERB blockの開始から終了までのrangeをparserで構築する。
+- lint / formatterで共有できるignore directive parserを用意する。
+- formatterへ元sourceを渡し、対象subtreeの物理行を原文のまま出力する。
+- `samples/formatter-ignore-next.html.erb` を使ったunit / CLI / idempotency testを追加する。
+
+完了条件:
+
+- HTML commentとERB commentの両方から次のnode/subtreeをformat対象外にできる。
+- ignored subtreeはindent、内部whitespace、line endingを含めて保持される。
+- ignored subtreeの前後は通常どおりformatされる。
+- lint ignoreの既存挙動にregressionがない。
+- 曖昧なdirectiveやinline targetは通常formatへ安全にfallbackする。
+
+範囲外:
+
+- block-level formatter disable / enable
+- HTML attribute単位のignore
 - unused ignore directive reporting
 - Ruby AST parsing
 
