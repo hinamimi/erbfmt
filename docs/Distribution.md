@@ -77,11 +77,16 @@ binary. It should not reimplement formatting logic in TypeScript.
 
 ### Ruby Gem Wrapper
 
-Status: defer until prebuilt binaries exist.
+Status: designed; implementation remains deferred until prebuilt release
+binaries are publishable.
 
 The Ruby gem should expose the `erbfmt` CLI for Ruby/Rails projects and resolve
 a platform-specific binary. It should not parse Ruby or ERB separately from the
 Rust binary.
+
+The initial wrapper uses same-name platform-specific gems with a Ruby launcher
+and one packaged Rust binary. It does not build Rust or download binaries during
+gem installation. See [RubyGem.md](RubyGem.md) for the complete design.
 
 ### VSCode Binary Handling
 

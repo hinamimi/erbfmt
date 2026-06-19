@@ -9,6 +9,7 @@ future wrappers around the Rust binary instead of separate formatter engines.
 
 See [Distribution.md](Distribution.md) for the binary distribution strategy.
 See [FirstRelease.md](FirstRelease.md) for the first public release plan.
+See [RubyGem.md](RubyGem.md) for the platform-specific gem wrapper design.
 
 ## Local Install
 
