@@ -10,6 +10,12 @@ pub struct Document {
     pub children: Vec<Node>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct SourceRange {
+    pub start: usize,
+    pub end: usize,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Node {
     HtmlText(String),
@@ -30,6 +36,7 @@ pub enum Node {
     HtmlComment(String),
     HtmlDoctype(String),
     ErbCode(String),
+    ErbComment(String),
     ErbOutput(String),
     ErbBlock {
         kind: ErbBlockKind,
@@ -38,6 +45,26 @@ pub enum Node {
         children: Vec<Node>,
         branches: Vec<ErbBranch>,
     },
+    Spanned {
+        node: Box<Node>,
+        range: SourceRange,
+    },
+}
+
+impl Node {
+    pub fn unspanned(&self) -> &Self {
+        match self {
+            Self::Spanned { node, .. } => node.unspanned(),
+            node => node,
+        }
+    }
+
+    pub fn source_range(&self) -> Option<SourceRange> {
+        match self {
+            Self::Spanned { range, .. } => Some(*range),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -237,17 +264,21 @@ impl Parser {
                 self.push_node(Node::ErbCode(code.clone()));
                 Ok(())
             }
+            Token::ErbComment(comment) => {
+                self.push_node(Node::ErbComment(comment.clone()));
+                Ok(())
+            }
             Token::ErbOutput(code) => {
                 self.push_node(Node::ErbOutput(code.clone()));
                 Ok(())
             }
             Token::ErbBlockStart { kind, code, output } => {
                 self.stack
-                    .push(Frame::erb(*kind, code.clone(), *output, token_index));
+                    .push(Frame::erb(*kind, code.clone(), *output, token_index, None));
                 Ok(())
             }
             Token::ErbBranch { kind, code } => self.add_erb_branch(token_index, *kind, code),
-            Token::ErbBlockEnd(code) => self.close_erb_block(token_index, code),
+            Token::ErbBlockEnd(code) => self.close_erb_block(token_index, code, None),
         }
     }
 
@@ -256,11 +287,43 @@ impl Parser {
         token_index: usize,
         spanned: &SpannedToken,
     ) -> Result<(), ParseError> {
+        let range = SourceRange {
+            start: spanned.span.start,
+            end: spanned.span.end,
+        };
+
         match &spanned.token {
-            Token::Html(fragment) => {
-                self.parse_spanned_html_fragment(fragment, spanned.span.location)
+            Token::Html(fragment) => self.parse_spanned_html_fragment(
+                fragment,
+                spanned.span.start,
+                spanned.span.location,
+            ),
+            Token::ErbCode(code) => {
+                self.push_spanned_node(Node::ErbCode(code.clone()), range);
+                Ok(())
             }
-            token => self.parse_token(token_index, token),
+            Token::ErbComment(comment) => {
+                self.push_spanned_node(Node::ErbComment(comment.clone()), range);
+                Ok(())
+            }
+            Token::ErbOutput(code) => {
+                self.push_spanned_node(Node::ErbOutput(code.clone()), range);
+                Ok(())
+            }
+            Token::ErbBlockStart { kind, code, output } => {
+                self.stack.push(Frame::erb(
+                    *kind,
+                    code.clone(),
+                    *output,
+                    token_index,
+                    Some(range),
+                ));
+                Ok(())
+            }
+            Token::ErbBranch { kind, code } => self.add_erb_branch(token_index, *kind, code),
+            Token::ErbBlockEnd(code) => {
+                self.close_erb_block(token_index, code, Some(spanned.span.end))
+            }
         }
     }
 
@@ -268,8 +331,8 @@ impl Parser {
         for token in html::tokenize(fragment) {
             match token {
                 HtmlToken::Text(text) => self.push_node(Node::HtmlText(text)),
-                HtmlToken::OpenTag(tag) => self.stack.push(Frame::html(tag, None)),
-                HtmlToken::CloseTag(tag) => self.close_html_tag(tag, None)?,
+                HtmlToken::OpenTag(tag) => self.stack.push(Frame::html(tag, None, None)),
+                HtmlToken::CloseTag(tag) => self.close_html_tag(tag, None, None)?,
                 HtmlToken::SelfClosingTag(tag) => {
                     self.push_node(Node::HtmlSelfClosing {
                         name: tag.name,
@@ -293,9 +356,14 @@ impl Parser {
     fn parse_spanned_html_fragment(
         &mut self,
         fragment: &str,
+        fragment_start: usize,
         fragment_location: SourceLocation,
     ) -> Result<(), ParseError> {
         for spanned in html::tokenize_with_spans(fragment) {
+            let range = SourceRange {
+                start: fragment_start + spanned.span.start,
+                end: fragment_start + spanned.span.end,
+            };
             let location = Some(relative_source_location(
                 fragment_location,
                 fragment,
@@ -303,23 +371,33 @@ impl Parser {
             ));
 
             match spanned.token {
-                HtmlToken::Text(text) => self.push_node(Node::HtmlText(text)),
-                HtmlToken::OpenTag(tag) => self.stack.push(Frame::html(tag, location)),
-                HtmlToken::CloseTag(tag) => self.close_html_tag(tag, location)?,
+                HtmlToken::Text(text) => self.push_spanned_node(Node::HtmlText(text), range),
+                HtmlToken::OpenTag(tag) => self.stack.push(Frame::html(tag, location, Some(range))),
+                HtmlToken::CloseTag(tag) => self.close_html_tag(tag, location, Some(range.end))?,
                 HtmlToken::SelfClosingTag(tag) => {
-                    self.push_node(Node::HtmlSelfClosing {
-                        name: tag.name,
-                        raw: tag.raw,
-                    });
+                    self.push_spanned_node(
+                        Node::HtmlSelfClosing {
+                            name: tag.name,
+                            raw: tag.raw,
+                        },
+                        range,
+                    );
                 }
                 HtmlToken::VoidTag(tag) => {
-                    self.push_node(Node::HtmlVoid {
-                        name: tag.name,
-                        raw: tag.raw,
-                    });
+                    self.push_spanned_node(
+                        Node::HtmlVoid {
+                            name: tag.name,
+                            raw: tag.raw,
+                        },
+                        range,
+                    );
                 }
-                HtmlToken::Comment(comment) => self.push_node(Node::HtmlComment(comment)),
-                HtmlToken::Doctype(doctype) => self.push_node(Node::HtmlDoctype(doctype)),
+                HtmlToken::Comment(comment) => {
+                    self.push_spanned_node(Node::HtmlComment(comment), range)
+                }
+                HtmlToken::Doctype(doctype) => {
+                    self.push_spanned_node(Node::HtmlDoctype(doctype), range)
+                }
             }
         }
 
@@ -330,6 +408,7 @@ impl Parser {
         &mut self,
         tag: HtmlTag,
         location: Option<SourceLocation>,
+        end: Option<usize>,
     ) -> Result<(), ParseError> {
         let Some(frame) = self.stack.pop() else {
             return Err(ParseError::UnexpectedHtmlCloseTag {
@@ -353,7 +432,7 @@ impl Parser {
                 token_index,
                 code,
                 output,
-                ..
+                range,
             } => {
                 self.stack.push(Frame {
                     kind: FrameKind::Erb {
@@ -361,6 +440,7 @@ impl Parser {
                         code: code.clone(),
                         output,
                         token_index,
+                        range,
                     },
                     children: frame.children,
                     initial_children: frame.initial_children,
@@ -377,6 +457,7 @@ impl Parser {
                 name,
                 raw,
                 location: open_location,
+                range,
             } => {
                 if !name.eq_ignore_ascii_case(&tag.name) {
                     self.stack.push(Frame {
@@ -384,6 +465,7 @@ impl Parser {
                             name: name.clone(),
                             raw,
                             location: open_location,
+                            range,
                         },
                         children: frame.children,
                         initial_children: frame.initial_children,
@@ -398,18 +480,24 @@ impl Parser {
                     });
                 }
 
-                self.push_node(Node::HtmlElement {
+                let node = Node::HtmlElement {
                     name,
                     open: raw,
                     close: tag.raw,
                     children: frame.children,
-                });
+                };
+                self.push_node(wrap_spanned_node(node, range, end));
                 Ok(())
             }
         }
     }
 
-    fn close_erb_block(&mut self, token_index: usize, code: &str) -> Result<(), ParseError> {
+    fn close_erb_block(
+        &mut self,
+        token_index: usize,
+        code: &str,
+        end: Option<usize>,
+    ) -> Result<(), ParseError> {
         let Some(frame) = self.stack.pop() else {
             return Err(ParseError::UnexpectedErbBlockEnd {
                 token_index,
@@ -429,12 +517,14 @@ impl Parser {
                 name,
                 raw,
                 location,
+                range,
             } => {
                 self.stack.push(Frame {
                     kind: FrameKind::Html {
                         name: name.clone(),
                         raw: raw.clone(),
                         location,
+                        range,
                     },
                     children: frame.children,
                     initial_children: frame.initial_children,
@@ -451,17 +541,19 @@ impl Parser {
                 kind,
                 ref code,
                 output,
+                range,
                 ..
             } => {
                 let block_code = code.clone();
                 let (children, branches) = frame.finish_erb_branches();
-                self.push_node(Node::ErbBlock {
+                let node = Node::ErbBlock {
                     kind,
                     code: block_code,
                     output,
                     children,
                     branches,
-                });
+                };
+                self.push_node(wrap_spanned_node(node, range, end));
                 Ok(())
             }
         }
@@ -489,6 +581,7 @@ impl Parser {
                 ref name,
                 ref raw,
                 location,
+                ..
             } => Err(ParseError::UnclosedHtmlTag {
                 name: name.clone(),
                 raw: raw.clone(),
@@ -516,6 +609,7 @@ impl Parser {
                 name,
                 raw,
                 location,
+                ..
             } => Err(ParseError::UnclosedHtmlTag {
                 name,
                 raw,
@@ -533,6 +627,26 @@ impl Parser {
             .expect("parser stack always has a root frame")
             .children
             .push(node);
+    }
+
+    fn push_spanned_node(&mut self, node: Node, range: SourceRange) {
+        self.push_node(Node::Spanned {
+            node: Box::new(node),
+            range,
+        });
+    }
+}
+
+fn wrap_spanned_node(node: Node, start: Option<SourceRange>, end: Option<usize>) -> Node {
+    match (start, end) {
+        (Some(start), Some(end)) => Node::Spanned {
+            node: Box::new(node),
+            range: SourceRange {
+                start: start.start,
+                end,
+            },
+        },
+        _ => node,
     }
 }
 
@@ -555,12 +669,13 @@ impl Frame {
         }
     }
 
-    fn html(tag: HtmlTag, location: Option<SourceLocation>) -> Self {
+    fn html(tag: HtmlTag, location: Option<SourceLocation>, range: Option<SourceRange>) -> Self {
         Self {
             kind: FrameKind::Html {
                 name: tag.name,
                 raw: tag.raw,
                 location,
+                range,
             },
             children: Vec::new(),
             initial_children: None,
@@ -569,13 +684,20 @@ impl Frame {
         }
     }
 
-    fn erb(kind: ErbBlockKind, code: String, output: bool, token_index: usize) -> Self {
+    fn erb(
+        kind: ErbBlockKind,
+        code: String,
+        output: bool,
+        token_index: usize,
+        range: Option<SourceRange>,
+    ) -> Self {
         Self {
             kind: FrameKind::Erb {
                 kind,
                 code,
                 output,
                 token_index,
+                range,
             },
             children: Vec::new(),
             initial_children: None,
@@ -625,19 +747,70 @@ enum FrameKind {
         name: String,
         raw: String,
         location: Option<SourceLocation>,
+        range: Option<SourceRange>,
     },
     Erb {
         kind: ErbBlockKind,
         code: String,
         output: bool,
         token_index: usize,
+        range: Option<SourceRange>,
     },
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::lexer::tokenize;
+    use crate::lexer::{tokenize, tokenize_with_spans};
+
+    #[test]
+    fn keeps_absolute_ranges_for_spanned_html_subtrees() {
+        let input = "<section>\n  <p>Hello</p>\n</section>\n";
+        let tokens = tokenize_with_spans(input).unwrap();
+        let document = parse_spanned(&tokens).unwrap();
+        let section = &document.children[0];
+
+        assert_eq!(
+            section.source_range(),
+            Some(SourceRange { start: 0, end: 35 })
+        );
+
+        let Node::HtmlElement { children, .. } = section.unspanned() else {
+            panic!("section element expected");
+        };
+        let paragraph = children
+            .iter()
+            .find(|node| matches!(node.unspanned(), Node::HtmlElement { .. }))
+            .expect("paragraph element exists");
+
+        assert_eq!(
+            paragraph.source_range(),
+            Some(SourceRange { start: 12, end: 24 })
+        );
+    }
+
+    #[test]
+    fn keeps_absolute_ranges_for_spanned_erb_blocks_and_comments() {
+        let input = "<%# note %>\n<% if user %>\n<p>Hello</p>\n<% end %>\n";
+        let tokens = tokenize_with_spans(input).unwrap();
+        let document = parse_spanned(&tokens).unwrap();
+        let comment = &document.children[0];
+        let block = document
+            .children
+            .iter()
+            .find(|node| matches!(node.unspanned(), Node::ErbBlock { .. }))
+            .expect("ERB block exists");
+
+        assert_eq!(
+            comment.source_range(),
+            Some(SourceRange { start: 0, end: 11 })
+        );
+        assert!(matches!(comment.unspanned(), Node::ErbComment(comment) if comment == "note"));
+        assert_eq!(
+            block.source_range(),
+            Some(SourceRange { start: 12, end: 48 })
+        );
+    }
 
     #[test]
     fn parses_nested_html_elements() {

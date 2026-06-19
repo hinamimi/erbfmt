@@ -4,6 +4,7 @@ use std::fmt;
 pub enum Token {
     Html(String),
     ErbCode(String),
+    ErbComment(String),
     ErbOutput(String),
     ErbBlockStart {
         kind: ErbBlockKind,
@@ -116,10 +117,12 @@ pub fn tokenize_with_spans(input: &str) -> Result<Vec<SpannedToken>, LexError> {
         }
 
         let tag_content_start = start + "<%".len();
-        let (is_output, code_start) = if input[tag_content_start..].starts_with('=') {
-            (true, tag_content_start + "=".len())
+        let (is_output, is_comment, code_start) = if input[tag_content_start..].starts_with('=') {
+            (true, false, tag_content_start + "=".len())
+        } else if input[tag_content_start..].starts_with('#') {
+            (false, true, tag_content_start + "#".len())
         } else {
-            (false, tag_content_start)
+            (false, false, tag_content_start)
         };
 
         let Some(relative_end) = input[code_start..].find("%>") else {
@@ -129,7 +132,9 @@ pub fn tokenize_with_spans(input: &str) -> Result<Vec<SpannedToken>, LexError> {
         let code_end = code_start + relative_end;
         let code = input[code_start..code_end].trim().to_string();
         let token_end = code_end + "%>".len();
-        let token = if is_output {
+        let token = if is_comment {
+            Token::ErbComment(code)
+        } else if is_output {
             classify_output_code(code)
         } else {
             classify_code(code)
@@ -381,6 +386,18 @@ mod tests {
         let tokens = tokenize("<%= user.name %>").unwrap();
 
         assert_eq!(tokens, vec![Token::ErbOutput("user.name".to_string())]);
+    }
+
+    #[test]
+    fn tokenizes_erb_comment_tag() {
+        let tokens = tokenize("<%# erbfmt-ignore format: generated %>").unwrap();
+
+        assert_eq!(
+            tokens,
+            vec![Token::ErbComment(
+                "erbfmt-ignore format: generated".to_string()
+            )]
+        );
     }
 
     #[test]

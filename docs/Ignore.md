@@ -1,6 +1,6 @@
 # Ignore Directives
 
-erbfmt supports line-based lint ignore directives in HTML comments and ERB
+erbfmt supports lint and formatter ignore directives in HTML comments and ERB
 comments.
 
 The directive applies to the next physical line.
@@ -47,8 +47,7 @@ The rule name is the same camelCase name used in `erbfmt.json`, such as:
 
 ## Formatter Ignore Contract
 
-Formatter ignore is not implemented yet. The first implementation will use the
-following syntax:
+Formatter ignore uses the following syntax:
 
 ```erb
 <!-- erbfmt-ignore format: third-party markup -->
@@ -60,8 +59,13 @@ following syntax:
 <%= render "cards/card",   card: card %>
 ```
 
-`format` and `lint` are separate selectors. To ignore both formatting and lint
-diagnostics, use two directives instead of combining selectors in one comment.
+Use the `all` selector to ignore both formatting and all lint diagnostics for
+the same target:
+
+```erb
+<!-- erbfmt-ignore all: generated markup -->
+<div   class="generated"><center>Keep this</center></div>
+```
 
 The initial formatter scope is deliberately narrow:
 
@@ -76,19 +80,14 @@ The initial formatter scope is deliberately narrow:
   internal whitespace, and line endings.
 - An invalid or ambiguous directive is ignored, and normal formatting applies.
 
-Both `erbfmt-ignore format` and `erbfmt-ignore-next-line format` will use this
+Both `erbfmt-ignore format` and `erbfmt-ignore-next-line format` use this
 same immediately-following-line behavior.
 
 See [FormatterIgnoreDesign.md](FormatterIgnoreDesign.md) for the source-range
 and mixed AST changes required before implementation.
 
-## Current Scope
-
-Ignore directives currently affect lint diagnostics only.
+## Diagnostics Scope
 
 Lexer and parser diagnostics, such as unterminated ERB tags or mismatched HTML
 close tags, are not suppressible because erbfmt cannot safely continue with an
 invalid document structure.
-
-Formatter ignore remains inactive until the source-range work described above
-is implemented. A directive using the `format` selector currently has no effect.

@@ -11,6 +11,7 @@ pub struct Document {
 pub enum Node {
     Html(String),
     ErbCode(String),
+    ErbComment(String),
     ErbOutput(String),
     ErbBlock {
         kind: ErbBlockKind,
@@ -66,6 +67,10 @@ fn parse_nodes(
             }
             Token::ErbCode(code) => {
                 nodes.push(Node::ErbCode(code.clone()));
+                *cursor += 1;
+            }
+            Token::ErbComment(comment) => {
+                nodes.push(Node::ErbComment(comment.clone()));
                 *cursor += 1;
             }
             Token::ErbBranch { code, .. } => {

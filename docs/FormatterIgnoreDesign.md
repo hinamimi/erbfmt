@@ -28,9 +28,8 @@ The formatter accepts these selectors in standalone HTML or ERB comments:
 ```
 
 `erbfmt-ignore-next-line format` is an alias with the same behavior. Existing
-`lint` and `lint/<ruleName>` selectors keep their current semantics. One comment
-contains one selector; users place two directives when both formatter and lint
-suppression are needed.
+`lint` and `lint/<ruleName>` selectors keep their current semantics. The `all`
+selector suppresses both formatting and all lint diagnostics for one target.
 
 The directive parser should be shared by formatter and linter so selector and
 reason parsing do not drift.
@@ -41,16 +40,15 @@ Lexer tokens already contain absolute byte spans, while HTML tokens contain
 spans relative to their HTML fragment. The mixed AST currently discards those
 spans and therefore cannot reproduce a subtree from the original source.
 
-Implementation requires:
+The implementation:
 
-1. Add an optional absolute byte range to mixed AST nodes.
-2. Convert relative HTML token ranges to absolute ranges using the containing
+1. Adds an optional absolute byte range to mixed AST nodes.
+2. Converts relative HTML token ranges to absolute ranges using the containing
    lexer token's `span.start`.
-3. Store opening ranges in HTML and ERB parser frames, then close each range at
+3. Stores opening ranges in HTML and ERB parser frames, then closes each range at
    the matching HTML close tag or ERB block end token.
-4. Represent ERB comments explicitly. They currently pass through the lexer as
-   ordinary ERB code, which cannot preserve the `<%#` marker safely.
-5. Pass the original source to the formatter alongside the parsed document.
+4. Represents ERB comments explicitly so the `<%#` marker is preserved.
+5. Passes the original source to the formatter alongside the parsed document.
 
 Unspanned parser entry points used by focused unit tests may keep `None` ranges.
 Formatter ignore is applied only when a complete valid range is available.
@@ -61,9 +59,8 @@ For a valid directive, the formatter copies the complete physical lines that
 cover the target range from the original source. This preserves leading
 indentation, internal whitespace, line endings, and the target subtree exactly.
 
-Ignored source takes precedence over `formatter.lineEnding`. The current final
-whole-output line-ending replacement must be replaced by generated-line output
-that uses the configured ending without rewriting copied raw source.
+Ignored source takes precedence over `formatter.lineEnding`. Generated lines use
+the configured ending without rewriting copied raw source.
 
 The target is eligible only when:
 
@@ -75,9 +72,9 @@ The target is eligible only when:
 
 If any condition cannot be proven from source ranges, normal formatting applies.
 
-## Initial Tests
+## Tests
 
-The implementation milestone should cover:
+The implementation tests cover:
 
 - HTML comment followed by a complete HTML element subtree;
 - ERB comment followed by a long standalone ERB output tag;
@@ -87,4 +84,4 @@ The implementation milestone should cover:
 - idempotency after an ignored subtree is preserved; and
 - lint directives retaining their existing behavior.
 
-The proposed fixture is `samples/formatter-ignore-next.html.erb`.
+The fixture is `samples/formatter-ignore-next.html.erb`.

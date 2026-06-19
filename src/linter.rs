@@ -1,5 +1,6 @@
 use crate::{
     html::{self, HtmlToken},
+    ignore::{IgnoreSelector, parse_ignore_directive},
     lexer,
     lexer::SourceLocation,
     mixed_parser,
@@ -191,54 +192,19 @@ fn lint_ignore_directives(input: &str) -> Vec<LintIgnoreDirective> {
         .lines()
         .enumerate()
         .filter_map(|(index, line)| {
-            parse_lint_ignore_directive(line).map(|rule| LintIgnoreDirective {
+            let directive = parse_ignore_directive(line)?;
+            let rule = match directive.selector {
+                IgnoreSelector::Lint { rule } => rule,
+                IgnoreSelector::All => None,
+                IgnoreSelector::Format => return None,
+            };
+
+            Some(LintIgnoreDirective {
                 target_line: index + 2,
                 rule,
             })
         })
         .collect()
-}
-
-fn parse_lint_ignore_directive(line: &str) -> Option<Option<String>> {
-    let body = html_comment_body(line).or_else(|| erb_comment_body(line))?;
-    let body = body.trim();
-
-    let rest = body
-        .strip_prefix("erbfmt-ignore-next-line")
-        .or_else(|| body.strip_prefix("erbfmt-ignore"))?
-        .trim();
-
-    let selector = rest.split(':').next().unwrap_or("").trim();
-
-    if selector.is_empty() {
-        return Some(None);
-    }
-
-    let token = selector.split_whitespace().next().unwrap_or("");
-
-    if token == "lint" {
-        return Some(None);
-    }
-
-    if let Some(rule) = token.strip_prefix("lint/") {
-        return Some(Some(rule.to_string()));
-    }
-
-    if token == "format" || token.starts_with("format/") {
-        return None;
-    }
-
-    Some(Some(token.to_string()))
-}
-
-fn html_comment_body(line: &str) -> Option<&str> {
-    let line = line.trim();
-    line.strip_prefix("<!--")?.strip_suffix("-->")
-}
-
-fn erb_comment_body(line: &str) -> Option<&str> {
-    let line = line.trim();
-    line.strip_prefix("<%#")?.strip_suffix("%>")
 }
 
 fn diagnostic_rule_id(message: &str) -> Option<&'static str> {
@@ -329,6 +295,7 @@ fn lint_tokens(
                     mark_current_block_meaningful(&mut erb_stack);
                 }
             }
+            lexer::Token::ErbComment(_) => {}
             lexer::Token::ErbOutput(code) => {
                 lint_empty_erb_code_tag(
                     ErbCodeTagKind::Output,
@@ -1470,6 +1437,14 @@ mod tests {
     fn ignores_lint_diagnostics_from_erb_comments() {
         let diagnostics =
             lint("<%# erbfmt-ignore lint/emptyErbCodeTag: generated placeholder %>\n<% %>\n");
+
+        assert_eq!(diagnostics, Vec::new());
+    }
+
+    #[test]
+    fn ignores_lint_diagnostics_with_combined_directives() {
+        let diagnostics =
+            lint("<!-- erbfmt-ignore all: generated markup -->\n<center>Legacy</center>\n");
 
         assert_eq!(diagnostics, Vec::new());
     }

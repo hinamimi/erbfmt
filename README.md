@@ -38,6 +38,7 @@ Early development.
 - Line/column diagnostics for syntax and lint findings
 - `erbfmt.json` formatter and linter configuration
 - Long HTML and standalone ERB tag wrapping controlled by `formatter.lineWidth`
+- Node/subtree formatter suppression with `erbfmt-ignore format`
 - Multi-file lint, check, and write modes
 - Thin VSCode extension with formatter, diagnostics, syntax highlighting, and
   ERB-safe comment toggling

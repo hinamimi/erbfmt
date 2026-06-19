@@ -1,4 +1,7 @@
-use crate::mixed_parser::{Document, ErbBranch, Node};
+use std::collections::HashMap;
+
+use crate::ignore::{IgnoreSelector, parse_ignore_directive};
+use crate::mixed_parser::{Document, ErbBranch, Node, SourceRange};
 use crate::ruby_format;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -53,21 +56,39 @@ pub fn format_document(document: &Document) -> String {
 }
 
 pub fn format_document_with_options(document: &Document, options: FormatOptions) -> String {
-    let mut formatter = Formatter::new(options);
+    let mut formatter = Formatter::new(document, None, options);
     formatter.format_nodes(&document.children, 0);
     formatter.finish()
 }
 
-struct Formatter {
+pub fn format_document_with_source(
+    document: &Document,
+    source: &str,
     options: FormatOptions,
-    output: String,
+) -> String {
+    let mut formatter = Formatter::new(document, Some(source), options);
+    formatter.format_nodes(&document.children, 0);
+    formatter.finish()
 }
 
-impl Formatter {
-    fn new(options: FormatOptions) -> Self {
+struct Formatter<'a> {
+    options: FormatOptions,
+    output: String,
+    source: Option<&'a str>,
+    preserved_ranges: HashMap<SourceRange, SourceRange>,
+}
+
+impl<'a> Formatter<'a> {
+    fn new(document: &Document, source: Option<&'a str>, options: FormatOptions) -> Self {
+        let preserved_ranges = source
+            .map(|source| formatter_ignore_ranges(&document.children, source))
+            .unwrap_or_default();
+
         Self {
             options,
             output: String::new(),
+            source,
+            preserved_ranges,
         }
     }
 
@@ -75,6 +96,11 @@ impl Formatter {
         let mut index = 0;
 
         while index < nodes.len() {
+            if self.write_ignored_node(&nodes[index]) {
+                index += 1;
+                continue;
+            }
+
             if is_inline_node(&nodes[index]) {
                 let start = index;
 
@@ -96,6 +122,7 @@ impl Formatter {
 
     fn format_node(&mut self, node: &Node, depth: usize) {
         match node {
+            Node::Spanned { node, .. } => self.format_node(node, depth),
             Node::HtmlText(text) => self.write_text(text, depth),
             Node::HtmlElement {
                 name,
@@ -111,6 +138,9 @@ impl Formatter {
                 self.write_indented_line(depth, comment);
             }
             Node::ErbCode(code) => self.write_erb_tag(depth, ErbTagMarker::Code, code),
+            Node::ErbComment(comment) => {
+                self.write_indented_line(depth, &format_erb_comment(comment));
+            }
             Node::ErbOutput(code) => self.write_erb_tag(depth, ErbTagMarker::Output, code),
             Node::ErbBlock {
                 code,
@@ -265,7 +295,7 @@ impl Formatter {
 
         self.output.push_str(&self.indent(depth));
         self.output.push_str(trimmed);
-        self.output.push('\n');
+        self.output.push_str(self.options.line_ending.as_str());
     }
 
     fn write_preserved_block(&mut self, depth: usize, block: &str) {
@@ -276,21 +306,24 @@ impl Formatter {
         self.output.push_str(&self.indent(depth));
         self.output.push_str(block);
 
-        if !block.ends_with('\n') {
-            self.output.push('\n');
+        if !block.ends_with(['\n', '\r']) {
+            self.output.push_str(self.options.line_ending.as_str());
         }
     }
 
     fn write_blank_line(&mut self) {
-        if self.output.is_empty() || self.output.ends_with("\n\n") {
+        let line_ending = self.options.line_ending.as_str();
+        let double_line_ending = format!("{line_ending}{line_ending}");
+
+        if self.output.is_empty() || self.output.ends_with(&double_line_ending) {
             return;
         }
 
-        if !self.output.ends_with('\n') {
-            self.output.push('\n');
+        if !self.output.ends_with(line_ending) {
+            self.output.push_str(line_ending);
         }
 
-        self.output.push('\n');
+        self.output.push_str(line_ending);
     }
 
     fn write_indented_code_line(&mut self, depth: usize, line: &str) {
@@ -301,7 +334,7 @@ impl Formatter {
 
         self.output.push_str(&self.indent(depth));
         self.output.push_str(trimmed);
-        self.output.push('\n');
+        self.output.push_str(self.options.line_ending.as_str());
     }
 
     fn indent(&self, depth: usize) -> String {
@@ -313,14 +346,157 @@ impl Formatter {
 
     fn finish(mut self) -> String {
         if !self.options.trailing_newline {
-            self.output = self.output.trim_end_matches('\n').to_string();
+            self.output = self.output.trim_end_matches(['\r', '\n']).to_string();
         }
 
-        match self.options.line_ending {
-            LineEnding::Lf => self.output,
-            LineEnding::Crlf => self.output.replace('\n', self.options.line_ending.as_str()),
+        self.output
+    }
+
+    fn write_ignored_node(&mut self, node: &Node) -> bool {
+        let Some(source) = self.source else {
+            return false;
+        };
+        let Some(node_range) = node.source_range() else {
+            return false;
+        };
+        let Some(preserved_range) = self.preserved_ranges.get(&node_range) else {
+            return false;
+        };
+        let Some(raw) = source.get(preserved_range.start..preserved_range.end) else {
+            return false;
+        };
+
+        self.output.push_str(raw);
+        true
+    }
+}
+
+fn formatter_ignore_ranges(nodes: &[Node], source: &str) -> HashMap<SourceRange, SourceRange> {
+    let mut ranges = HashMap::new();
+    collect_formatter_ignore_ranges(nodes, source, &mut ranges);
+    ranges
+}
+
+fn collect_formatter_ignore_ranges(
+    nodes: &[Node],
+    source: &str,
+    ranges: &mut HashMap<SourceRange, SourceRange>,
+) {
+    for (index, node) in nodes.iter().enumerate() {
+        if is_comment_node(node)
+            && let Some(directive_range) = node.source_range()
+            && let Some(raw) = source.get(directive_range.start..directive_range.end)
+            && !raw.contains(['\r', '\n'])
+            && parse_ignore_directive(raw).is_some_and(|directive| {
+                matches!(
+                    directive.selector,
+                    IgnoreSelector::Format | IgnoreSelector::All
+                )
+            })
+            && let Some(target) = nodes[index + 1..]
+                .iter()
+                .find(|candidate| !is_whitespace_node(candidate))
+            && let Some(target_range) = target.source_range()
+            && let Some(preserved_range) =
+                formatter_ignore_line_range(source, directive_range, target_range)
+        {
+            ranges.insert(target_range, preserved_range);
+        }
+
+        match node.unspanned() {
+            Node::HtmlElement { children, .. } => {
+                collect_formatter_ignore_ranges(children, source, ranges);
+            }
+            Node::ErbBlock {
+                children, branches, ..
+            } => {
+                collect_formatter_ignore_ranges(children, source, ranges);
+
+                for branch in branches {
+                    collect_formatter_ignore_ranges(&branch.children, source, ranges);
+                }
+            }
+            Node::HtmlText(_)
+            | Node::HtmlSelfClosing { .. }
+            | Node::HtmlVoid { .. }
+            | Node::HtmlComment(_)
+            | Node::HtmlDoctype(_)
+            | Node::ErbCode(_)
+            | Node::ErbComment(_)
+            | Node::ErbOutput(_)
+            | Node::Spanned { .. } => {}
         }
     }
+}
+
+fn is_comment_node(node: &Node) -> bool {
+    matches!(node.unspanned(), Node::HtmlComment(_) | Node::ErbComment(_))
+}
+
+fn is_whitespace_node(node: &Node) -> bool {
+    matches!(node.unspanned(), Node::HtmlText(text) if text.trim().is_empty())
+}
+
+fn formatter_ignore_line_range(
+    source: &str,
+    directive: SourceRange,
+    target: SourceRange,
+) -> Option<SourceRange> {
+    if directive.end > target.start || target.end > source.len() {
+        return None;
+    }
+
+    let directive_line_start = source[..directive.start]
+        .rfind('\n')
+        .map_or(0, |index| index + 1);
+    if !source[directive_line_start..directive.start]
+        .chars()
+        .all(is_horizontal_whitespace)
+    {
+        return None;
+    }
+
+    let between = &source[directive.end..target.start];
+    let newline = between.find('\n')?;
+    if !between[..newline].chars().all(is_horizontal_whitespace)
+        || !between[newline + 1..]
+            .chars()
+            .all(is_indentation_whitespace)
+    {
+        return None;
+    }
+
+    let target_line_start = directive.end + newline + 1;
+    let after_target = &source[target.end..];
+    let target_line_end = if let Some(newline) = after_target.find('\n') {
+        if !after_target[..newline]
+            .chars()
+            .all(is_horizontal_whitespace)
+        {
+            return None;
+        }
+
+        target.end + newline + 1
+    } else {
+        if !after_target.chars().all(is_horizontal_whitespace) {
+            return None;
+        }
+
+        source.len()
+    };
+
+    Some(SourceRange {
+        start: target_line_start,
+        end: target_line_end,
+    })
+}
+
+fn is_horizontal_whitespace(ch: char) -> bool {
+    matches!(ch, ' ' | '\t' | '\r')
+}
+
+fn is_indentation_whitespace(ch: char) -> bool {
+    matches!(ch, ' ' | '\t')
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -446,7 +622,7 @@ fn can_render_inline(nodes: &[Node]) -> bool {
 }
 
 fn is_inline_node(node: &Node) -> bool {
-    match node {
+    match node.unspanned() {
         Node::HtmlText(text) => !text.contains('\n'),
         Node::HtmlSelfClosing { .. }
         | Node::HtmlVoid { .. }
@@ -455,6 +631,8 @@ fn is_inline_node(node: &Node) -> bool {
         Node::HtmlElement { .. }
         | Node::HtmlComment(_)
         | Node::HtmlDoctype(_)
+        | Node::ErbComment(_)
+        | Node::Spanned { .. }
         | Node::ErbBlock { .. } => false,
     }
 }
@@ -469,7 +647,7 @@ fn render_inline_nodes(nodes: &[Node]) -> String {
 }
 
 fn render_inline_node(node: &Node) -> String {
-    match node {
+    match node.unspanned() {
         Node::HtmlText(text) => text.clone(),
         Node::HtmlSelfClosing { raw, .. } | Node::HtmlVoid { raw, .. } => raw.clone(),
         Node::ErbCode(code) => format_erb_tag_inline(ErbTagMarker::Code, code.trim()),
@@ -477,6 +655,8 @@ fn render_inline_node(node: &Node) -> String {
         Node::HtmlElement { .. }
         | Node::HtmlComment(_)
         | Node::HtmlDoctype(_)
+        | Node::ErbComment(_)
+        | Node::Spanned { .. }
         | Node::ErbBlock { .. } => unreachable!("node cannot render inline"),
     }
 }
@@ -490,7 +670,7 @@ fn render_preserved_nodes(nodes: &[Node]) -> String {
 }
 
 fn render_preserved_node(node: &Node) -> String {
-    match node {
+    match node.unspanned() {
         Node::HtmlText(text) => text.clone(),
         Node::HtmlElement {
             open,
@@ -501,6 +681,7 @@ fn render_preserved_node(node: &Node) -> String {
         Node::HtmlSelfClosing { raw, .. } | Node::HtmlVoid { raw, .. } => raw.clone(),
         Node::HtmlComment(comment) | Node::HtmlDoctype(comment) => comment.clone(),
         Node::ErbCode(code) => format_erb_tag_inline(ErbTagMarker::Code, code.trim()),
+        Node::ErbComment(comment) => format_erb_comment(comment),
         Node::ErbOutput(code) => format_erb_tag_inline(ErbTagMarker::Output, code.trim()),
         Node::ErbBlock {
             code,
@@ -520,6 +701,7 @@ fn render_preserved_node(node: &Node) -> String {
             rendered.push_str("<% end %>");
             rendered
         }
+        Node::Spanned { .. } => unreachable!("unspanned node cannot remain wrapped"),
     }
 }
 
@@ -536,6 +718,16 @@ fn format_erb_tag_inline(marker: ErbTagMarker, code: &str) -> String {
     }
 
     format!("{} {} %>", marker.as_str(), code.trim())
+}
+
+fn format_erb_comment(comment: &str) -> String {
+    let comment = comment.trim();
+
+    if comment.is_empty() {
+        "<%# %>".to_string()
+    } else {
+        format!("<%# {comment} %>")
+    }
 }
 
 fn normalized_erb_code_lines(code: &str) -> Vec<String> {
@@ -621,7 +813,10 @@ fn strip_leading_whitespace(line: &str, count: usize) -> &str {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{lexer::tokenize, mixed_parser::parse};
+    use crate::{
+        lexer::{tokenize, tokenize_with_spans},
+        mixed_parser::{parse, parse_spanned},
+    };
 
     fn format(input: &str) -> String {
         let tokens = tokenize(input).unwrap();
@@ -648,6 +843,17 @@ mod tests {
         let document = parse(&tokens).unwrap();
 
         format_document_with_options(&document, options)
+    }
+
+    fn format_source(input: &str) -> String {
+        format_source_with_options(input, FormatOptions::default())
+    }
+
+    fn format_source_with_options(input: &str, options: FormatOptions) -> String {
+        let tokens = tokenize_with_spans(input).unwrap();
+        let document = parse_spanned(&tokens).unwrap();
+
+        format_document_with_source(&document, input, options)
     }
 
     #[test]
@@ -683,6 +889,14 @@ mod tests {
     }
 
     #[test]
+    fn preserves_erb_comment_markers() {
+        assert_eq!(
+            format_source("<%# generated note %>\n"),
+            "<%# generated note %>\n"
+        );
+    }
+
+    #[test]
     fn preserves_adjacent_erb_outputs_on_one_line() {
         assert_eq!(
             format("<%= form.radio_button :status, :draft %><%= form.label :status_draft %>\n"),
@@ -697,6 +911,78 @@ mod tests {
                 "<% if form %>\n<%= form.radio_button :status, :draft %><%= form.label :status_draft %>\n<% end %>\n"
             ),
             "<% if form %>\n  <%= form.radio_button :status, :draft %><%= form.label :status_draft %>\n<% end %>\n"
+        );
+    }
+
+    #[test]
+    fn preserves_formatter_ignored_html_and_erb_nodes() {
+        assert_eq!(
+            format_source(formatter_ignore_fixture()),
+            formatter_ignore_fixture()
+        );
+    }
+
+    #[test]
+    fn preserves_formatter_ignored_erb_block_subtrees() {
+        let input = "<!-- erbfmt-ignore format: generated block -->\n<% if user %>\n<p   class=\"legacy\">Keep   spacing</p>\n<% else %>\n<p>Also  keep</p>\n<% end %>\n";
+
+        assert_eq!(format_source(input), input);
+    }
+
+    #[test]
+    fn preserves_formatter_ignored_nodes_with_combined_directives() {
+        let input = "<!-- erbfmt-ignore all: generated markup -->\n<div   class=\"generated\"><center>Keep this</center></div>\n";
+
+        assert_eq!(format_source(input), input);
+    }
+
+    #[test]
+    fn formats_nodes_surrounding_formatter_ignored_subtrees() {
+        let input = "<section>\n<!-- erbfmt-ignore format: legacy -->\n    <div   class=\"legacy\">Keep   spacing</div>\n<p>Normal</p>\n</section>\n";
+
+        assert_eq!(
+            format_source(input),
+            "<section>\n  <!-- erbfmt-ignore format: legacy -->\n    <div   class=\"legacy\">Keep   spacing</div>\n  <p>Normal</p>\n</section>\n"
+        );
+    }
+
+    #[test]
+    fn falls_back_when_formatter_ignore_target_is_not_on_the_next_line() {
+        let input = "<!-- erbfmt-ignore format: separated -->\n\n<article class=\"card\" data-controller=\"profile\" aria-label=\"Profile card\"></article>\n";
+
+        assert_eq!(
+            format_source_with_options(
+                input,
+                FormatOptions {
+                    line_width: 48,
+                    ..FormatOptions::default()
+                }
+            ),
+            "<!-- erbfmt-ignore format: separated -->\n\n<article\n  class=\"card\"\n  data-controller=\"profile\"\n  aria-label=\"Profile card\"\n>\n</article>\n"
+        );
+    }
+
+    #[test]
+    fn formatter_ignore_is_idempotent() {
+        let once = format_source(formatter_ignore_fixture());
+        let twice = format_source(&once);
+
+        assert_eq!(twice, once);
+    }
+
+    #[test]
+    fn formatter_ignore_preserves_source_line_endings() {
+        let input = "<section>\r\n<!-- erbfmt-ignore format: legacy -->\r\n    <div   class=\"legacy\">Keep   spacing</div>\r\n<p>Normal</p>\r\n</section>\r\n";
+
+        assert_eq!(
+            format_source_with_options(
+                input,
+                FormatOptions {
+                    line_ending: LineEnding::Lf,
+                    ..FormatOptions::default()
+                }
+            ),
+            "<section>\n  <!-- erbfmt-ignore format: legacy -->\n    <div   class=\"legacy\">Keep   spacing</div>\r\n  <p>Normal</p>\n</section>\n"
         );
     }
 
@@ -1113,5 +1399,9 @@ mod tests {
 
     fn real_template_audit_fixture() -> &'static str {
         include_str!("../samples/real-template-audit.html.erb")
+    }
+
+    fn formatter_ignore_fixture() -> &'static str {
+        include_str!("../samples/formatter-ignore-next.html.erb")
     }
 }

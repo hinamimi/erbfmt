@@ -89,4 +89,4 @@ VSCode diagnostics use the matching warning or error severity.
 See [LintRules.md](LintRules.md) for the current lint rule design and the next
 planned rules.
 
-See [Ignore.md](Ignore.md) for `erbfmt-ignore` lint directives.
+See [Ignore.md](Ignore.md) for `erbfmt-ignore` lint and formatter directives.

@@ -1,6 +1,7 @@
 mod config;
 mod formatter;
 mod html;
+mod ignore;
 mod lexer;
 mod linter;
 mod mixed_parser;
@@ -229,8 +230,9 @@ fn format_content(file: &Path, content: &str, config: &config::Config) -> Result
     let document = mixed_parser::parse_spanned(&tokens)
         .with_context(|| format!("failed to parse `{}`", file.display()))?;
 
-    Ok(formatter::format_document_with_options(
+    Ok(formatter::format_document_with_source(
         &document,
+        content,
         config.format_options(),
     ))
 }

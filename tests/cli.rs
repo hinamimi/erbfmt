@@ -353,6 +353,22 @@ fn lint_ignore_comment_suppresses_next_line_diagnostics() {
 }
 
 #[test]
+fn formatter_ignore_preserves_the_next_node_subtree() {
+    let dir = TestDir::new("formatter_ignore");
+    let input = "<section>\n<!-- erbfmt-ignore format: legacy -->\n    <div   class=\"legacy\"><span>Keep   spacing</span></div>\n<p>Normal</p>\n</section>\n";
+    let file = dir.write("input.html.erb", input);
+
+    let output = run([file.as_path()]);
+
+    assert_success(&output);
+    assert_eq!(
+        stdout(&output),
+        "<section>\n  <!-- erbfmt-ignore format: legacy -->\n    <div   class=\"legacy\"><span>Keep   spacing</span></div>\n  <p>Normal</p>\n</section>\n"
+    );
+    assert_eq!(stderr(&output), "");
+}
+
+#[test]
 fn config_controls_formatter_indent_width() {
     let dir = TestDir::new("config_indent_width");
     let config = dir.write("erbfmt.json", r#"{"formatter":{"indentWidth":4}}"#);
