@@ -398,7 +398,7 @@ fn config_controls_erb_tag_line_width() {
     assert_success(&output);
     assert_eq!(
         stdout(&output),
-        "<%=\n  link_to \"Edit profile\", edit_user_path(user), class: \"button button--primary\", data: { turbo_frame: \"_top\" }\n%>\n"
+        "<%=\n  link_to(\n    \"Edit profile\",\n    edit_user_path(user),\n    class: \"button button--primary\",\n    data: { turbo_frame: \"_top\" }\n  )\n%>\n"
     );
     assert_eq!(stderr(&output), "");
 }

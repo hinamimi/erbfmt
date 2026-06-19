@@ -60,8 +60,11 @@ option for the existing HTML indentation behavior.
 - `formatter.lineWidth`: target line width. Opening, void, and self-closing
   HTML tags that exceed this width are expanded one attribute per line, with
   the closing marker on its own line. Standalone ERB tags that exceed this
-  width are expanded by moving only `<%` / `<%=` and `%>` onto their own lines;
-  Ruby expressions are not split.
+  width are expanded by moving `<%` / `<%=` and `%>` onto their own lines.
+  When the Ruby code is a simple command-style method call with top-level
+  comma-separated arguments, erbfmt may fold it by adding explicit parentheses
+  and placing one argument per line. Ruby expressions that cannot be recognized
+  safely are left intact.
 - `formatter.trailingNewline`: keep or remove the final newline.
 
 ## Linter

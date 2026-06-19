@@ -1,4 +1,5 @@
 use crate::mixed_parser::{Document, ErbBranch, Node};
+use crate::ruby_format;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct FormatOptions {
@@ -241,7 +242,7 @@ impl Formatter {
 
         self.write_indented_line(depth, marker.as_str());
 
-        for line in normalized_erb_code_lines(code) {
+        for line in formatted_erb_code_lines(code) {
             self.write_indented_code_line(depth + 1, &line);
         }
 
@@ -551,6 +552,16 @@ fn normalized_erb_code_lines(code: &str) -> Vec<String> {
         .collect()
 }
 
+fn formatted_erb_code_lines(code: &str) -> Vec<String> {
+    if !code.contains('\n')
+        && let Some(lines) = ruby_format::fold_command_call(code)
+    {
+        return lines;
+    }
+
+    normalized_erb_code_lines(code)
+}
+
 fn common_erb_code_indent(lines: &[&str]) -> usize {
     let non_empty_lines = lines.iter().copied().filter(|line| !line.trim().is_empty());
 
@@ -855,7 +866,7 @@ mod tests {
     }
 
     #[test]
-    fn wraps_long_erb_output_tags_without_splitting_ruby() {
+    fn wraps_long_erb_output_command_calls() {
         assert_eq!(
             format_with_options(
                 r#"<%= link_to "Edit profile", edit_user_path(user), class: "button button--primary", data: { turbo_frame: "_top" } %>"#,
@@ -864,12 +875,12 @@ mod tests {
                     ..FormatOptions::default()
                 }
             ),
-            "<%=\n  link_to \"Edit profile\", edit_user_path(user), class: \"button button--primary\", data: { turbo_frame: \"_top\" }\n%>\n"
+            "<%=\n  link_to(\n    \"Edit profile\",\n    edit_user_path(user),\n    class: \"button button--primary\",\n    data: { turbo_frame: \"_top\" }\n  )\n%>\n"
         );
     }
 
     #[test]
-    fn wraps_long_erb_code_tags_without_splitting_ruby() {
+    fn preserves_long_erb_code_tags_when_arguments_are_not_safely_splittable() {
         assert_eq!(
             format_with_options(
                 r#"<% cache ["profile-card", user.cache_key_with_version, current_user.cache_key_with_version] %>"#,
@@ -883,7 +894,7 @@ mod tests {
     }
 
     #[test]
-    fn wraps_long_erb_block_opening_tags_without_splitting_ruby() {
+    fn preserves_long_erb_block_opening_tags_when_they_are_control_flow() {
         assert_eq!(
             format_with_options(
                 "<% if current_user.admin? && feature_enabled?(:new_dashboard) && account.active? %>\n<p>Hello</p>\n<% end %>\n",
@@ -893,6 +904,48 @@ mod tests {
                 }
             ),
             "<%\n  if current_user.admin? && feature_enabled?(:new_dashboard) && account.active?\n%>\n  <p>Hello</p>\n<% end %>\n"
+        );
+    }
+
+    #[test]
+    fn wraps_long_erb_code_command_calls() {
+        assert_eq!(
+            format_with_options(
+                r#"<% tag.div class: "card", data: { controller: "profile" }, aria: { label: "Profile" } %>"#,
+                FormatOptions {
+                    line_width: 48,
+                    ..FormatOptions::default()
+                }
+            ),
+            "<%\n  tag.div(\n    class: \"card\",\n    data: { controller: \"profile\" },\n    aria: { label: \"Profile\" }\n  )\n%>\n"
+        );
+    }
+
+    #[test]
+    fn wraps_long_erb_output_command_calls_with_do_blocks() {
+        assert_eq!(
+            format_with_options(
+                r#"<%= form_with model: user, url: user_path(user), data: { turbo_frame: "profile" } do |form| %><div></div><% end %>"#,
+                FormatOptions {
+                    line_width: 60,
+                    ..FormatOptions::default()
+                }
+            ),
+            "<%=\n  form_with(\n    model: user,\n    url: user_path(user),\n    data: { turbo_frame: \"profile\" }\n  ) do |form|\n%>\n  <div></div>\n<% end %>\n"
+        );
+    }
+
+    #[test]
+    fn preserves_long_erb_output_when_expression_is_not_safely_splittable() {
+        assert_eq!(
+            format_with_options(
+                r#"<%= current_user.admin? ? link_to("Admin", admin_path) : link_to("Home", root_path) %>"#,
+                FormatOptions {
+                    line_width: 48,
+                    ..FormatOptions::default()
+                }
+            ),
+            "<%=\n  current_user.admin? ? link_to(\"Admin\", admin_path) : link_to(\"Home\", root_path)\n%>\n"
         );
     }
 

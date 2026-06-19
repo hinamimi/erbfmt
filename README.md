@@ -165,15 +165,23 @@ and only indent ERB blocks.
 `formatter.lineWidth` controls when long HTML tags are expanded one attribute
 per line with the closing marker on its own line.
 
-Long standalone ERB tags also use `formatter.lineWidth`, but erbfmt does not
-split Ruby expressions. When a standalone ERB tag is too long, only the ERB tag
-markers are expanded:
+Long standalone ERB tags also use `formatter.lineWidth`. When a simple
+command-style Ruby method call can be recognized safely, erbfmt adds explicit
+parentheses and places one top-level argument per line:
 
 ```erb
 <%=
-  link_to "Edit profile", edit_user_path(user), class: "button button--primary"
+  link_to(
+    "Edit profile",
+    edit_user_path(user),
+    class: "button button--primary"
+  )
 %>
 ```
+
+Complex Ruby expressions, control-flow tags, and expressions that cannot be
+recognized safely keep their Ruby code intact; only the ERB tag markers are
+expanded.
 
 ## Samples
 

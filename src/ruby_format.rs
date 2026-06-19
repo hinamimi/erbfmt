@@ -1,0 +1,297 @@
+pub(crate) fn fold_command_call(code: &str) -> Option<Vec<String>> {
+    let code = code.trim();
+
+    if code.is_empty() || code.contains('#') || code.contains(';') {
+        return None;
+    }
+
+    let (call, block_suffix) = split_top_level_do_block(code)?;
+    let (callee, arguments) = split_command_call(call)?;
+    let arguments = split_top_level_arguments(arguments)?;
+
+    if arguments.len() < 2 {
+        return None;
+    }
+
+    let mut lines = vec![format!("{callee}(")];
+
+    for (index, argument) in arguments.iter().enumerate() {
+        let comma = if index + 1 == arguments.len() {
+            ""
+        } else {
+            ","
+        };
+        lines.push(format!("  {argument}{comma}"));
+    }
+
+    match block_suffix {
+        Some(suffix) => lines.push(format!(") {suffix}")),
+        None => lines.push(")".to_string()),
+    }
+
+    Some(lines)
+}
+
+fn split_command_call(code: &str) -> Option<(&str, &str)> {
+    let split_at = code
+        .char_indices()
+        .find_map(|(index, ch)| ch.is_whitespace().then_some(index))?;
+    let callee = code[..split_at].trim();
+    let arguments = code[split_at..].trim();
+
+    if callee.is_empty()
+        || arguments.is_empty()
+        || arguments.starts_with('(')
+        || !is_foldable_callee(callee)
+    {
+        return None;
+    }
+
+    Some((callee, arguments))
+}
+
+fn split_top_level_do_block(code: &str) -> Option<(&str, Option<&str>)> {
+    let mut state = RubyScanState::default();
+
+    for (index, ch) in code.char_indices() {
+        if state.is_top_level() && ch.is_whitespace() {
+            let rest = &code[index..];
+            let trimmed = rest.trim_start();
+
+            if let Some(after_do) = trimmed.strip_prefix("do")
+                && (after_do.is_empty() || after_do.chars().next().is_some_and(char::is_whitespace))
+            {
+                return state
+                    .is_balanced()
+                    .then(|| (code[..index].trim_end(), Some(trimmed.trim())));
+            }
+        }
+
+        if !state.consume(ch) {
+            return None;
+        }
+    }
+
+    state.is_balanced().then_some((code, None))
+}
+
+fn split_top_level_arguments(arguments: &str) -> Option<Vec<String>> {
+    let mut state = RubyScanState::default();
+    let mut start = 0;
+    let mut result = Vec::new();
+
+    for (index, ch) in arguments.char_indices() {
+        if state.is_top_level() && ch == ',' {
+            result.push(arguments[start..index].trim().to_string());
+            start = index + ch.len_utf8();
+            continue;
+        }
+
+        if !state.consume(ch) {
+            return None;
+        }
+    }
+
+    if !state.is_balanced() {
+        return None;
+    }
+
+    result.push(arguments[start..].trim().to_string());
+
+    if result.iter().any(String::is_empty) {
+        return None;
+    }
+
+    Some(result)
+}
+
+fn is_foldable_callee(callee: &str) -> bool {
+    let Some(first) = callee.chars().next() else {
+        return false;
+    };
+
+    if !matches!(first, 'a'..='z' | 'A'..='Z' | '_' | '@') {
+        return false;
+    }
+
+    if is_ruby_keyword(callee)
+        || callee.ends_with('.')
+        || callee.ends_with(':')
+        || callee.contains("..")
+        || callee.contains(":::")
+    {
+        return false;
+    }
+
+    callee.chars().all(|ch| {
+        matches!(
+            ch,
+            'a'..='z' | 'A'..='Z' | '0'..='9' | '_' | '.' | ':' | '?' | '!' | '@'
+        )
+    })
+}
+
+fn is_ruby_keyword(value: &str) -> bool {
+    matches!(
+        value,
+        "BEGIN"
+            | "END"
+            | "alias"
+            | "and"
+            | "begin"
+            | "break"
+            | "case"
+            | "class"
+            | "def"
+            | "defined?"
+            | "do"
+            | "else"
+            | "elsif"
+            | "end"
+            | "ensure"
+            | "false"
+            | "for"
+            | "if"
+            | "in"
+            | "module"
+            | "next"
+            | "nil"
+            | "not"
+            | "or"
+            | "redo"
+            | "rescue"
+            | "retry"
+            | "return"
+            | "self"
+            | "super"
+            | "then"
+            | "true"
+            | "undef"
+            | "unless"
+            | "until"
+            | "when"
+            | "while"
+            | "yield"
+    )
+}
+
+#[derive(Default)]
+struct RubyScanState {
+    stack: Vec<char>,
+    string: Option<char>,
+    escaped: bool,
+}
+
+impl RubyScanState {
+    fn is_top_level(&self) -> bool {
+        self.string.is_none() && self.stack.is_empty()
+    }
+
+    fn is_balanced(&self) -> bool {
+        self.string.is_none() && self.stack.is_empty() && !self.escaped
+    }
+
+    fn consume(&mut self, ch: char) -> bool {
+        if let Some(quote) = self.string {
+            if self.escaped {
+                self.escaped = false;
+                return true;
+            }
+
+            if ch == '\\' {
+                self.escaped = true;
+                return true;
+            }
+
+            if ch == quote {
+                self.string = None;
+            }
+
+            return true;
+        }
+
+        match ch {
+            '\'' | '"' => {
+                self.string = Some(ch);
+                true
+            }
+            '(' | '[' | '{' => {
+                self.stack.push(ch);
+                true
+            }
+            ')' => self.stack.pop() == Some('('),
+            ']' => self.stack.pop() == Some('['),
+            '}' => self.stack.pop() == Some('{'),
+            _ => true,
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::fold_command_call;
+
+    #[test]
+    fn folds_command_call_arguments() {
+        assert_eq!(
+            fold_command_call(r#"link_to "Edit profile", edit_user_path(user), class: "button""#),
+            Some(vec![
+                "link_to(".to_string(),
+                r#"  "Edit profile","#.to_string(),
+                "  edit_user_path(user),".to_string(),
+                r#"  class: "button""#.to_string(),
+                ")".to_string(),
+            ])
+        );
+    }
+
+    #[test]
+    fn folds_command_call_with_do_block() {
+        assert_eq!(
+            fold_command_call(r#"form_with model: user, url: user_path(user) do |form|"#),
+            Some(vec![
+                "form_with(".to_string(),
+                "  model: user,".to_string(),
+                "  url: user_path(user)".to_string(),
+                ") do |form|".to_string(),
+            ])
+        );
+    }
+
+    #[test]
+    fn ignores_commas_inside_strings_and_nested_values() {
+        assert_eq!(
+            fold_command_call(r#"link_to "Edit, profile", user_path(user, anchor: "top")"#),
+            Some(vec![
+                "link_to(".to_string(),
+                r#"  "Edit, profile","#.to_string(),
+                r#"  user_path(user, anchor: "top")"#.to_string(),
+                ")".to_string(),
+            ])
+        );
+    }
+
+    #[test]
+    fn does_not_fold_control_flow() {
+        assert_eq!(
+            fold_command_call("if current_user.admin? && account.active?"),
+            None
+        );
+    }
+
+    #[test]
+    fn does_not_fold_single_argument_calls() {
+        assert_eq!(
+            fold_command_call(r#"cache ["profile-card", user.cache_key_with_version]"#),
+            None
+        );
+    }
+
+    #[test]
+    fn does_not_fold_unbalanced_code() {
+        assert_eq!(
+            fold_command_call(r#"link_to "Edit", edit_user_path(user"#),
+            None
+        );
+    }
+}

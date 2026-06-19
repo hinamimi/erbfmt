@@ -712,6 +712,82 @@ Status: Done
 
 ## Milestone 52
 
+Long ERB command-call wrapping
+
+Status: Done
+
+`formatter.lineWidth` を超えた standalone ERB tag のうち、安全に読める Ruby
+command-style method call だけを複数行へ折りたたみます。
+
+対象:
+
+- `<%= link_to "Edit", edit_user_path(user), class: "button" %>`
+- `<%= form_with model: user, url: user_path(user) do |form| %>`
+- `<% tag.div class: "card", data: { controller: "profile" } %>`
+
+折りたたみ方:
+
+```erb
+<%=
+  link_to(
+    "Edit",
+    edit_user_path(user),
+    class: "button"
+  )
+%>
+```
+
+`do` block suffix は閉じ括弧の後ろへ残します。
+
+```erb
+<%=
+  form_with(
+    model: user,
+    url: user_path(user)
+  ) do |form|
+%>
+```
+
+安全側に倒すもの:
+
+- `if`, `unless`, `case`, `when`, `elsif`, `else`, `end` などの control-flow
+- 三項演算子、演算子中心の式、代入、複数statement
+- top-level comma がない call
+- 文字列や括弧の対応を安全に読めない Ruby code
+- inline context の隣接ERB output
+
+やること:
+
+- Ruby AST は導入せず、単純な command-call 判定だけを小さな formatter helper に分離する。
+- top-level comma の検出では `()`, `[]`, `{}`, quote 内部を分割しない。
+- 解析できない場合は現状どおり ERB marker だけを展開し、Ruby code は保持する。
+- formatter unit test と CLI integration test で折りたたみ対象 / 非対象を固定する。
+- docs に、対応範囲と安全側fallbackを明記する。
+
+完了条件:
+
+- `link_to ...`, `form_with ... do |form|`, `tag.div ...` の代表例を折りたためる。
+- control-flow や複雑な式を誤って書き換えない。
+- 既存のHTML formatting、空行保持、format-sensitive tag保持に影響しない。
+
+範囲外:
+
+- Ruby AST parsing
+- RuboCop完全互換
+- 既存の括弧付きRuby callの全面再整形
+- Ruby semantic analysis
+
+結果:
+
+- Ruby command-call 折りたたみ helper を formatter 本体から分離して追加した。
+- `link_to ...`, `form_with ... do |form|`, `tag.div ...` の代表例を折りたためるようにした。
+- `()`, `[]`, `{}`, quote 内部の comma は top-level argument split の対象外にした。
+- `if` などのcontrol-flow、top-level comma のないcall、対応が崩れたRuby codeは折りたたまないようにした。
+- CLIの `formatter.lineWidth` test と formatter unit testで挙動を固定した。
+- 実テンプレート監査fixtureのsnapshotを新しい折りたたみ結果へ更新した。
+
+## Milestone 53
+
 Formatter ignore design
 
 Status: Next

@@ -6,6 +6,7 @@ mod linter;
 mod mixed_parser;
 #[cfg(test)]
 mod parser;
+mod ruby_format;
 
 use anyhow::{Context, Result, bail};
 use clap::{ArgGroup, Parser};
