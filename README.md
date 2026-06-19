@@ -39,6 +39,7 @@ Early development.
 - `erbfmt.json` formatter and linter configuration
 - Long HTML and standalone ERB tag wrapping controlled by `formatter.lineWidth`
 - Node/subtree formatter suppression with `erbfmt-ignore format`
+- Local platform-specific Ruby gem wrapper scaffold
 - Multi-file lint, check, and write modes
 - Thin VSCode extension with formatter, diagnostics, syntax highlighting, and
   ERB-safe comment toggling

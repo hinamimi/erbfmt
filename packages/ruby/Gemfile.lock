@@ -1,0 +1,21 @@
+PATH
+  remote: .
+  specs:
+    erbfmt (0.0.0.dev-x86_64-linux)
+
+GEM
+  remote: https://rubygems.org/
+  specs:
+    minitest (5.25.4)
+    rake (13.2.1)
+
+PLATFORMS
+  x86_64-linux
+
+DEPENDENCIES
+  erbfmt!
+  minitest (~> 5.25)
+  rake (~> 13.2)
+
+BUNDLED WITH
+   2.6.9

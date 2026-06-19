@@ -1,0 +1,121 @@
+# frozen_string_literal: true
+
+require "fileutils"
+require "open3"
+require "rake/testtask"
+require "rbconfig"
+require "tmpdir"
+require_relative "lib/erbfmt/version"
+
+PACKAGE_ROOT = __dir__
+REPOSITORY_ROOT = File.expand_path("../..", PACKAGE_ROOT)
+
+def gem_platform
+  configured = ENV["ERBFMT_GEM_PLATFORM"]
+  return configured unless configured.nil? || configured.empty?
+
+  local = Gem::Platform.local.to_s
+  local == "x86_64-linux" ? "x86_64-linux-gnu" : local
+end
+
+def packaged_binary_name(platform)
+  platform.include?("mingw") || platform.include?("mswin") ? "erbfmt-bin.exe" : "erbfmt-bin"
+end
+
+def gem_package_path(platform = gem_platform)
+  File.join(PACKAGE_ROOT, "pkg", "erbfmt-#{Erbfmt::VERSION}-#{platform}.gem")
+end
+
+def cargo_version
+  cargo_toml = File.read(File.join(REPOSITORY_ROOT, "Cargo.toml"))
+  match = cargo_toml.match(/^version = "([^"]+)"$/)
+  abort "Cargo.toml package version not found" unless match
+
+  match[1]
+end
+
+def gem_command
+  File.join(RbConfig::CONFIG.fetch("bindir"), Gem.win_platform? ? "gem.cmd" : "gem")
+end
+
+Rake::TestTask.new(:test) do |task|
+  task.libs << File.join(PACKAGE_ROOT, "lib")
+  task.pattern = File.join(PACKAGE_ROOT, "test/**/*_test.rb")
+  task.warning = true
+end
+
+task default: :test
+
+desc "Verify Ruby and Cargo development versions correspond"
+task :verify_version do
+  expected = cargo_version.tr("-", ".")
+  next if Erbfmt::VERSION == expected
+
+  abort "gem version #{Erbfmt::VERSION} does not match Cargo version #{cargo_version}"
+end
+
+namespace :gem do
+  desc "Build a platform-specific gem using ERBFMT_BINARY"
+  task build: [:test, :verify_version] do
+    source = ENV["ERBFMT_BINARY"]
+    abort "ERBFMT_BINARY must point to a built erbfmt binary" if source.nil? || source.empty?
+
+    source = File.expand_path(source, REPOSITORY_ROOT)
+    abort "ERBFMT_BINARY is missing or not executable: #{source}" unless File.file?(source) && File.executable?(source)
+
+    platform = gem_platform
+    staged = File.join(PACKAGE_ROOT, "libexec", packaged_binary_name(platform))
+    package = gem_package_path(platform)
+
+    FileUtils.mkdir_p(File.dirname(staged))
+    FileUtils.mkdir_p(File.dirname(package))
+    FileUtils.cp(source, staged)
+    FileUtils.chmod(0o755, staged)
+
+    Dir.chdir(PACKAGE_ROOT) do
+      sh(
+        { "ERBFMT_GEM_PLATFORM" => platform },
+        gem_command,
+        "build",
+        "erbfmt.gemspec",
+        "--output",
+        package
+      )
+    end
+  ensure
+    FileUtils.rm_f(staged) if defined?(staged)
+  end
+
+  desc "Build, install, and execute the platform-specific gem in isolation"
+  task verify: :build do
+    package = gem_package_path
+
+    Dir.mktmpdir("erbfmt-gem") do |directory|
+      gem_home = File.join(directory, "gems")
+      bindir = File.join(directory, "bin")
+
+      sh(
+        gem_command,
+        "install",
+        "--local",
+        "--no-document",
+        "--install-dir",
+        gem_home,
+        "--bindir",
+        bindir,
+        package
+      )
+
+      executable = File.join(bindir, Gem.win_platform? ? "erbfmt.bat" : "erbfmt")
+      stdout, stderr, status = Open3.capture3(
+        { "GEM_HOME" => gem_home, "GEM_PATH" => gem_home },
+        executable,
+        "--version"
+      )
+
+      abort stderr unless status.success?
+      expected = "erbfmt #{cargo_version}\n"
+      abort "unexpected version output: #{stdout.inspect}" unless stdout == expected
+    end
+  end
+end

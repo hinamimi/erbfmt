@@ -1,0 +1,11 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require "erbfmt"
+
+begin
+  exec(Erbfmt::Binary.path, *ARGV)
+rescue Erbfmt::BinaryNotFound => error
+  warn "erbfmt: #{error.message}"
+  exit 1
+end

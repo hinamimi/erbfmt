@@ -74,3 +74,27 @@ jobs:
 
       - name: Package extension
         run: npm run package --prefix editors/vscode
+
+  ruby:
+    name: Ruby Wrapper
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.4"
+          bundler-cache: true
+          working-directory: packages/ruby
+
+      - name: Build Rust binary
+        run: cargo build --locked
+
+      - name: Test and verify gem
+        working-directory: packages/ruby
+        env:
+          ERBFMT_BINARY: ${{ github.workspace }}/target/debug/erbfmt
+        run: bundle exec rake gem:verify

@@ -3,6 +3,15 @@
 This document defines the first Ruby gem wrapper for erbfmt. The Rust binary
 remains the only formatter and linter engine.
 
+## Current Status
+
+The local scaffold is implemented in `packages/ruby`. It can run the Rust debug
+binary through `ERBFMT_BINARY`, build a platform-specific gem, install it into an
+isolated `GEM_HOME`, and verify `erbfmt --version`.
+
+The gem is not published. Cross-platform gem artifacts and RubyGems.org release
+automation remain future work.
+
 ## Decision
 
 Start with platform-specific binary gems. Do not provide a source-build gem or
@@ -175,7 +184,7 @@ the project Gemfile in that directory or a parent.
 
 ## Build And Test Boundary
 
-The scaffold milestone should add:
+The scaffold includes:
 
 - unit tests for packaged path and `ERBFMT_BINARY` override resolution;
 - a launcher test that verifies arguments and process exit status;
@@ -183,7 +192,9 @@ The scaffold milestone should add:
 - installation into an isolated `GEM_HOME`;
 - `erbfmt --version` execution against the staged Rust binary;
 - a version consistency check against `Cargo.toml`; and
-- one CI job per supported gem platform after cross-platform packaging exists.
+- one Linux CI job that builds the Rust binary and verifies the local gem.
+
+Cross-platform gem packaging remains the next milestone.
 
 Local development uses:
 

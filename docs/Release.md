@@ -43,6 +43,11 @@ cargo run --quiet -- --lint samples/sample.html.erb
 cargo run --quiet -- --lint samples/stability.html.erb
 npm test --prefix editors/vscode
 npm run package --prefix editors/vscode
+BUNDLE_GEMFILE=packages/ruby/Gemfile bundle install
+cargo build --locked
+BUNDLE_GEMFILE=packages/ruby/Gemfile \
+  ERBFMT_BINARY="$PWD/target/debug/erbfmt" \
+  bundle exec rake -f packages/ruby/Rakefile gem:verify
 ```
 
 Run the intentional failing lint fixture separately:
@@ -111,6 +116,12 @@ Keep these files in the release verification surface:
 - `docs/*.md`
 - `.github/workflows/*.yml`
 - `scripts/*.sh`
+- `packages/ruby/**/*.rb`
+- `packages/ruby/Gemfile*`
+- `packages/ruby/*.gemspec`
+- `packages/ruby/Rakefile`
+- `packages/ruby/README.md`
+- `packages/ruby/LICENSE.txt`
 - `erbfmt.json`
 - `docs/schema/erbfmt.schema.json`
 - `editors/vscode/package.json`

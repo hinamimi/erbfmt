@@ -58,6 +58,7 @@ MVP開発中
 - `erbfmt.json` による formatter / linter 設定
 - `formatter.lineWidth` による長いHTMLタグと単独ERB tagの折りたたみ
 - `erbfmt-ignore format` によるnode/subtree単位のformatter抑制
+- platform-specific Ruby gem wrapperのローカルscaffold
 - 複数ファイルのlint、check、write
 - formatter、diagnostics、syntax highlighting、ERB向けコメントtoggleを持つ薄いVSCode extension
 

@@ -4,3 +4,6 @@
 /editors/vscode/out
 /editors/vscode/.vscode-test
 /editors/vscode/*.vsix
+/packages/ruby/.bundle
+/packages/ruby/libexec/erbfmt-bin*
+/packages/ruby/pkg
