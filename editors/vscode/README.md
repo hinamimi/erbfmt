@@ -33,8 +33,11 @@ From this repository, use VSCode's Extension Development Host:
 The F5 launch configuration runs `npm run compile --prefix editors/vscode`
 before starting the Extension Development Host.
 
-This repository includes `.node-version` for nodenv. The current local Node
-version is `24.10.0`.
+This repository includes `.node-version` for nodenv. It targets the Node 24
+major version without pinning a minor or patch release.
+
+Some nodenv setups require an exact installed version. In that case, install a
+Node 24 release locally or create a nodenv alias named `24`.
 
 `samples/sample.html.erb` is intentionally not formatted. If the extension is
 working, running `erbfmt: Format Document` should change its indentation.

@@ -33,7 +33,10 @@ F5 の launch configuration は Extension Development Host を起動する前に
 `npm run compile --prefix editors/vscode` を実行します。
 
 このリポジトリには nodenv 用の `.node-version` を含めています。
-現在のローカルNode versionは `24.10.0` です。
+minor / patch version は固定せず、Node 24 系を指定しています。
+
+nodenv の環境によっては exact version しか解決できないため、その場合はローカルに
+Node 24 系を入れるか、`24` という nodenv alias を作ってください。
 
 `samples/sample.html.erb` は意図的に未整形です。extension が動いていれば、
 `erbfmt: Format Document` の実行でインデントが変わります。
