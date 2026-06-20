@@ -1,249 +1,154 @@
 # erbfmt
 
-A fast formatter and linter for Ruby ERB templates.
+[日本語](README_ja.md)
 
-## Goals
+A formatter and linter for `*.html.erb` templates, built as a fast Rust CLI.
+It formats HTML and ERB control-flow together while preserving Ruby code when
+it cannot be changed safely.
 
-- Format ERB templates like Prettier formats TSX.
-- Preserve Ruby code blocks while formatting surrounding HTML.
-- Handle nested ERB control structures correctly.
-- Be fast enough for editor-on-save formatting.
-- Written in Rust.
+> erbfmt is currently in pre-release development. The CLI is usable from the
+> repository, but public release binaries, the RubyGems package, and the VSCode
+> Marketplace extension are not published yet.
 
-## Current Status
+## Install
 
-Early development.
-
-### Implemented
-
-- CLI scaffold
-- File input
-- ERB lexer
-- Lightweight HTML tokenizer
-- HTML-aware mixed parser
-- AST parser
-- Mixed AST-driven formatter
-- ERB block indentation
-- ERB branch formatting for `else`, `elsif`, `when`, `rescue`, and `ensure`
-- Case block formatting with `when` branches
-- Output ERB do-block formatting such as `<%= form_with ... do |form| %>`
-- ERB output inside HTML tag attributes
-- HTML tag indentation by default
-- In-place formatting with `--write`
-- VSCode workspace format-on-save setup
-- Basic linter with lexer, parser, and HTML balance diagnostics
-- Syntax lint rules for empty ERB blocks and remaining unsupported ERB block starters
-- Format checking with `--check`
-- File-scoped CLI diagnostics
-- Line/column diagnostics for syntax and lint findings
-- `erbfmt.json` formatter and linter configuration
-- Long HTML and standalone ERB tag wrapping controlled by `formatter.lineWidth`
-- Node/subtree formatter suppression with `erbfmt-ignore format`
-- Local platform-specific Ruby gem wrapper scaffold
-- Multi-file lint, check, and write modes
-- Thin VSCode extension with formatter, diagnostics, syntax highlighting, and
-  ERB-safe comment toggling
-
-## Example
-
-### Input
-
-```erb
-<div>
-<% if user %>
-<ul>
-<% Objects.map do |obj| %>
-<p>Hello</p>
-<% end %>
-</ul>
-<% elsif guest? %>
-<p>Guest</p>
-<% else %>
-<p>Please sign in</p>
-<% end %>
-<% case role %>
-<% when "admin" %>
-<p>Admin</p>
-<% when "user" %>
-<p>User</p>
-<% end %>
-</div>
-```
-
-### Output
-
-```erb
-<div>
-  <% if user %>
-    <ul>
-      <% Objects.map do |obj| %>
-        <p>Hello</p>
-      <% end %>
-    </ul>
-  <% elsif guest? %>
-    <p>Guest</p>
-  <% else %>
-    <p>Please sign in</p>
-  <% end %>
-  <% case role %>
-  <% when "admin" %>
-    <p>Admin</p>
-  <% when "user" %>
-    <p>User</p>
-  <% end %>
-</div>
-```
-
-## CLI
-
-Install the local checkout as `erbfmt`:
+The current installation method requires a Rust toolchain:
 
 ```bash
-cargo install --path .
+cargo install --git https://github.com/hinamimi/erbfmt --locked
 ```
 
-Confirm the installed binary:
+Confirm that the command is available:
 
 ```bash
 erbfmt --version
 erbfmt --help
 ```
 
-erbfmt reads `erbfmt.json` from the current directory or a parent directory.
-Create a config file in the current directory:
+Prebuilt Linux, macOS, and Windows binaries are planned for the first public
+release. Platform-specific Ruby gems and the VSCode extension are already
+tested as artifacts, but are not published to package registries yet.
+
+## Quick Start
+
+Create `erbfmt.json` in your Rails project:
+
+```bash
+cd your-rails-project
+erbfmt init
+```
+
+Format a file to stdout:
+
+```bash
+erbfmt app/views/users/show.html.erb
+```
+
+Write formatted output back to files:
+
+```bash
+erbfmt --write app/views/users/show.html.erb app/views/users/edit.html.erb
+```
+
+Check formatting without changing files, for example in CI:
+
+```bash
+erbfmt --check app/views/users/show.html.erb app/views/users/edit.html.erb
+```
+
+Run the linter:
+
+```bash
+erbfmt --lint app/views/users/show.html.erb
+```
+
+`--write`, `--check`, and `--lint` are mutually exclusive. Check mode returns a
+nonzero status when formatting would change a file; lint mode does so when an
+error-level diagnostic is found.
+
+## Formatting Example
+
+Input:
+
+```erb
+<div>
+<% if user %>
+<p>Hello, <%= user.name %></p>
+<% else %>
+<p>Please sign in.</p>
+<% end %>
+</div>
+```
+
+Output:
+
+```erb
+<div>
+  <% if user %>
+    <p>Hello, <%= user.name %></p>
+  <% else %>
+    <p>Please sign in.</p>
+  <% end %>
+</div>
+```
+
+By default, erbfmt indents both HTML nesting and ERB control-flow. It also
+formats branches such as `elsif`, `else`, `when`, `rescue`, and `ensure`, and
+recognizes output do-blocks such as `<%= form_with ... do |form| %>`.
+
+Long HTML tags are expanded one attribute per line. Simple standalone Ruby
+command calls may be wrapped with explicit parentheses when erbfmt can split
+their arguments safely. Complex or ambiguous Ruby expressions are preserved.
+
+## Configuration
+
+erbfmt searches for `erbfmt.json` in the current directory and its parents.
+Generate the default file with:
 
 ```bash
 erbfmt init
-erbfmt init --force
 ```
 
-Use `--config` to pass a specific file:
+Use a specific configuration file with:
 
 ```bash
-erbfmt --config erbfmt.json samples/sample.html.erb
+erbfmt --config path/to/erbfmt.json app/views/users/show.html.erb
 ```
 
-Format a file:
+Common options include indentation style and width, HTML indentation, line
+width, line endings, and per-rule lint severity. See
+[Configuration](docs/Configuration.md) for the complete format and
+[Lint Rules](docs/LintRules.md) for available diagnostics.
 
-```bash
-cargo run -- samples/sample.html.erb
-erbfmt samples/sample.html.erb
-```
-
-Format a file in place:
-
-```bash
-cargo run -- --write samples/sample.html.erb
-erbfmt --write samples/sample.html.erb
-```
-
-Lint a file:
-
-```bash
-cargo run -- --lint samples/sample.html.erb
-erbfmt --lint samples/sample.html.erb
-```
-
-Check whether a file is already formatted:
-
-```bash
-cargo run -- --check samples/sample.html.erb
-erbfmt --check samples/sample.html.erb
-```
-
-Lint or check multiple files:
-
-```bash
-cargo run -- --lint samples/sample.html.erb samples/lint-next.html.erb
-cargo run -- --check samples/sample.html.erb samples/lint-next.html.erb
-```
-
-`--write`, `--check`, and `--lint` are mutually exclusive.
-
-By default, erbfmt indents both ERB control-flow blocks and HTML tag nesting.
-Set `"indentHtml": false` in `erbfmt.json` to keep HTML indentation unchanged
-and only indent ERB blocks.
-
-`formatter.lineWidth` controls when long HTML tags are expanded one attribute
-per line with the closing marker on its own line.
-
-Long standalone ERB tags also use `formatter.lineWidth`. When a simple
-command-style Ruby method call can be recognized safely, erbfmt adds explicit
-parentheses and places one top-level argument per line:
-
-```erb
-<%=
-  link_to(
-    "Edit profile",
-    edit_user_path(user),
-    class: "button button--primary"
-  )
-%>
-```
-
-Complex Ruby expressions, control-flow tags, and expressions that cannot be
-recognized safely keep their Ruby code intact; only the ERB tag markers are
-expanded.
-
-## Samples
-
-- `samples/sample.html.erb`: intentionally unformatted formatter demo.
-- `samples/stability.html.erb`: fixed stability fixture for formatter output.
-- `samples/formatter-audit.html.erb`: Rails-like formatter audit fixture.
-- `samples/formatter-edge-cases.html.erb`: formatter edge-case fixture.
-- `samples/real-template-audit.html.erb`: table, turbo-frame, and render-heavy audit fixture.
-- `samples/lint-next.html.erb`: intentionally invalid lint fixture.
-- `samples/html-parse-errors.html.erb`: intentionally invalid HTML close tag fixture.
+Use `erbfmt-ignore` comments when generated or third-party markup must be left
+untouched. See [Ignore Directives](docs/Ignore.md) for the supported syntax.
 
 ## VSCode
 
-This repository includes a thin VSCode extension scaffold in `editors/vscode`.
-It registers `erbfmt` as a document formatter for `*.html.erb` files while
-keeping the formatter and lint engines in the Rust binary. The extension also
-invokes `erbfmt --lint` on open and save to publish diagnostics.
+The first-party extension provides `html-erb` syntax highlighting, document
+formatting, diagnostics, and ERB-safe comment toggling. It currently needs a
+local VSIX installation and an available `erbfmt` command because it is not yet
+published to the Marketplace.
 
-For local extension development, build the binary first:
+See [VSCode Integration](docs/VSCode.md) for current installation and command
+resolution details.
 
-```bash
-cargo build
-```
+## Current Limitations
 
-When the extension runs from this checkout, it uses `target/debug/erbfmt` if the
-binary exists. You can also point the wrapper at another command:
+- Ruby code is not parsed into a full Ruby AST.
+- Rails application semantics are not analyzed.
+- Expressions that cannot be recognized safely are preserved rather than
+  aggressively rewritten.
+- Preformatted content such as `pre`, `textarea`, `script`, and `style` is kept
+  on the safe side.
+- Package registry and Marketplace installation are not available before the
+  first public release.
 
-```json
-{
-  "erbfmt.command": "/absolute/path/to/erbfmt",
-  "erbfmt.arguments": []
-}
-```
+## Documentation
 
-The workspace also includes RunOnSave settings as a fallback.
-
-Saving a `.html.erb` file runs:
-
-```bash
-cargo run --quiet -- --write "${file}"
-```
-
-See [docs/VSCode.md](docs/VSCode.md) for extension and workspace integration
-notes.
-
-## Development
-
-```bash
-cargo fmt
-cargo check --all-targets
-cargo clippy
-cargo test
-cargo run -- samples/sample.html.erb
-```
-
-See [docs/Release.md](docs/Release.md) for local release verification.
-See [docs/Configuration.md](docs/Configuration.md) for formatter and linter configuration.
-See [docs/LintRules.md](docs/LintRules.md) for current and planned lint rules.
-See [docs/FirstRelease.md](docs/FirstRelease.md) for the first public release plan.
-See [docs/VSCode.md](docs/VSCode.md) for VSCode extension packaging and local
-install notes.
-See [docs/Distribution.md](docs/Distribution.md) for binary distribution
-strategy.
+- [Configuration](docs/Configuration.md)
+- [Lint Rules](docs/LintRules.md)
+- [Ignore Directives](docs/Ignore.md)
+- [VSCode Integration](docs/VSCode.md)
+- [Development](docs/Development.md)
+- [Roadmap](docs/Roadmap.md)

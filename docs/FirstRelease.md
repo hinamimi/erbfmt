@@ -60,7 +60,9 @@ ruby scripts/version.rb set 0.1.0
 ruby scripts/version.rb verify 0.1.0
 ```
 
-Do not update `README.md` or `README_ja.md` unless user-facing commands change.
+`README.md` and `README_ja.md` are user-facing rather than version sources.
+After the release artifact URLs are verified, replace their pre-release notice
+and source-only installation text with the final binary installation steps.
 
 ## Release Branch And Tag
 
@@ -110,6 +112,10 @@ ruby scripts/version.rb verify 0.1.0
 cargo run --quiet -- --version
 npm run package --prefix editors/vscode
 ```
+
+Review both READMEs from a new user's perspective. Their installation commands,
+supported platforms, package availability, and pre-release status must match
+the artifacts that will actually be published.
 
 Before creating the release commit, the four-platform package flow can be
 rehearsed without changing repository files:
