@@ -3,9 +3,9 @@
 This gem is a thin launcher for the platform-specific erbfmt Rust binary.
 
 Initial releases are distributed as platform-specific `.gem` files attached to
-the erbfmt GitHub Release rather than through RubyGems.org. Download the file
-matching the local platform and install it directly. For example, on glibc
-Linux x64:
+the [erbfmt GitHub Release](https://github.com/hinamimi/erbfmt/releases/tag/v0.1.0)
+rather than through RubyGems.org. Download the file matching the local platform
+and install it directly. For example, on glibc Linux x64:
 
 ```bash
 gem install --local ./erbfmt-0.1.0-x86_64-linux-gnu.gem

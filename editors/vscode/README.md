@@ -33,22 +33,23 @@ in the CLI, so command-line, CI, and editor results stay consistent.
 
 ## Requirements
 
-Until the first public release, install the CLI from GitHub with a Rust
-toolchain:
+Download and install the CLI from the
+[v0.1.0 GitHub Release](https://github.com/hinamimi/erbfmt/releases/tag/v0.1.0).
+With a Rust toolchain, it can also be installed from the tagged source:
 
 ```bash
-cargo install --git https://github.com/hinamimi/erbfmt --locked
+cargo install --git https://github.com/hinamimi/erbfmt --tag v0.1.0 --locked
 erbfmt --version
 ```
 
-The `v0.1.0` GitHub Release will also provide prebuilt binaries and
-platform-specific gem files. The extension can use any installation that
-exposes an executable `erbfmt` command.
+The release provides prebuilt binaries and platform-specific gem files. The
+extension can use any installation that exposes an executable `erbfmt` command.
 
 ## Install the Extension
 
-The extension is not published to the VS Code Marketplace yet. Install a
-downloaded or locally built VSIX:
+The extension is not published to the VS Code Marketplace. Download
+[`erbfmt-vscode-0.1.0.vsix`](https://github.com/hinamimi/erbfmt/releases/download/v0.1.0/erbfmt-vscode-0.1.0.vsix)
+and install it locally:
 
 ```bash
 code --install-extension erbfmt-vscode-0.1.0.vsix

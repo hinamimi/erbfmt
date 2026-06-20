@@ -18,18 +18,25 @@ Ruby expressions that it cannot safely rewrite. It is built as a Rust CLI for
 Rails `*.html.erb` templates and works locally, in CI, and through the
 first-party VSCode extension.
 
-> erbfmt is currently in pre-release development. The CLI is usable from the
-> repository, but public GitHub Release assets are not published yet. Initial
-> releases will not be registered with package indexes or extension
-> marketplaces.
+> erbfmt is currently in pre-release development. Version `0.1.0` is available
+> through GitHub Releases. Initial releases are not registered with package
+> indexes or extension marketplaces.
 
 ## Install
 
-Until the first public release, install directly from GitHub. This currently
-requires a Rust toolchain:
+Download the archive for your platform from the
+[v0.1.0 release](https://github.com/hinamimi/erbfmt/releases/tag/v0.1.0), extract
+it, and place `erbfmt` or `erbfmt.exe` on your `PATH`.
+
+- Linux x64: `x86_64-unknown-linux-gnu`
+- macOS Intel: `x86_64-apple-darwin`
+- macOS Apple Silicon: `aarch64-apple-darwin`
+- Windows x64: `x86_64-pc-windows-msvc`
+
+With a Rust toolchain, install the tagged source directly from GitHub:
 
 ```bash
-cargo install --git https://github.com/hinamimi/erbfmt --locked
+cargo install --git https://github.com/hinamimi/erbfmt --tag v0.1.0 --locked
 ```
 
 Confirm that the command is available:
@@ -39,9 +46,8 @@ erbfmt --version
 erbfmt --help
 ```
 
-The `v0.1.0` GitHub Release will provide prebuilt Linux, macOS, and Windows
-binaries, platform-specific gem files, and a downloadable VSIX. erbfmt is not
-published to crates.io, npm, or RubyGems.org, so registry-based installation
+The release also provides platform-specific `.gem` files and a VSIX. erbfmt is
+not published to crates.io, npm, or RubyGems.org, so registry-based installation
 commands are not currently supported.
 
 ## Quick Start

@@ -32,20 +32,23 @@ editorで同じ結果を得られます。
 
 ## 必要なもの
 
-最初の公開releaseまではRust toolchainを使ってGitHubからCLIをinstallします。
+[v0.1.0 GitHub Release](https://github.com/hinamimi/erbfmt/releases/tag/v0.1.0)から
+CLIをdownloadしてinstallします。Rust toolchainがある場合はtagged sourceからも
+installできます。
 
 ```bash
-cargo install --git https://github.com/hinamimi/erbfmt --locked
+cargo install --git https://github.com/hinamimi/erbfmt --tag v0.1.0 --locked
 erbfmt --version
 ```
 
-`v0.1.0` GitHub Releaseではprebuilt binaryとplatform-specific gem fileも提供します。
+releaseではprebuilt binaryとplatform-specific gem fileも提供します。
 extensionは、実行可能な `erbfmt` commandを提供するいずれのinstall方法でも利用できます。
 
 ## Extensionのインストール
 
-extensionはまだVS Code Marketplaceへ公開していません。downloadまたはlocal buildした
-VSIXをinstallします。
+extensionはVS Code Marketplaceへ公開していません。
+[`erbfmt-vscode-0.1.0.vsix`](https://github.com/hinamimi/erbfmt/releases/download/v0.1.0/erbfmt-vscode-0.1.0.vsix)
+をdownloadしてlocal installします。
 
 ```bash
 code --install-extension erbfmt-vscode-0.1.0.vsix

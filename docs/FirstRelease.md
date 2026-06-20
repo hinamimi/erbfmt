@@ -1,10 +1,9 @@
 # First Public Release Plan
 
-This document describes the first public release plan. It is a plan only; do not
-publish a release as part of ordinary milestone work.
+This document records the first public release plan and its verification steps.
 
-The repository source version is now `0.1.0` for release preparation. No
-release tag or public package has been created yet.
+Version `0.1.0` was published as a GitHub pre-release with standalone binaries,
+checksums, platform-specific gems, and a VSIX.
 
 ## Version
 
