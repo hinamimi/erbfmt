@@ -5,7 +5,7 @@ require_relative "test_helper"
 class BinaryTest < Minitest::Test
   def test_resolves_an_executable_override
     Dir.mktmpdir("erbfmt-binary") do |directory|
-      binary = File.join(directory, "erbfmt")
+      binary = File.join(directory, Gem.win_platform? ? "erbfmt.exe" : "erbfmt")
       File.write(binary, "#!/bin/sh\nexit 0\n")
       File.chmod(0o755, binary)
 

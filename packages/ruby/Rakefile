@@ -130,7 +130,11 @@ namespace :gem do
       end
 
       executable = File.join(bindir, Gem.win_platform? ? "erbfmt.bat" : "erbfmt")
-      execution_environment = { "GEM_HOME" => gem_home, "GEM_PATH" => gem_home }
+      execution_environment = {
+        "ERBFMT_BINARY" => nil,
+        "GEM_HOME" => gem_home,
+        "GEM_PATH" => gem_home
+      }
       if Gem::Version.new(Erbfmt::VERSION).prerelease?
         execution_environment["GEM_REQUIREMENT_ERBFMT"] = ">= 0.a"
       end
