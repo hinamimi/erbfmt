@@ -39,7 +39,7 @@ cargo install --git https://github.com/hinamimi/erbfmt --locked
 erbfmt --version
 ```
 
-`v0.1.0` releaseではprebuilt binaryとplatform-specific Ruby gemも提供します。
+`v0.1.0` GitHub Releaseではprebuilt binaryとplatform-specific gem fileも提供します。
 extensionは、実行可能な `erbfmt` commandを提供するいずれのinstall方法でも利用できます。
 
 ## Extensionのインストール

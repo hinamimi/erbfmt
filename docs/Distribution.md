@@ -5,9 +5,9 @@ gems, and editor extensions should stay thin wrappers around that binary.
 
 ## Decision
 
-The first public distribution consists of prebuilt `erbfmt` binaries attached
-to a release in `https://github.com/hinamimi/erbfmt`, platform-specific gems
-published to RubyGems.org, and a thin VSIX attached to the same release.
+The first public distribution consists entirely of assets attached to a release
+in `https://github.com/hinamimi/erbfmt`: prebuilt `erbfmt` binaries,
+platform-specific gems, checksums, and a thin VSIX.
 
 Local development remains:
 
@@ -86,9 +86,9 @@ Rust binary.
 
 The initial wrapper uses same-name platform-specific gems with a Ruby launcher
 and one packaged Rust binary. It does not build Rust or download binaries during
-gem installation. The four variants are published to RubyGems.org after they
-are built and verified from the release tag. See [RubyGem.md](RubyGem.md) for
-the complete design.
+gem installation. The four variants are attached to the GitHub Release after
+they are built and verified from the release tag. See [RubyGem.md](RubyGem.md)
+for the complete design.
 
 ### VSCode Binary Handling
 
@@ -107,16 +107,12 @@ avoided until package size and platform strategy are clear.
 
 ### Registry Policy
 
-Use the distribution channel native to each artifact:
+Initial releases use GitHub Release assets only. Standalone binaries, checksums,
+platform-specific gems, and the VSIX are downloaded from the same release.
 
-- GitHub Release assets for standalone binaries, checksums, and the VSIX;
-- RubyGems.org for platform-specific gems;
-- VSCode Marketplace for a future extension release; and
-- npm only if a JavaScript ecosystem CLI wrapper is added later.
-
-GitHub Packages is not part of the initial release. It would add another
-authenticated package source without replacing the user-facing release assets
-or RubyGems.org installation flow.
+Do not publish initial releases to RubyGems.org, crates.io, npm, GitHub Packages,
+the VSCode Marketplace, or Open VSX. Registry publication can be reconsidered
+after the release process and artifact formats have remained stable for a while.
 
 ## Release Version
 

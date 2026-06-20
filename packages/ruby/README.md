@@ -2,17 +2,18 @@
 
 This gem is a thin launcher for the platform-specific erbfmt Rust binary.
 
-```ruby
-group :development do
-  gem "erbfmt", require: false
-end
-```
+Initial releases are distributed as platform-specific `.gem` files attached to
+the erbfmt GitHub Release rather than through RubyGems.org. Download the file
+matching the local platform and install it directly. For example, on glibc
+Linux x64:
 
 ```bash
-bundle exec erbfmt app/views/users/show.html.erb
+gem install --local ./erbfmt-0.1.0-x86_64-linux-gnu.gem
+erbfmt --version
 ```
 
-The wrapper does not implement formatting or linting in Ruby.
+The wrapper packages one Rust binary and does not implement formatting or
+linting in Ruby.
 
 ## Development
 
@@ -42,4 +43,4 @@ BUNDLE_GEMFILE=packages/ruby/Gemfile \
   bundle exec rake -f packages/ruby/Rakefile gem:verify
 ```
 
-The gem is not published yet.
+The gem is not published to RubyGems.org.

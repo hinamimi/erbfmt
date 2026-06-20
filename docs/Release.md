@@ -132,6 +132,10 @@ The VSCode artifact should contain:
 The VSIX does not contain a Rust binary. Release notes must direct users to a
 standalone binary or the Ruby gem before installing the extension.
 
+Initial releases attach the standalone archives, checksums, platform-specific
+gems, and VSIX to GitHub Releases. They are not pushed to package registries or
+extension marketplaces.
+
 ## Release Contents
 
 Keep these files in the release verification surface:

@@ -24,7 +24,7 @@ Publish:
 - GitHub Release `v0.1.0`.
 - Rust CLI binary archives for the supported platform matrix.
 - Sibling `.sha256` files for every archive.
-- Four platform-specific `erbfmt` gems on RubyGems.org.
+- Four platform-specific `erbfmt` gems as GitHub Release assets.
 - `erbfmt-vscode-0.1.0.vsix` as a GitHub Release asset.
 - Release notes that explain the MVP scope and known limitations.
 
@@ -32,14 +32,18 @@ Do not publish yet:
 
 - crates.io package
 - npm package
+- RubyGems.org package
+- GitHub Packages
 - VSCode Marketplace extension
+- Open VSX extension
 - automatic GitHub Release workflow
 
 The VSCode extension remains a VSIX-installed wrapper that expects an
 installed/configured Rust binary. Marketplace publishing should wait until the
 binary download/cache story is implemented. The platform-specific gems package
-the same Rust binaries built from the release tag and are published manually
-only after all variants pass installation and execution verification.
+the same Rust binaries built from the release tag and are attached to the
+GitHub Release only after all variants pass installation and execution
+verification.
 
 ## Version Bump Files
 
@@ -172,6 +176,7 @@ Attach:
 
 - the four binary archives
 - the four `.sha256` files
+- the four platform-specific `.gem` files
 - `erbfmt-vscode-0.1.0.vsix`
 
 Release notes should include:
@@ -185,28 +190,25 @@ Release notes should include:
   - no Rails semantic analysis
   - VSCode extension is not published to the Marketplace
   - VSCode extension requires a separately installed or configured binary
-  - npm package is not published
+  - package registries are not used for the initial release
 
 Keep the GitHub Release as a draft until archive names, checksums, VSIX version,
 and binary version output all match `0.1.0`.
 
-## RubyGems Publication
+## Installing A Release Gem
 
-Download all four verified gem artifacts from the release workflow. Inspect
-their version and platform one final time, then publish each exact artifact to
-RubyGems.org using an account with MFA enabled:
+Download the verified gem matching the local platform from the GitHub Release,
+then install it as a local package. For example, on glibc Linux x64:
 
 ```bash
-gem push erbfmt-0.1.0-x86_64-linux-gnu.gem
-gem push erbfmt-0.1.0-x86_64-darwin.gem
-gem push erbfmt-0.1.0-arm64-darwin.gem
-gem push erbfmt-0.1.0-x64-mingw-ucrt.gem
+gem install --local ./erbfmt-0.1.0-x86_64-linux-gnu.gem
+erbfmt --version
 ```
 
-Do not rebuild gems locally for publication. All public variants must contain
-the binaries verified from the tagged commit. After publication, install the
-gem in a clean environment and confirm `erbfmt --version` before publishing the
-draft GitHub Release.
+Do not rebuild gems locally for the release. All attached variants must contain
+the binaries verified from the tagged commit. Install each artifact in a clean
+matching environment and confirm `erbfmt --version` before publishing the draft
+GitHub Release.
 
 ## After Release
 

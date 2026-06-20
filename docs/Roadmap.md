@@ -1152,9 +1152,10 @@ Status: Done
 - 初回公開物を4platformのstandalone binary、checksum、platform-specific gem、
   thin VSIXに確定した。
 - standalone binary、checksum、VSIXはGitHub Release assetとして公開する。
-- gemは同じtagからworkflowで生成したartifactをRubyGems.orgへ手動公開する。
+- gemは同じtagからworkflowで生成し、GitHub Release assetとして公開する。
 - VSIXはRust binaryを同梱せず、別途installまたは設定された `erbfmt`を利用する。
-- crates.io、npm、VSCode Marketplace、GitHub Packagesは初回releaseの範囲外とした。
+- 当面はGitHub Releasesだけを公開先とし、RubyGems.org、crates.io、npm、
+  GitHub Packages、VSCode Marketplace、Open VSXには登録しない。
 - `0.1.0` releaseを先に完了し、parenthesized ERB call wrappingは `0.1.1`
   候補として別branchに維持する方針とした。
 
@@ -1170,7 +1171,7 @@ Status: Done
 
 - `Release Binaries` workflowで4platformのbinary、checksum、gemに加えてVSIXを作る。
 - rehearsal versionでもbinary / gem / VSIXのversionを揃える。
-- GitHub Releaseへの添付物とRubyGems.orgへの手動publish手順を文書化する。
+- GitHub Releaseへの添付物とdownloadしたgemのlocal install手順を文書化する。
 - VSIXがbinaryを同梱せず、別途CLI installが必要であることを明記する。
 
 完了条件:
@@ -1183,7 +1184,7 @@ Status: Done
 
 - `v0.1.0` tag作成
 - GitHub Release公開
-- RubyGems.orgへのpush
+- package registryへのpush
 - VSCode Marketplace公開
 
 結果:
@@ -1193,8 +1194,8 @@ Status: Done
 - VSCode extensionのtestとpackageを実行し、生成したVSIXをworkflow artifactとして
   uploadするようにした。
 - localでversion test、version verify、VSCode test、VSIX packageが成功した。
-- 初回公開物の配布先、artifact名、RubyGems.orgへの手動push順序を文書間で統一した。
-- actual tag、GitHub Release、RubyGems.org publishはMilestone 63へ分離した。
+- 初回公開物の配布先とartifact名を文書間で統一した。
+- actual tagとGitHub Release publishはMilestone 63へ分離した。
 
 ## Milestone 63
 
@@ -1210,20 +1211,20 @@ Status: Planned
 - verified commitへannotated tag `v0.1.0`を付けてpushする。
 - tagから `Release Binaries` workflowを実行する。
 - binary、checksum、VSIXをdraft GitHub Releaseへ添付する。
-- workflowで検証した4platform gemをRubyGems.orgへpushする。
+- workflowで検証した4platform gemをdraft GitHub Releaseへ添付する。
 - clean environmentでbinaryとgemをsmoke testしてからGitHub Releaseを公開する。
 
 完了条件:
 
 - GitHub Release `v0.1.0`が公開されている。
 - 4platformのstandalone binaryとchecksumを取得できる。
-- RubyGems.orgから対応platformの `erbfmt`をinstallできる。
+- GitHub Releaseから対応platformのgemをdownloadし、local installできる。
 - VSIXをGitHub Releaseから取得でき、別途導入したCLIで動作する。
 
 範囲外:
 
-- crates.io / npm / GitHub Packages
-- VSCode Marketplace
+- RubyGems.org / crates.io / npm / GitHub Packages
+- VSCode Marketplace / Open VSX
 - VSCode binary download / cache
 
 ## 後で考えること

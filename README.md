@@ -19,8 +19,9 @@ Rails `*.html.erb` templates and works locally, in CI, and through the
 first-party VSCode extension.
 
 > erbfmt is currently in pre-release development. The CLI is usable from the
-> repository, but public release binaries, the RubyGems package, and the VSCode
-> Marketplace extension are not published yet.
+> repository, but public GitHub Release assets are not published yet. Initial
+> releases will not be registered with package indexes or extension
+> marketplaces.
 
 ## Install
 
@@ -38,10 +39,10 @@ erbfmt --version
 erbfmt --help
 ```
 
-The `v0.1.0` release will add prebuilt Linux, macOS, and Windows binaries,
-platform-specific Ruby gems, and a downloadable VSIX. erbfmt is not published
-to crates.io or npm yet, so `cargo install erbfmt` and `npm install erbfmt` are
-not currently supported installation paths.
+The `v0.1.0` GitHub Release will provide prebuilt Linux, macOS, and Windows
+binaries, platform-specific gem files, and a downloadable VSIX. erbfmt is not
+published to crates.io, npm, or RubyGems.org, so registry-based installation
+commands are not currently supported.
 
 ## Quick Start
 
@@ -135,8 +136,8 @@ resolution details.
   aggressively rewritten.
 - Preformatted content such as `pre`, `textarea`, `script`, and `style` is kept
   on the safe side.
-- Package registry and Marketplace installation are not available before the
-  first public release.
+- Initial releases are distributed only through GitHub Releases, not package
+  registries or extension marketplaces.
 
 ## Documentation
 

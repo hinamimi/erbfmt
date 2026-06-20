@@ -41,9 +41,9 @@ cargo install --git https://github.com/hinamimi/erbfmt --locked
 erbfmt --version
 ```
 
-The `v0.1.0` release will also provide prebuilt binaries and platform-specific
-Ruby gems. The extension can use any installation that exposes an executable
-`erbfmt` command.
+The `v0.1.0` GitHub Release will also provide prebuilt binaries and
+platform-specific gem files. The extension can use any installation that
+exposes an executable `erbfmt` command.
 
 ## Install the Extension
 
