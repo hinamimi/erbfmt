@@ -1,162 +1,152 @@
-# erbfmt VSCode Extension
+# erbfmt for VS Code
 
-English documentation is included in `README.md`.
+[English](https://github.com/hinamimi/erbfmt/blob/main/editors/vscode/README.md)
 
-Rust製 `erbfmt` binary を呼び出す薄いVSCode wrapperです。
+**VS Code上でERBとHTML+ERBをformatし、lintできます。**
 
-## 挙動
-
-- `*.html.erb` 向けに `html-erb` language id を提供します。
-- HTML と ERB tag の syntax highlighting を提供します。
-- `erb` と `html-erb` の document formatter を登録します。
-- open / save 時に `erbfmt --lint` を実行し、diagnostics を表示します。
-- 設定された `erbfmt` command を呼び出し、stdout を整形結果としてdocumentへ反映します。
-- `erbfmt: Show Command` で、解決されたcommand、cwd、config pathを確認できます。
-- `Ctrl+/` でERB向けの安全な行コメントtoggleを提供します。
-- 整形ロジックはRust binary側に保持します。
-
-## ローカル開発
-
-このリポジトリから VSCode の Extension Development Host を使います。
-
-1. 先に `cargo build` を一度実行します。
-2. `npm install --prefix editors/vscode` を一度実行します。
-3. VSCodeでリポジトリルートを開きます。
-4. Run and Debug view を開きます。
-5. `Run erbfmt VSCode Extension` を選びます。
-6. F5 を押します。
-7. 新しく開いた Extension Development Host で
-   `samples/sample.html.erb` を開きます。
-8. `erbfmt: Format Document` を実行します。
-
-F5 の launch configuration は Extension Development Host を起動する前に
-`npm run compile --prefix editors/vscode` を実行します。
-
-このリポジトリには nodenv 用の `.node-version` を含めています。
-minor / patch version は固定せず、Node 24 系を指定しています。
-
-nodenv の環境によっては exact version しか解決できないため、その場合はローカルに
-Node 24 系を入れるか、`24` という nodenv alias を作ってください。
-
-`samples/sample.html.erb` は意図的に未整形です。extension が動いていれば、
-`erbfmt: Format Document` の実行でインデントが変わります。
-VSCode標準の `Format Document` も、erbfmt が default formatter として選ばれていれば動くはずです。
-動かない場合は `Format Document With...` から `erbfmt` を選んでください。
-
-このcheckoutから実行している場合、extension は既定で `target/debug/erbfmt` があればそれを使います。
-まだbinaryがない場合は `cargo run --quiet --` にfallbackします。VSCodeから `cargo` を起動できない場合があるため、
-まず `cargo build` で `target/debug/erbfmt` を作っておくのが安定です。
-
-command解決順序:
-
-1. 設定された `erbfmt.command`
-2. checkout の `target/debug/erbfmt`
-3. checkout での `cargo run --quiet --`
-4. `PATH` 上の `erbfmt`
-
-`erbfmt.command` には実行ファイルだけを指定します。追加のcommand-line argumentsは
-`erbfmt.arguments` に分けて指定してください。
-
-Command Palette から `erbfmt: Show Command` を実行すると、active document に対して
-extension が解決した command、resolution source、working directory、checkout binary、
-config path を確認できます。
-
-代わりに、先にRust binaryをインストールして使うこともできます。
-
-```bash
-cargo install --path ../..
+```diff
+-<div><% if user.admin? %><span>Admin</span><% end %></div>
++<div>
++  <% if user.admin? %>
++    <span>Admin</span>
++  <% end %>
++</div>
 ```
 
-特定の `erbfmt.json` を使う場合は `erbfmt.configPath` を設定します。
-未指定の場合、extension は整形対象ファイルからfilesystem rootへ向かって
-`erbfmt.json` を探します。
+高速なRust製CLI [erbfmt](https://github.com/hinamimi/erbfmt) をVS Codeから利用する
+ためのextensionです。formatとlintの処理はCLIに集約されるため、command line、CI、
+editorで同じ結果を得られます。
 
-diagnostics を無効にする場合は `erbfmt.lint.enabled` を `false` に設定します。
+> 現在のextensionは `erbfmt` binaryを同梱またはdownloadしません。formatする前に
+> CLIを別途installするか、`erbfmt.command`を設定してください。
 
-整形やdiagnosticsで `ENOENT` や `EACCES` が出る場合は、`cargo build` を実行するか、
-`erbfmt` をinstallするか、`erbfmt.command` に実行可能な絶対pathを設定してください。
+## 機能
 
-将来のbinary download対応では、Rust CLI のrelease artifactを使い、隣接する
-`.sha256` を検証してからextension global storageへcacheします。
-固定したlocal binaryを使いたい場合のために、`erbfmt.command` はoverrideとして残します。
+- `*.html.erb` 向けのHTML/ERB syntax highlighting
+- `html-erb` と `erb` language idのdocument formatting
+- documentを開いたときと保存したときのerbfmt lint diagnostics
+- ERBを安全に扱う `Ctrl+/` / `Cmd+/` comment toggle
+- active fileを起点にした `erbfmt.json` の自動検出
+- CLI、追加arguments、config pathの明示的な設定
+- 解決されたcommandとworking directoryを確認する `erbfmt: Show Command`
 
-## コメント
+## 必要なもの
 
-`erb` と `html-erb` documentでは、`Ctrl+/` で行単位のコメントtoggleを行います。
-ERB tagは `<%# if user %>` や `<%#= user.name %>` のようなERBコメントにします。
-HTML fragmentはHTMLコメントにし、HTMLとERBが混ざる行ではERB codeがHTMLコメント内で
-実行されないように分割してコメント化します。
-
-## TypeScript
-
-extension のsourceは `src/extension.ts` にあり、`out/extension.js` へcompileされます。
-
-リポジトリルートから実行する場合:
+最初の公開releaseまではRust toolchainを使ってGitHubからCLIをinstallします。
 
 ```bash
-npm run check --prefix editors/vscode
-npm run compile --prefix editors/vscode
-npm test --prefix editors/vscode
+cargo install --git https://github.com/hinamimi/erbfmt --locked
+erbfmt --version
 ```
 
-extension code のformat / lint は Biome で行います。
+`v0.1.0` releaseではprebuilt binaryとplatform-specific Ruby gemも提供します。
+extensionは、実行可能な `erbfmt` commandを提供するいずれのinstall方法でも利用できます。
 
-```bash
-npm run format --prefix editors/vscode
-npm run lint --prefix editors/vscode
-```
+## Extensionのインストール
 
-`editors/vscode` から実行する場合は、`--prefix editors/vscode` を外します。
-
-```bash
-npm run check
-npm run compile
-npm test
-```
-
-VSCode API 経由で wrapper を検証したい場合は extension-host test を実行します。
-このコマンドは先にRust binaryをbuildし、初回実行時にテスト用VSCodeをdownloadする場合があります。
-VSCode/Electronを起動できる環境が必要です。headless Linuxでは `xvfb-run` などのdisplay設定が必要になる場合があります。
-
-リポジトリルートから実行する場合:
-
-```bash
-npm run test:host --prefix editors/vscode
-```
-
-`editors/vscode` から実行する場合:
-
-```bash
-npm run test:host
-```
-
-## ローカルPackage
-
-ローカル用の VSIX package を作成します。
-
-リポジトリルートから実行する場合:
-
-```bash
-npm run package --prefix editors/vscode
-```
-
-`editors/vscode` から実行する場合:
-
-```bash
-npm run package
-```
-
-生成された VSIX はリポジトリルートからインストールできます。
-
-```bash
-code --install-extension editors/vscode/erbfmt-vscode-0.1.0.vsix
-```
-
-`editors/vscode` からインストールする場合:
+extensionはまだVS Code Marketplaceへ公開していません。downloadまたはlocal buildした
+VSIXをinstallします。
 
 ```bash
 code --install-extension erbfmt-vscode-0.1.0.vsix
 ```
 
-現時点のpackageにはRust binaryを同梱していません。別途 `erbfmt` をインストールするか、
-`erbfmt.command` でローカルbinaryを指定してください。
+`*.html.erb`を開いて **Format Document** を実行します。formatterの選択を求められた
+場合は **erbfmt** を選択してください。
+
+保存時に自動でformatする場合:
+
+```json
+{
+  "[html-erb]": {
+    "editor.defaultFormatter": "erbfmt.erbfmt-vscode",
+    "editor.formatOnSave": true
+  }
+}
+```
+
+## クイックスタート
+
+Rails projectのrootにconfig fileを作成します。
+
+```bash
+erbfmt init
+```
+
+extensionはactive documentからfilesystem rootへ向かって `erbfmt.json`を検索します。
+workspaceでconfig fileを明示する必要がある場合のみ `erbfmt.configPath`を使います。
+
+lint diagnosticsはdefaultで有効で、ERB documentを開いたときと保存したときに更新されます。
+手動実行には **erbfmt: Lint Document** を使います。
+
+## Bundlerで使う
+
+erbfmtをRuby gemとして導入したprojectでは、bundle内のversionを実行できます。
+
+```json
+{
+  "erbfmt.command": "bundle",
+  "erbfmt.arguments": ["exec", "erbfmt"]
+}
+```
+
+commandはactive documentのdirectoryから実行されるため、そのdirectoryまたは親directoryの
+`Gemfile`をBundlerが見つけられます。
+
+## Commands
+
+| Command | 用途 |
+| --- | --- |
+| `erbfmt: Format Document` | active ERB documentをformatします。 |
+| `erbfmt: Lint Document` | lint diagnosticsを更新します。 |
+| `erbfmt: Show Command` | executable、arguments、cwd、configを表示します。 |
+| `erbfmt: Toggle Comment` | 選択範囲のERB-safe commentをtoggleします。 |
+
+## Settings
+
+| Setting | Default | 用途 |
+| --- | --- | --- |
+| `erbfmt.command` | `erbfmt` | erbfmtを実行するexecutableです。 |
+| `erbfmt.arguments` | `[]` | erbfmt固有のargumentsより前に追加します。 |
+| `erbfmt.configPath` | empty | 特定の `erbfmt.json`を指定します。 |
+| `erbfmt.lint.enabled` | `true` | open/save時にdiagnosticsを表示します。 |
+
+`erbfmt.command`にはexecutableだけを設定します。たとえばcommandを `bundle`、
+`erbfmt.arguments`を `exec`, `erbfmt`とします。
+
+## コメント
+
+`Ctrl+/`または `Cmd+/`は行単位でcommentをtoggleします。ERB tagは
+`<%# if user %>`や `<%#= user.name %>`のようなERB commentになります。
+HTML fragmentはHTML commentになります。HTMLとERBが混ざる行は、ERB codeが
+HTML comment内で誤って実行されないように分割します。
+
+## Troubleshooting
+
+formatまたはdiagnosticsが `ENOENT`や `EACCES`で失敗する場合:
+
+1. terminalで `erbfmt --version`が動くことを確認します。
+2. **erbfmt: Show Command** でexecutableとworking directoryを確認します。
+3. VS Codeからterminalと同じ `PATH`が見えない場合は、`erbfmt.command`に実行可能な
+   absolute pathを設定します。
+4. commandのargumentsは `erbfmt.command`ではなく `erbfmt.arguments`に設定します。
+
+Shopify Ruby LSPと併用できます。このextensionは `html-erb` language idを提供し、
+`html-erb`と `erb`の両方にformatterを登録します。
+
+## 開発
+
+repository rootから実行します。
+
+```bash
+cargo build
+npm install --prefix editors/vscode
+npm test --prefix editors/vscode
+npm run package --prefix editors/vscode
+```
+
+repositoryをVS Codeで開き、**Run erbfmt VSCode Extension** を選んでF5を押すと、
+Extension Development Hostを起動できます。extension-host test、command解決、release
+packageの詳細は
+[VSCode integration documentation](https://github.com/hinamimi/erbfmt/blob/main/docs/VSCode.md)
+を参照してください。

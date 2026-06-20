@@ -2,9 +2,21 @@
 
 [日本語](README_ja.md)
 
-A formatter and linter for `*.html.erb` templates, built as a fast Rust CLI.
-It formats HTML and ERB control-flow together while preserving Ruby code when
-it cannot be changed safely.
+**A fast, Prettier/Biome-like formatter and linter for ERB and HTML+ERB.**
+
+```diff
+-<div><% if user.admin? %><span>Admin</span><% end %></div>
++<div>
++  <% if user.admin? %>
++    <span>Admin</span>
++  <% end %>
++</div>
+```
+
+erbfmt formats HTML structure and ERB control flow together while preserving
+Ruby expressions that it cannot safely rewrite. It is built as a Rust CLI for
+Rails `*.html.erb` templates and works locally, in CI, and through the
+first-party VSCode extension.
 
 > erbfmt is currently in pre-release development. The CLI is usable from the
 > repository, but public release binaries, the RubyGems package, and the VSCode
@@ -12,7 +24,8 @@ it cannot be changed safely.
 
 ## Install
 
-The current installation method requires a Rust toolchain:
+Until the first public release, install directly from GitHub. This currently
+requires a Rust toolchain:
 
 ```bash
 cargo install --git https://github.com/hinamimi/erbfmt --locked
@@ -25,9 +38,10 @@ erbfmt --version
 erbfmt --help
 ```
 
-Prebuilt Linux, macOS, and Windows binaries are planned for the first public
-release. Platform-specific Ruby gems and the VSCode extension are already
-tested as artifacts, but are not published to package registries yet.
+The `v0.1.0` release will add prebuilt Linux, macOS, and Windows binaries,
+platform-specific Ruby gems, and a downloadable VSIX. erbfmt is not published
+to crates.io or npm yet, so `cargo install erbfmt` and `npm install erbfmt` are
+not currently supported installation paths.
 
 ## Quick Start
 
@@ -38,13 +52,13 @@ cd your-rails-project
 erbfmt init
 ```
 
-Format a file to stdout:
+Format a file in place:
 
 ```bash
-erbfmt app/views/users/show.html.erb
+erbfmt --write app/views/users/show.html.erb
 ```
 
-Write formatted output back to files:
+Format multiple files:
 
 ```bash
 erbfmt --write app/views/users/show.html.erb app/views/users/edit.html.erb
@@ -66,31 +80,7 @@ erbfmt --lint app/views/users/show.html.erb
 nonzero status when formatting would change a file; lint mode does so when an
 error-level diagnostic is found.
 
-## Formatting Example
-
-Input:
-
-```erb
-<div>
-<% if user %>
-<p>Hello, <%= user.name %></p>
-<% else %>
-<p>Please sign in.</p>
-<% end %>
-</div>
-```
-
-Output:
-
-```erb
-<div>
-  <% if user %>
-    <p>Hello, <%= user.name %></p>
-  <% else %>
-    <p>Please sign in.</p>
-  <% end %>
-</div>
-```
+## What erbfmt Handles
 
 By default, erbfmt indents both HTML nesting and ERB control-flow. It also
 formats branches such as `elsif`, `else`, `when`, `rescue`, and `ensure`, and
@@ -99,6 +89,10 @@ recognizes output do-blocks such as `<%= form_with ... do |form| %>`.
 Long HTML tags are expanded one attribute per line. Simple standalone Ruby
 command calls may be wrapped with explicit parentheses when erbfmt can split
 their arguments safely. Complex or ambiguous Ruby expressions are preserved.
+
+The linter reports malformed HTML structure, invalid list and table nesting,
+deprecated or self-closing HTML tags, duplicate attributes, and unsupported or
+empty ERB control-flow constructs.
 
 ## Configuration
 

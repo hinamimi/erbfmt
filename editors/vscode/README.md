@@ -1,166 +1,155 @@
-# erbfmt VSCode Extension
+# erbfmt for VS Code
 
-Japanese documentation is included in `README_ja.md`.
+[日本語](https://github.com/hinamimi/erbfmt/blob/main/editors/vscode/README_ja.md)
 
-Thin VSCode wrapper for the Rust `erbfmt` binary.
+**Format and lint ERB and HTML+ERB directly in VS Code.**
 
-## Behavior
-
-- contributes a `html-erb` language id for `*.html.erb`.
-- contributes syntax highlighting for HTML plus ERB tags.
-- registers a document formatter for `erb` and `html-erb`.
-- runs `erbfmt --lint` on open and save to publish diagnostics.
-- calls the configured `erbfmt` command and replaces the document with stdout.
-- provides `erbfmt: Show Command` to inspect the resolved command, cwd, and
-  config path.
-- provides `Ctrl+/` comment toggling for ERB-safe line comments.
-- keeps formatting logic in the Rust binary.
-
-## Local Development
-
-From this repository, use VSCode's Extension Development Host:
-
-1. Run `cargo build` once.
-2. Run `npm install --prefix editors/vscode` once.
-3. Open the repository root in VSCode.
-4. Open the Run and Debug view.
-5. Choose `Run erbfmt VSCode Extension`.
-6. Press F5.
-7. In the new Extension Development Host window, open
-   `samples/sample.html.erb`.
-8. Run `erbfmt: Format Document`.
-
-The F5 launch configuration runs `npm run compile --prefix editors/vscode`
-before starting the Extension Development Host.
-
-This repository includes `.node-version` for nodenv. It targets the Node 24
-major version without pinning a minor or patch release.
-
-Some nodenv setups require an exact installed version. In that case, install a
-Node 24 release locally or create a nodenv alias named `24`.
-
-`samples/sample.html.erb` is intentionally not formatted. If the extension is
-working, running `erbfmt: Format Document` should change its indentation.
-VSCode's built-in `Format Document` should also work when erbfmt is the selected
-default formatter. If it does not, run `Format Document With...` and choose
-`erbfmt`.
-
-When the extension runs from this checkout, it uses `target/debug/erbfmt` if the
-binary exists. If it does not exist yet, it falls back to `cargo run --quiet --`.
-Running `cargo build` first is the most reliable local setup because VSCode may
-not be able to spawn `cargo` in every environment.
-
-Command resolution order:
-
-1. configured `erbfmt.command`
-2. checkout `target/debug/erbfmt`
-3. checkout `cargo run --quiet --`
-4. `erbfmt` from `PATH`
-
-`erbfmt.command` must be the executable only. Put extra command-line arguments
-in `erbfmt.arguments`.
-
-Use `erbfmt: Show Command` from the command palette to inspect which command,
-resolution source, working directory, checkout binary, and config path the
-extension resolved for the active document.
-
-Alternatively, install the Rust binary first:
-
-```bash
-cargo install --path ../..
+```diff
+-<div><% if user.admin? %><span>Admin</span><% end %></div>
++<div>
++  <% if user.admin? %>
++    <span>Admin</span>
++  <% end %>
++</div>
 ```
 
-Use `erbfmt.configPath` to force a specific `erbfmt.json`; otherwise the
-extension searches from the formatted file toward the filesystem root.
+This extension adds editor integration for the fast Rust-based
+[erbfmt](https://github.com/hinamimi/erbfmt) CLI. Formatting and linting remain
+in the CLI, so command-line, CI, and editor results stay consistent.
 
-Set `erbfmt.lint.enabled` to `false` to disable diagnostics.
+> The extension does not bundle or download the `erbfmt` binary yet. Install
+> the CLI separately or configure `erbfmt.command` before formatting.
 
-If formatting or diagnostics fail with `ENOENT` or `EACCES`, run `cargo build`,
-install `erbfmt`, or set `erbfmt.command` to an executable absolute path.
+## Features
 
-Future binary download support should use release artifacts from the Rust CLI,
-verify the sibling `.sha256`, cache the binary in extension global storage, and
-leave `erbfmt.command` as an override for pinned local binaries.
+- HTML and ERB syntax highlighting for `*.html.erb` files.
+- Document formatting for the `html-erb` and `erb` language ids.
+- erbfmt lint diagnostics when a document is opened or saved.
+- ERB-safe `Ctrl+/` / `Cmd+/` comment toggling.
+- Automatic `erbfmt.json` discovery from the active file's directory.
+- Explicit CLI, arguments, and configuration path settings.
+- `erbfmt: Show Command` for inspecting the resolved command and working
+  directory.
 
-## Comments
+## Requirements
 
-For `erb` and `html-erb` documents, `Ctrl+/` toggles comments line by line.
-ERB tags become ERB comments such as `<%# if user %>` or `<%#= user.name %>`.
-HTML fragments become HTML comments, and lines that mix HTML with ERB split the
-two forms so commented ERB code is not executed inside an HTML comment.
-
-## TypeScript
-
-The extension source lives in `src/extension.ts` and compiles to
-`out/extension.js`.
-
-From the repository root:
+Until the first public release, install the CLI from GitHub with a Rust
+toolchain:
 
 ```bash
-npm run check --prefix editors/vscode
-npm run compile --prefix editors/vscode
-npm test --prefix editors/vscode
+cargo install --git https://github.com/hinamimi/erbfmt --locked
+erbfmt --version
 ```
 
-Biome handles formatting and linting for the extension code.
+The `v0.1.0` release will also provide prebuilt binaries and platform-specific
+Ruby gems. The extension can use any installation that exposes an executable
+`erbfmt` command.
 
-```bash
-npm run format --prefix editors/vscode
-npm run lint --prefix editors/vscode
-```
+## Install the Extension
 
-From `editors/vscode`, omit the `--prefix editors/vscode` part:
-
-```bash
-npm run check
-npm run compile
-npm test
-```
-
-Run extension-host tests when you need to verify the wrapper through VSCode
-APIs. This command builds the Rust binary first and may download a test VSCode
-build on first run. It needs an environment where VSCode/Electron can launch;
-headless Linux environments may need `xvfb-run` or an equivalent display setup.
-
-From the repository root:
-
-```bash
-npm run test:host --prefix editors/vscode
-```
-
-From `editors/vscode`:
-
-```bash
-npm run test:host
-```
-
-## Local Package
-
-Build a local VSIX package:
-
-From the repository root:
-
-```bash
-npm run package --prefix editors/vscode
-```
-
-From `editors/vscode`:
-
-```bash
-npm run package
-```
-
-Install the generated VSIX from the repository root:
-
-```bash
-code --install-extension editors/vscode/erbfmt-vscode-0.1.0.vsix
-```
-
-Or from `editors/vscode`:
+The extension is not published to the VS Code Marketplace yet. Install a
+downloaded or locally built VSIX:
 
 ```bash
 code --install-extension erbfmt-vscode-0.1.0.vsix
 ```
 
-The packaged extension does not bundle the Rust binary yet. Install `erbfmt`
-separately or configure `erbfmt.command` to point at a local binary.
+Open a `*.html.erb` file and run **Format Document**. If VS Code asks for a
+formatter, select **erbfmt**.
+
+To format automatically on save:
+
+```json
+{
+  "[html-erb]": {
+    "editor.defaultFormatter": "erbfmt.erbfmt-vscode",
+    "editor.formatOnSave": true
+  }
+}
+```
+
+## Quick Start
+
+Create a configuration file at the root of the Rails project:
+
+```bash
+erbfmt init
+```
+
+The extension searches for `erbfmt.json` from the active document toward the
+filesystem root. Use `erbfmt.configPath` only when a workspace needs an
+explicit configuration file.
+
+Lint diagnostics are enabled by default and update when an ERB document is
+opened or saved. Use **erbfmt: Lint Document** to run them manually.
+
+## Using Bundler
+
+Projects that install erbfmt as a Ruby gem can run the bundled version:
+
+```json
+{
+  "erbfmt.command": "bundle",
+  "erbfmt.arguments": ["exec", "erbfmt"]
+}
+```
+
+The command runs from the active document's directory, allowing Bundler to find
+the project's `Gemfile` in that directory or a parent.
+
+## Commands
+
+| Command | Purpose |
+| --- | --- |
+| `erbfmt: Format Document` | Format the active ERB document. |
+| `erbfmt: Lint Document` | Refresh lint diagnostics. |
+| `erbfmt: Show Command` | Show the resolved executable, arguments, cwd, and config. |
+| `erbfmt: Toggle Comment` | Toggle ERB-safe comments for the current selection. |
+
+## Settings
+
+| Setting | Default | Purpose |
+| --- | --- | --- |
+| `erbfmt.command` | `erbfmt` | Executable used to run erbfmt. |
+| `erbfmt.arguments` | `[]` | Arguments inserted before erbfmt's own arguments. |
+| `erbfmt.configPath` | empty | Optional path to a specific `erbfmt.json`. |
+| `erbfmt.lint.enabled` | `true` | Publish diagnostics on open and save. |
+
+Keep only the executable in `erbfmt.command`. For example, use `bundle` as the
+command and put `exec`, `erbfmt` in `erbfmt.arguments`.
+
+## Comments
+
+`Ctrl+/` or `Cmd+/` toggles comments line by line. ERB tags become ERB comments
+such as `<%# if user %>` or `<%#= user.name %>`. HTML fragments become HTML
+comments. Mixed HTML/ERB lines are split so ERB code is not accidentally
+executed inside an HTML comment.
+
+## Troubleshooting
+
+If formatting or diagnostics fail with `ENOENT` or `EACCES`:
+
+1. Confirm `erbfmt --version` works in a terminal.
+2. Run **erbfmt: Show Command** and inspect the executable and working directory.
+3. Set `erbfmt.command` to an executable absolute path when VS Code cannot see
+   the same `PATH` as the terminal.
+4. Put command arguments in `erbfmt.arguments`, not in `erbfmt.command`.
+
+The extension can coexist with Shopify Ruby LSP. It contributes the
+`html-erb` language id and registers formatting for both `html-erb` and `erb`.
+
+## Development
+
+From the repository root:
+
+```bash
+cargo build
+npm install --prefix editors/vscode
+npm test --prefix editors/vscode
+npm run package --prefix editors/vscode
+```
+
+Open the repository in VS Code, choose **Run erbfmt VSCode Extension**, and
+press F5 to start an Extension Development Host. See the
+[VSCode integration documentation](https://github.com/hinamimi/erbfmt/blob/main/docs/VSCode.md)
+for extension-host tests, command resolution, and release packaging details.
