@@ -4,8 +4,8 @@
 
 The canonical binary name is `erbfmt`.
 
-For now, npm packages, Ruby gems, and editor extensions should be treated as
-future wrappers around the Rust binary instead of separate formatter engines.
+Ruby gems and editor extensions are thin wrappers around the Rust binary rather
+than separate formatter engines. An npm wrapper remains deferred.
 
 See [Distribution.md](Distribution.md) for the binary distribution strategy.
 See [FirstRelease.md](FirstRelease.md) for the first public release plan.
@@ -99,10 +99,11 @@ scripts/package-binary.sh x86_64-unknown-linux-gnu
 ```
 
 The `Release Binaries` GitHub Actions workflow is manual-only
-(`workflow_dispatch`) and uploads binary archives and matching platform-specific
-Ruby gems as workflow artifacts. Each runner installs its gem into an isolated
-`GEM_HOME` and executes `erbfmt --version`. It does not publish a GitHub Release
-or push to RubyGems.org.
+(`workflow_dispatch`). It uploads binary archives and matching platform-specific
+Ruby gems from four native runners, and builds the thin VSIX in a separate job.
+Each native runner installs its gem into an isolated `GEM_HOME` and executes
+`erbfmt --version`. The workflow does not publish a GitHub Release or push to
+RubyGems.org.
 
 For an unpublished stable-version rehearsal, provide the optional workflow
 input while running from `main`:
@@ -123,6 +124,13 @@ Ruby gem names should be:
 - `erbfmt-${version}-x86_64-darwin.gem`
 - `erbfmt-${version}-arm64-darwin.gem`
 - `erbfmt-${version}-x64-mingw-ucrt.gem`
+
+The VSCode artifact should contain:
+
+- `erbfmt-vscode-${version}.vsix`
+
+The VSIX does not contain a Rust binary. Release notes must direct users to a
+standalone binary or the Ruby gem before installing the extension.
 
 ## Release Contents
 

@@ -5,8 +5,9 @@ gems, and editor extensions should stay thin wrappers around that binary.
 
 ## Decision
 
-The first public distribution path should be prebuilt `erbfmt` binaries attached
-to a release in `https://github.com/hinamimi/erbfmt`.
+The first public distribution consists of prebuilt `erbfmt` binaries attached
+to a release in `https://github.com/hinamimi/erbfmt`, platform-specific gems
+published to RubyGems.org, and a thin VSIX attached to the same release.
 
 Local development remains:
 
@@ -15,8 +16,8 @@ cargo build
 cargo install --path .
 ```
 
-Public wrapper work should wait until release binaries exist. This keeps the
-binary boundary clear before npm, Ruby gem, or VSCode download logic is added.
+Every wrapper delegates to the Rust binary. The gem packages one matching
+binary; the VSIX expects a separately installed or configured binary.
 
 ## Options
 
@@ -39,7 +40,7 @@ Use this for local development until public binaries exist.
 
 ### Prebuilt Release Binaries
 
-Status: first public target.
+Status: first public target; the four-platform workflow has been rehearsed.
 
 Pros:
 
@@ -70,15 +71,14 @@ the same artifact names that the manual release-binary workflow produces.
 
 ### npm Wrapper
 
-Status: defer until prebuilt binaries exist.
+Status: deferred beyond `0.1.0`.
 
 The npm package should expose the `erbfmt` CLI and resolve a platform-specific
 binary. It should not reimplement formatting logic in TypeScript.
 
 ### Ruby Gem Wrapper
 
-Status: designed; implementation remains deferred until prebuilt release
-binaries are publishable.
+Status: implemented and verified for the first public release.
 
 The Ruby gem should expose the `erbfmt` CLI for Ruby/Rails projects and resolve
 a platform-specific binary. It should not parse Ruby or ERB separately from the
@@ -86,11 +86,13 @@ Rust binary.
 
 The initial wrapper uses same-name platform-specific gems with a Ruby launcher
 and one packaged Rust binary. It does not build Rust or download binaries during
-gem installation. See [RubyGem.md](RubyGem.md) for the complete design.
+gem installation. The four variants are published to RubyGems.org after they
+are built and verified from the release tag. See [RubyGem.md](RubyGem.md) for
+the complete design.
 
 ### VSCode Binary Handling
 
-Status: defer bundling or download logic.
+Status: publish a thin VSIX with `0.1.0`; defer bundling or download logic.
 
 The VSCode extension currently expects an installed or configured binary. Once
 prebuilt release binaries exist, the extension can either:
@@ -98,8 +100,23 @@ prebuilt release binaries exist, the extension can either:
 - keep using `erbfmt.command` and document installation, or
 - download/cache a matching binary from release assets.
 
-Bundling large binaries directly into the VSIX should be avoided until package
-size and platform strategy are clear.
+The `0.1.0` VSIX is attached to the GitHub Release and is not published to the
+VSCode Marketplace. It expects `erbfmt` on `PATH` or an explicit
+`erbfmt.command`. Bundling large binaries directly into the VSIX should be
+avoided until package size and platform strategy are clear.
+
+### Registry Policy
+
+Use the distribution channel native to each artifact:
+
+- GitHub Release assets for standalone binaries, checksums, and the VSIX;
+- RubyGems.org for platform-specific gems;
+- VSCode Marketplace for a future extension release; and
+- npm only if a JavaScript ecosystem CLI wrapper is added later.
+
+GitHub Packages is not part of the initial release. It would add another
+authenticated package source without replacing the user-facing release assets
+or RubyGems.org installation flow.
 
 ## Release Version
 

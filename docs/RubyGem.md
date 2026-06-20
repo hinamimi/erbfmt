@@ -10,8 +10,9 @@ The wrapper is implemented in `packages/ruby`. It can run a Rust binary through
 metadata, install it into an isolated `GEM_HOME`, and verify `erbfmt --version`.
 
 The manual `Release Binaries` workflow builds this gem on each matching native
-runner and uploads it beside the standalone archive. The gem is not published;
-RubyGems.org release automation remains future work.
+runner and uploads it beside the standalone archive. The first public release
+publishes those exact verified artifacts to RubyGems.org manually; automated
+registry publication remains future work.
 
 ## Decision
 
@@ -147,9 +148,9 @@ Cargo and the VSCode extension used `0.0.0-dev`. The current release version
 `lib/erbfmt/version.rb` is the gem version source. The release verification task
 must compare its normalized value with `Cargo.toml` and `erbfmt --version`.
 
-The first public binary release can remain CLI-only as described in
-[FirstRelease.md](FirstRelease.md). Publish the gem only after every platform
-variant passes installation and execution tests.
+The first public release includes the gem as described in
+[FirstRelease.md](FirstRelease.md). Publish it only after every platform variant
+passes installation and execution tests from the tagged commit.
 
 ## Bundler And Ruby LSP
 
@@ -210,8 +211,9 @@ BUNDLE_GEMFILE=packages/ruby/Gemfile \
   packages/ruby/exe/erbfmt --version
 ```
 
-Publishing to RubyGems.org, release credentials, MFA setup, and automated gem
-pushes remain outside the scaffold milestone.
+Release credentials and MFA remain local operator concerns. Automated gem
+pushes remain outside the initial release; publication uses the verified
+workflow artifacts manually.
 
 ## References
 

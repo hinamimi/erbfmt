@@ -116,3 +116,46 @@ jobs:
             dist/*.sha256
             packages/ruby/pkg/*.gem
           if-no-files-found: error
+
+  vscode:
+    name: Build VSCode extension
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: editors/vscode/package-lock.json
+
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.4"
+
+      - name: Prepare release rehearsal version
+        if: inputs.rehearsal_version != ''
+        run: ruby scripts/version.rb set "${{ inputs.rehearsal_version }}"
+
+      - name: Verify release versions
+        run: ruby scripts/version.rb verify
+
+      - name: Install dependencies
+        run: npm ci --prefix editors/vscode
+
+      - name: Test extension
+        run: npm test --prefix editors/vscode
+
+      - name: Package extension
+        run: npm run package --prefix editors/vscode
+
+      - name: Upload VSIX
+        uses: actions/upload-artifact@v6
+        with:
+          name: erbfmt-vscode
+          path: editors/vscode/*.vsix
+          if-no-files-found: error
