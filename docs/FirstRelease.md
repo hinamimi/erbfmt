@@ -27,7 +27,7 @@ Do not publish yet:
 
 - crates.io package
 - npm package
-- Ruby gem
+- RubyGems.org package
 - VSCode Marketplace extension
 - automatic GitHub Release workflow
 
@@ -35,17 +35,30 @@ The VSCode extension remains a local or VSIX-installed wrapper that expects an
 installed/configured Rust binary. Marketplace publishing should wait until the
 binary download/cache story is implemented.
 
+The release workflow may create platform-specific Ruby gems as unpublished
+verification artifacts. Creating those artifacts does not publish to
+RubyGems.org.
+
 ## Version Bump Files
 
 Update these files for the release commit:
 
 - `Cargo.toml`
 - `Cargo.lock`
+- `packages/ruby/lib/erbfmt/version.rb`
+- `packages/ruby/Gemfile.lock`
 - `editors/vscode/package.json`
 - `editors/vscode/package-lock.json`
-- `docs/VSCode.md` if the VSIX filename changes in examples
-- `editors/vscode/README.md` if the VSIX filename changes in examples
-- `editors/vscode/README_ja.md` if the VSIX filename changes in examples
+- `docs/VSCode.md`
+- `editors/vscode/README.md`
+- `editors/vscode/README_ja.md`
+
+Update them together and verify the result:
+
+```bash
+ruby scripts/version.rb set 0.1.0
+ruby scripts/version.rb verify 0.1.0
+```
 
 Do not update `README.md` or `README_ja.md` unless user-facing commands change.
 
@@ -64,7 +77,7 @@ Suggested flow:
    git pull --ff-only
    ```
 
-3. Replace `0.0.0-dev` with `0.1.0` in the version bump files.
+3. Run `ruby scripts/version.rb set 0.1.0`.
 4. Run release verification.
 5. Commit the version bump:
 
@@ -92,12 +105,27 @@ Run the local release checks from [Release.md](Release.md).
 Also confirm:
 
 ```bash
+ruby scripts/test/version_test.rb
+ruby scripts/version.rb verify 0.1.0
 cargo run --quiet -- --version
 npm run package --prefix editors/vscode
 ```
 
+Before creating the release commit, the four-platform package flow can be
+rehearsed without changing repository files:
+
+```bash
+gh workflow run release-binaries.yml \
+  --ref main \
+  -f rehearsal_version=0.1.0
+```
+
+The workflow changes versions only inside each runner. Its artifacts must use
+`0.1.0`, while `main` remains on `0.0.0-dev`.
+
 After pushing the tag, run the manual `Release Binaries` workflow from the tag
-or the tagged commit. Confirm that all four artifacts exist:
+or the tagged commit without `rehearsal_version`. Confirm that all four
+artifacts exist:
 
 - `erbfmt-0.1.0-x86_64-unknown-linux-gnu.tar.gz`
 - `erbfmt-0.1.0-x86_64-apple-darwin.tar.gz`

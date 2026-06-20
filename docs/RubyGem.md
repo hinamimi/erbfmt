@@ -197,8 +197,9 @@ The scaffold includes:
 - a four-platform release matrix that verifies each native gem and uploads it
   as a workflow artifact.
 
-The release matrix still needs a successful post-push manual run before the
-cross-platform package boundary is considered fully verified.
+The release matrix has successfully built, installed, executed, and uploaded
+all four platform-specific gems. A stable `0.1.0` gem can also be rehearsed in
+an isolated copy without the development-version activation allowance.
 
 Local development uses:
 

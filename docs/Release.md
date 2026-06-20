@@ -31,6 +31,8 @@ erbfmt --help
 Run these checks before cutting a release:
 
 ```bash
+ruby scripts/test/version_test.rb
+ruby scripts/version.rb verify
 cargo fmt
 cargo check --all-targets
 cargo test
@@ -102,6 +104,19 @@ Ruby gems as workflow artifacts. Each runner installs its gem into an isolated
 `GEM_HOME` and executes `erbfmt --version`. It does not publish a GitHub Release
 or push to RubyGems.org.
 
+For an unpublished stable-version rehearsal, provide the optional workflow
+input while running from `main`:
+
+```bash
+gh workflow run release-binaries.yml \
+  --ref main \
+  -f rehearsal_version=0.1.0
+```
+
+The input runs `ruby scripts/version.rb set` only inside each ephemeral runner.
+For an actual release commit or tag, leave the input empty so artifact versions
+come directly from the checked-out files.
+
 Ruby gem names should be:
 
 - `erbfmt-${version}-x86_64-linux-gnu.gem`
@@ -125,6 +140,8 @@ Keep these files in the release verification surface:
 - `docs/*.md`
 - `.github/workflows/*.yml`
 - `scripts/*.sh`
+- `scripts/*.rb`
+- `scripts/test/*.rb`
 - `packages/ruby/**/*.rb`
 - `packages/ruby/Gemfile*`
 - `packages/ruby/*.gemspec`
@@ -160,14 +177,14 @@ this phase.
 
 The first public release should use `0.1.0`.
 
-The CLI version is read from `Cargo.toml`. The VSCode extension version is read
-from `editors/vscode/package.json`.
+The canonical CLI version is read from `Cargo.toml`. Ruby gem and VSCode
+versions are checked against it by `scripts/version.rb`.
 
 Before a public release:
 
-- Replace `0.0.0-dev` with the release version in `Cargo.toml` and
-  `editors/vscode/package.json`.
-- Regenerate the lockfiles if needed.
+- Run `ruby scripts/version.rb set <version>` to update every version source,
+  lockfile entry, and VSIX filename example.
+- Run `ruby scripts/version.rb verify <version>`.
 - Confirm `cargo run --quiet -- --version` prints the new version.
 - Confirm `erbfmt --version` after local install.
 - Confirm the manual `Release Binaries` workflow produced all four expected

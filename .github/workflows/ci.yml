@@ -90,6 +90,11 @@ jobs:
           bundler-cache: true
           working-directory: packages/ruby
 
+      - name: Test and verify release versions
+        run: |
+          ruby scripts/test/version_test.rb
+          ruby scripts/version.rb verify
+
       - name: Build Rust binary
         run: cargo build --locked
 

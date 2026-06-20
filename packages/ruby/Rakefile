@@ -10,6 +10,7 @@ require_relative "lib/erbfmt/version"
 
 PACKAGE_ROOT = __dir__
 REPOSITORY_ROOT = File.expand_path("../..", PACKAGE_ROOT)
+VERSION_SCRIPT = File.join(REPOSITORY_ROOT, "scripts/version.rb")
 
 def gem_platform
   configured = ENV["ERBFMT_PACKAGE_PLATFORM"]
@@ -53,12 +54,9 @@ end
 
 task default: :test
 
-desc "Verify Ruby and Cargo development versions correspond"
+desc "Verify Cargo, Ruby gem, and VSCode versions correspond"
 task :verify_version do
-  expected = cargo_version.tr("-", ".")
-  next if Erbfmt::VERSION == expected
-
-  abort "gem version #{Erbfmt::VERSION} does not match Cargo version #{cargo_version}"
+  sh Gem.ruby, VERSION_SCRIPT, "verify"
 end
 
 namespace :gem do

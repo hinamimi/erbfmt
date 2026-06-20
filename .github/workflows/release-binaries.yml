@@ -2,6 +2,11 @@ name: Release Binaries
 
 on:
   workflow_dispatch:
+    inputs:
+      rehearsal_version:
+        description: Optional stable version used only inside the workflow runner
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -48,6 +53,13 @@ jobs:
           ruby-version: "3.4"
           bundler-cache: true
           working-directory: packages/ruby
+
+      - name: Prepare release rehearsal version
+        if: inputs.rehearsal_version != ''
+        run: ruby scripts/version.rb set "${{ inputs.rehearsal_version }}"
+
+      - name: Verify release versions
+        run: ruby scripts/version.rb verify
 
       - name: Build release binary
         run: cargo build --release --locked --target ${{ matrix.target }}

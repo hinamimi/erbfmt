@@ -26,6 +26,14 @@ BUNDLE_GEMFILE=packages/ruby/Gemfile \
   bundle exec rake -f packages/ruby/Rakefile test verify_version
 ```
 
+The shared version check covers Cargo, this gem, the VSCode extension, and
+their lockfiles. Release versions are updated from the repository root:
+
+```bash
+ruby scripts/version.rb set 0.1.0
+ruby scripts/version.rb verify 0.1.0
+```
+
 Build, install, and execute a local platform-specific gem in isolation:
 
 ```bash
