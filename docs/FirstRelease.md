@@ -3,6 +3,9 @@
 This document describes the first public release plan. It is a plan only; do not
 publish a release as part of ordinary milestone work.
 
+The repository source version is now `0.1.0` for release preparation. No
+release tag or public package has been created yet.
+
 ## Version
 
 Use `0.1.0` for the first public release.
@@ -127,7 +130,7 @@ gh workflow run release-binaries.yml \
 ```
 
 The workflow changes versions only inside each runner. Its artifacts must use
-`0.1.0`, while `main` remains on `0.0.0-dev`.
+`0.1.0`, while the checked-out branch remains unchanged.
 
 After pushing the tag, run the manual `Release Binaries` workflow from the tag
 or the tagged commit without `rehearsal_version`. Confirm that all four

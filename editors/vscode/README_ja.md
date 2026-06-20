@@ -149,13 +149,13 @@ npm run package
 生成された VSIX はリポジトリルートからインストールできます。
 
 ```bash
-code --install-extension editors/vscode/erbfmt-vscode-0.0.0-dev.vsix
+code --install-extension editors/vscode/erbfmt-vscode-0.1.0.vsix
 ```
 
 `editors/vscode` からインストールする場合:
 
 ```bash
-code --install-extension erbfmt-vscode-0.0.0-dev.vsix
+code --install-extension erbfmt-vscode-0.1.0.vsix
 ```
 
 現時点のpackageにはRust binaryを同梱していません。別途 `erbfmt` をインストールするか、

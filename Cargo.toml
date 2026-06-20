@@ -1,6 +1,6 @@
 [package]
 name = "erbfmt"
-version = "0.0.0-dev"
+version = "0.1.0"
 edition = "2024"
 description = "Formatter and linter for HTML ERB templates."
 license = "MIT"

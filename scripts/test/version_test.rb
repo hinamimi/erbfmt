@@ -20,11 +20,11 @@ class VersionTest < Minitest::Test
     repository_version = ErbfmtVersioning.collect_versions.fetch(:cargo_toml)
 
     with_version_files do |root|
-      versions = ErbfmtVersioning.set("0.1.0", root)
+      versions = ErbfmtVersioning.set("1.2.3", root)
 
-      assert_equal "0.1.0", versions.fetch(:cargo_toml)
-      assert_equal "0.1.0", versions.fetch(:ruby_gem)
-      assert_equal "0.1.0", versions.fetch(:vscode_lock_root)
+      assert_equal "1.2.3", versions.fetch(:cargo_toml)
+      assert_equal "1.2.3", versions.fetch(:ruby_gem)
+      assert_equal "1.2.3", versions.fetch(:vscode_lock_root)
       assert_equal repository_version, ErbfmtVersioning.collect_versions.fetch(:cargo_toml)
     end
   end

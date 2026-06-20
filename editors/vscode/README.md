@@ -153,13 +153,13 @@ npm run package
 Install the generated VSIX from the repository root:
 
 ```bash
-code --install-extension editors/vscode/erbfmt-vscode-0.0.0-dev.vsix
+code --install-extension editors/vscode/erbfmt-vscode-0.1.0.vsix
 ```
 
 Or from `editors/vscode`:
 
 ```bash
-code --install-extension erbfmt-vscode-0.0.0-dev.vsix
+code --install-extension erbfmt-vscode-0.1.0.vsix
 ```
 
 The packaged extension does not bundle the Rust binary yet. Install `erbfmt`

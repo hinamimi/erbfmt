@@ -101,18 +101,16 @@ prebuilt release binaries exist, the extension can either:
 Bundling large binaries directly into the VSIX should be avoided until package
 size and platform strategy are clear.
 
-## Development Versions
+## Release Version
 
-During active development, the project uses `0.0.0-dev` for the Rust crate and
-VSCode extension. Do not publish public binaries with this version.
+The repository is currently set to `0.1.0` for first-release preparation. The
+earlier `0.0.0-dev` version must not be used for public binaries.
 
-Before public binary release:
+Before publishing binaries:
 
-- choose a real semver version,
-- update `Cargo.toml` and wrapper manifests,
+- verify all version sources with `ruby scripts/version.rb verify 0.1.0`,
 - confirm the canonical repository URL,
 - build release binaries from the same Git revision,
 - verify `erbfmt --version` against the release version.
 
-The first public version should be `0.1.0`. See [FirstRelease.md](FirstRelease.md)
-for the concrete first-release plan.
+See [FirstRelease.md](FirstRelease.md) for the concrete first-release plan.

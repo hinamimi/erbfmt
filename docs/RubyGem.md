@@ -140,9 +140,9 @@ remain compatible with Ruby 3.1 and newer.
 Public gem versions exactly match the Rust crate, CLI output, tag, and GitHub
 Release version. A gem must contain the binary built from the same tagged commit.
 
-RubyGems uses `0.0.0.dev` for the unpublished development wrapper while Cargo
-and the VSCode extension keep `0.0.0-dev`. Release versions such as `0.1.0` are
-identical everywhere.
+The unpublished development wrapper used RubyGems version `0.0.0.dev` while
+Cargo and the VSCode extension used `0.0.0-dev`. The current release version
+`0.1.0` is identical everywhere.
 
 `lib/erbfmt/version.rb` is the gem version source. The release verification task
 must compare its normalized value with `Cargo.toml` and `erbfmt --version`.

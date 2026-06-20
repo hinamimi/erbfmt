@@ -170,12 +170,9 @@ Keep these files in the release verification surface:
 
 ## Versioning
 
-During active development, erbfmt intentionally uses the fixed development
-version `0.0.0-dev` for both the Rust crate and the VSCode extension. Do not
-bump minor versions for ordinary milestone work while the project is still in
-this phase.
-
-The first public release should use `0.1.0`.
+The repository is currently set to `0.1.0` for first-release preparation.
+Before this point, ordinary milestone work used the fixed development version
+`0.0.0-dev`.
 
 The canonical CLI version is read from `Cargo.toml`. Ruby gem and VSCode
 versions are checked against it by `scripts/version.rb`.
