@@ -20,9 +20,12 @@ Gem::Specification.new do |spec|
   spec.bindir = "exe"
   spec.executables = ["erbfmt"]
   spec.require_paths = ["lib"]
-  spec.platform = Gem::Platform.new(
-    ENV.fetch("ERBFMT_GEM_PLATFORM", Gem::Platform.local.to_s)
-  )
+  configured_platform = ENV["ERBFMT_GEM_PLATFORM"]
+  spec.platform = if configured_platform.nil? || configured_platform.empty?
+                    Gem::Platform::RUBY
+                  else
+                    Gem::Platform.new(configured_platform)
+                  end
   spec.files = [
     "LICENSE.txt",
     "README.md",

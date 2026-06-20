@@ -97,8 +97,17 @@ scripts/package-binary.sh x86_64-unknown-linux-gnu
 ```
 
 The `Release Binaries` GitHub Actions workflow is manual-only
-(`workflow_dispatch`) and uploads binary archives as workflow artifacts. It does
-not publish a GitHub Release yet.
+(`workflow_dispatch`) and uploads binary archives and matching platform-specific
+Ruby gems as workflow artifacts. Each runner installs its gem into an isolated
+`GEM_HOME` and executes `erbfmt --version`. It does not publish a GitHub Release
+or push to RubyGems.org.
+
+Ruby gem names should be:
+
+- `erbfmt-${version}-x86_64-linux-gnu.gem`
+- `erbfmt-${version}-x86_64-darwin.gem`
+- `erbfmt-${version}-arm64-darwin.gem`
+- `erbfmt-${version}-x64-mingw-ucrt.gem`
 
 ## Release Contents
 

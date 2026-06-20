@@ -5,12 +5,13 @@ remains the only formatter and linter engine.
 
 ## Current Status
 
-The local scaffold is implemented in `packages/ruby`. It can run the Rust debug
-binary through `ERBFMT_BINARY`, build a platform-specific gem, install it into an
-isolated `GEM_HOME`, and verify `erbfmt --version`.
+The wrapper is implemented in `packages/ruby`. It can run a Rust binary through
+`ERBFMT_BINARY`, build a platform-specific gem, inspect its platform and binary
+metadata, install it into an isolated `GEM_HOME`, and verify `erbfmt --version`.
 
-The gem is not published. Cross-platform gem artifacts and RubyGems.org release
-automation remain future work.
+The manual `Release Binaries` workflow builds this gem on each matching native
+runner and uploads it beside the standalone archive. The gem is not published;
+RubyGems.org release automation remains future work.
 
 ## Decision
 
@@ -59,9 +60,9 @@ Build the following gem variants from the matching Rust release binaries:
 | `arm64-darwin` | `aarch64-apple-darwin` | `erbfmt-bin` |
 | `x64-mingw-ucrt` | `x86_64-pc-windows-msvc` | `erbfmt-bin.exe` |
 
-The scaffold milestone must verify these names with current RubyGems and
-Bundler. In particular, Windows must be tested with RubyInstaller UCRT even
-though the standalone Rust executable uses the MSVC target.
+The release workflow verifies these names with current RubyGems and Bundler.
+Windows uses RubyInstaller UCRT even though the standalone Rust executable uses
+the MSVC target.
 
 Linux starts with glibc only. Alpine/musl and Linux arm64 require additional
 Rust release targets and separate gem variants.
@@ -192,9 +193,12 @@ The scaffold includes:
 - installation into an isolated `GEM_HOME`;
 - `erbfmt --version` execution against the staged Rust binary;
 - a version consistency check against `Cargo.toml`; and
-- one Linux CI job that builds the Rust binary and verifies the local gem.
+- one Linux CI job that builds the Rust binary and verifies the local gem; and
+- a four-platform release matrix that verifies each native gem and uploads it
+  as a workflow artifact.
 
-Cross-platform gem packaging remains the next milestone.
+The release matrix still needs a successful post-push manual run before the
+cross-platform package boundary is considered fully verified.
 
 Local development uses:
 

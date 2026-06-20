@@ -16,18 +16,22 @@ jobs:
         include:
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
+            gem_platform: x86_64-linux-gnu
             archive: tar.gz
             binary: erbfmt
           - os: macos-15-intel
             target: x86_64-apple-darwin
+            gem_platform: x86_64-darwin
             archive: tar.gz
             binary: erbfmt
           - os: macos-14
             target: aarch64-apple-darwin
+            gem_platform: arm64-darwin
             archive: tar.gz
             binary: erbfmt
           - os: windows-latest
             target: x86_64-pc-windows-msvc
+            gem_platform: x64-mingw-ucrt
             archive: zip
             binary: erbfmt.exe
 
@@ -38,8 +42,21 @@ jobs:
       - name: Install Rust target
         run: rustup target add ${{ matrix.target }}
 
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.4"
+          bundler-cache: true
+          working-directory: packages/ruby
+
       - name: Build release binary
         run: cargo build --release --locked --target ${{ matrix.target }}
+
+      - name: Build and verify Ruby gem
+        working-directory: packages/ruby
+        env:
+          ERBFMT_BINARY: target/${{ matrix.target }}/release/${{ matrix.binary }}
+        run: bundle exec rake gem:verify ERBFMT_PACKAGE_PLATFORM=${{ matrix.gem_platform }}
 
       - name: Package binary
         shell: bash
@@ -85,4 +102,5 @@ jobs:
             dist/*.tar.gz
             dist/*.zip
             dist/*.sha256
+            packages/ruby/pkg/*.gem
           if-no-files-found: error

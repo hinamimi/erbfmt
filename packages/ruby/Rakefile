@@ -4,6 +4,7 @@ require "fileutils"
 require "open3"
 require "rake/testtask"
 require "rbconfig"
+require "rubygems/package"
 require "tmpdir"
 require_relative "lib/erbfmt/version"
 
@@ -11,7 +12,7 @@ PACKAGE_ROOT = __dir__
 REPOSITORY_ROOT = File.expand_path("../..", PACKAGE_ROOT)
 
 def gem_platform
-  configured = ENV["ERBFMT_GEM_PLATFORM"]
+  configured = ENV["ERBFMT_PACKAGE_PLATFORM"]
   return configured unless configured.nil? || configured.empty?
 
   local = Gem::Platform.local.to_s
@@ -36,6 +37,12 @@ end
 
 def gem_command
   File.join(RbConfig::CONFIG.fetch("bindir"), Gem.win_platform? ? "gem.cmd" : "gem")
+end
+
+def with_unbundled_env(&block)
+  return Bundler.with_unbundled_env(&block) if defined?(Bundler)
+
+  yield
 end
 
 Rake::TestTask.new(:test) do |task|
@@ -72,50 +79,73 @@ namespace :gem do
     FileUtils.cp(source, staged)
     FileUtils.chmod(0o755, staged)
 
-    Dir.chdir(PACKAGE_ROOT) do
-      sh(
-        { "ERBFMT_GEM_PLATFORM" => platform },
-        gem_command,
-        "build",
-        "erbfmt.gemspec",
-        "--output",
-        package
-      )
+    with_unbundled_env do
+      Dir.chdir(PACKAGE_ROOT) do
+        sh(
+          { "ERBFMT_GEM_PLATFORM" => platform },
+          gem_command,
+          "build",
+          "erbfmt.gemspec",
+          "--output",
+          package
+        )
+      end
     end
   ensure
     FileUtils.rm_f(staged) if defined?(staged)
   end
 
+  desc "Build and inspect the platform-specific gem"
+  task verify_package: :build do
+    package = gem_package_path
+    platform = gem_platform
+    packaged_binary = File.join("libexec", packaged_binary_name(platform))
+    specification = Gem::Package.new(package).spec
+
+    abort "unexpected gem platform: #{specification.platform}" unless specification.platform.to_s == platform
+    abort "unexpected gem version: #{specification.version}" unless specification.version.to_s == Erbfmt::VERSION
+    abort "packaged binary is missing: #{packaged_binary}" unless specification.files.include?(packaged_binary)
+  end
+
   desc "Build, install, and execute the platform-specific gem in isolation"
-  task verify: :build do
+  task verify: :verify_package do
     package = gem_package_path
 
     Dir.mktmpdir("erbfmt-gem") do |directory|
       gem_home = File.join(directory, "gems")
       bindir = File.join(directory, "bin")
 
-      sh(
-        gem_command,
-        "install",
-        "--local",
-        "--no-document",
-        "--install-dir",
-        gem_home,
-        "--bindir",
-        bindir,
-        package
-      )
+      with_unbundled_env do
+        sh(
+          gem_command,
+          "install",
+          "--local",
+          "--no-document",
+          "--install-dir",
+          gem_home,
+          "--bindir",
+          bindir,
+          package
+        )
+      end
 
       executable = File.join(bindir, Gem.win_platform? ? "erbfmt.bat" : "erbfmt")
-      stdout, stderr, status = Open3.capture3(
-        { "GEM_HOME" => gem_home, "GEM_PATH" => gem_home },
-        executable,
-        "--version"
-      )
+      execution_environment = { "GEM_HOME" => gem_home, "GEM_PATH" => gem_home }
+      if Gem::Version.new(Erbfmt::VERSION).prerelease?
+        execution_environment["GEM_REQUIREMENT_ERBFMT"] = ">= 0.a"
+      end
+
+      stdout, stderr, status = with_unbundled_env do
+        Open3.capture3(
+          execution_environment,
+          executable,
+          "--version"
+        )
+      end
 
       abort stderr unless status.success?
-      expected = "erbfmt #{cargo_version}\n"
-      abort "unexpected version output: #{stdout.inspect}" unless stdout == expected
+      expected = "erbfmt #{cargo_version}"
+      abort "unexpected version output: #{stdout.inspect}" unless stdout.strip == expected
     end
   end
 end
