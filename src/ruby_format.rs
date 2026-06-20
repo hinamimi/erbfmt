@@ -6,7 +6,7 @@ pub(crate) fn fold_command_call(code: &str) -> Option<Vec<String>> {
     }
 
     let (call, block_suffix) = split_top_level_do_block(code)?;
-    let (callee, arguments) = split_command_call(call)?;
+    let (callee, arguments) = split_call(call)?;
     let arguments = split_top_level_arguments(arguments)?;
 
     if arguments.len() < 2 {
@@ -30,6 +30,35 @@ pub(crate) fn fold_command_call(code: &str) -> Option<Vec<String>> {
     }
 
     Some(lines)
+}
+
+fn split_call(code: &str) -> Option<(&str, &str)> {
+    split_parenthesized_call(code).or_else(|| split_command_call(code))
+}
+
+fn split_parenthesized_call(code: &str) -> Option<(&str, &str)> {
+    let open_at = code.find('(')?;
+    let callee = &code[..open_at];
+
+    if !is_foldable_callee(callee) || !code.ends_with(')') {
+        return None;
+    }
+
+    let mut state = RubyScanState::default();
+
+    for (offset, ch) in code[open_at..].char_indices() {
+        if offset > 0 && state.is_top_level() {
+            return None;
+        }
+
+        if !state.consume(ch) {
+            return None;
+        }
+    }
+
+    state
+        .is_balanced()
+        .then(|| (callee, &code[open_at + 1..code.len() - 1]))
 }
 
 fn split_command_call(code: &str) -> Option<(&str, &str)> {
@@ -259,6 +288,35 @@ mod tests {
     }
 
     #[test]
+    fn folds_parenthesized_call_arguments() {
+        assert_eq!(
+            fold_command_call(
+                r#"video_tag(["intro.mp4", "intro.webm"], controls: true, class: "hero-video")"#
+            ),
+            Some(vec![
+                "video_tag(".to_string(),
+                r#"  ["intro.mp4", "intro.webm"],"#.to_string(),
+                "  controls: true,".to_string(),
+                r#"  class: "hero-video""#.to_string(),
+                ")".to_string(),
+            ])
+        );
+    }
+
+    #[test]
+    fn folds_parenthesized_call_with_do_block() {
+        assert_eq!(
+            fold_command_call("form_with(model: user, url: user_path(user)) do |form|"),
+            Some(vec![
+                "form_with(".to_string(),
+                "  model: user,".to_string(),
+                "  url: user_path(user)".to_string(),
+                ") do |form|".to_string(),
+            ])
+        );
+    }
+
+    #[test]
     fn ignores_commas_inside_strings_and_nested_values() {
         assert_eq!(
             fold_command_call(r#"link_to "Edit, profile", user_path(user, anchor: "top")"#),
@@ -291,6 +349,14 @@ mod tests {
     fn does_not_fold_unbalanced_code() {
         assert_eq!(
             fold_command_call(r#"link_to "Edit", edit_user_path(user"#),
+            None
+        );
+    }
+
+    #[test]
+    fn does_not_fold_parenthesized_call_with_trailing_expression() {
+        assert_eq!(
+            fold_command_call(r#"image_tag("profile.png", alt: "Profile") || fallback"#),
             None
         );
     }

@@ -420,6 +420,25 @@ fn config_controls_erb_tag_line_width() {
 }
 
 #[test]
+fn config_wraps_parenthesized_erb_call_at_line_width() {
+    let dir = TestDir::new("config_parenthesized_erb_line_width");
+    let config = dir.write("erbfmt.json", r#"{"formatter":{"lineWidth":60}}"#);
+    let file = dir.write(
+        "input.html.erb",
+        r#"<%= image_tag("user-placeholder.png", alt: "User profile image", class: "avatar avatar--large") %>"#,
+    );
+
+    let output = run(["--config".as_ref(), config.as_path(), file.as_path()]);
+
+    assert_success(&output);
+    assert_eq!(
+        stdout(&output),
+        "<%=\n  image_tag(\n    \"user-placeholder.png\",\n    alt: \"User profile image\",\n    class: \"avatar avatar--large\"\n  )\n%>\n"
+    );
+    assert_eq!(stderr(&output), "");
+}
+
+#[test]
 fn config_can_disable_html_indentation() {
     let dir = TestDir::new("config_indent_html_false");
     let config = dir.write("erbfmt.json", r#"{"formatter":{"indentHtml":false}}"#);

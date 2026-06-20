@@ -1222,6 +1222,39 @@ mod tests {
     }
 
     #[test]
+    fn wraps_long_parenthesized_rails_helper_calls() {
+        let options = FormatOptions {
+            line_width: 60,
+            ..FormatOptions::default()
+        };
+
+        assert_eq!(
+            format_with_options(
+                r#"<%= image_tag("user-placeholder.png", alt: "User profile image", class: "avatar avatar--large") %>"#,
+                options
+            ),
+            "<%=\n  image_tag(\n    \"user-placeholder.png\",\n    alt: \"User profile image\",\n    class: \"avatar avatar--large\"\n  )\n%>\n"
+        );
+
+        assert_eq!(
+            format_with_options(
+                r#"<%= video_tag(["intro.mp4", "intro.webm"], controls: true, autoplay: false, class: "hero-video") %>"#,
+                options
+            ),
+            "<%=\n  video_tag(\n    [\"intro.mp4\", \"intro.webm\"],\n    controls: true,\n    autoplay: false,\n    class: \"hero-video\"\n  )\n%>\n"
+        );
+
+        let formatted = format_with_options(
+            r#"<%= form_with(model: user, url: user_path(user), data: { turbo_frame: "profile" }) do |form| %><div></div><% end %>"#,
+            options,
+        );
+        let expected = "<%=\n  form_with(\n    model: user,\n    url: user_path(user),\n    data: { turbo_frame: \"profile\" }\n  ) do |form|\n%>\n  <div></div>\n<% end %>\n";
+
+        assert_eq!(formatted, expected);
+        assert_eq!(format_with_options(&formatted, options), expected);
+    }
+
+    #[test]
     fn preserves_long_erb_output_when_expression_is_not_safely_splittable() {
         assert_eq!(
             format_with_options(

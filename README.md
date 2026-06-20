@@ -94,8 +94,9 @@ formats branches such as `elsif`, `else`, `when`, `rescue`, and `ensure`, and
 recognizes output do-blocks such as `<%= form_with ... do |form| %>`.
 
 Long HTML tags are expanded one attribute per line. Simple standalone Ruby
-command calls may be wrapped with explicit parentheses when erbfmt can split
-their arguments safely. Complex or ambiguous Ruby expressions are preserved.
+method calls, with or without explicit parentheses, may be wrapped one argument
+per line when erbfmt can split them safely. Complex or ambiguous Ruby
+expressions are preserved.
 
 The linter reports malformed HTML structure, invalid list and table nesting,
 deprecated or self-closing HTML tags, duplicate attributes, and unsupported or

@@ -89,9 +89,9 @@ erbfmt --lint app/views/users/show.html.erb
 `when`、`rescue`、`ensure` などの分岐や、`<%= form_with ... do |form| %>` のような
 output do-blockも認識します。
 
-長いHTML tagはattributeごとの複数行へ展開します。単独の単純なRuby command callは、
-引数を安全に分割できる場合に限り、明示的な括弧を付けて折りたたむことがあります。
-複雑または曖昧なRuby式はそのまま保持します。
+長いHTML tagはattributeごとの複数行へ展開します。明示的な括弧の有無にかかわらず、
+単独の単純なRuby method callは、引数を安全に分割できる場合に限り、引数ごとの複数行へ
+折りたたむことがあります。複雑または曖昧なRuby式はそのまま保持します。
 
 Linterは不正なHTML構造、list/tableの不正なnesting、非推奨tag、self-closing tag、
 重複attribute、未対応または空のERB制御構文を検出します。
