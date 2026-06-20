@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="erbfmt.jsonの全設定項目を解説します。">
+    <title>設定 · erbfmt</title>
+    <link rel="icon" href="../../assets/icon.png">
+    <link rel="stylesheet" href="../../assets/styles.css">
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="../"><img src="../../assets/icon.png" alt="">erbfmt</a>
+      <nav class="topnav" aria-label="メインナビゲーション">
+        <a aria-current="page" href="../">Docs</a>
+        <a class="optional" href="https://github.com/hinamimi/erbfmt">GitHub</a>
+        <a href="../../configuration/" lang="en">English</a>
+      </nav>
+    </header>
+    <div class="docs-layout">
+      <aside class="sidebar">
+        <p class="sidebar-title">ドキュメント</p>
+        <nav aria-label="ドキュメント">
+          <a href="../">概要</a>
+          <a aria-current="page" href="./">設定</a>
+        </nav>
+        <div class="on-page">
+          <p class="sidebar-title">このページ</p>
+          <nav aria-label="このページ">
+            <a href="#config-file">設定ファイル</a>
+            <a href="#formatter">Formatter</a>
+            <a href="#linter">Linter</a>
+            <a href="#rules">Rules</a>
+          </nav>
+        </div>
+      </aside>
+      <main>
+        <p class="eyebrow">Reference</p>
+        <h1 class="doc-title">設定</h1>
+        <p class="lede"><code>erbfmt.json</code>で利用できる全項目、指定できる値、defaultの挙動をまとめています。</p>
+
+        <h2 id="config-file">設定ファイル</h2>
+        <p><code>erbfmt init</code>を実行すると、current directoryにdefault configを作成します。既存ファイルを置き換える場合は <code>erbfmt init --force</code>を使います。</p>
+        <pre><code>erbfmt init
+erbfmt init --force</code></pre>
+        <p><code>--config</code>を指定しない場合、current directoryから親directoryへ向かって <code>erbfmt.json</code>を検索します。明示したpathが常に優先されます。</p>
+        <pre><code>erbfmt --config path/to/erbfmt.json app/views/users/show.html.erb</code></pre>
+        <p>公開schemaを追加すると、editorの補完とvalidationを利用できます。</p>
+        <pre><code>{
+  "$schema": "https://hinamimi.github.io/erbfmt/schema/erbfmt.schema.json"
+}</code></pre>
+
+        <h3>全項目の例</h3>
+        <pre><code>{
+  "$schema": "https://hinamimi.github.io/erbfmt/schema/erbfmt.schema.json",
+  "formatter": {
+    "enabled": true,
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "indentHtml": true,
+    "lineEnding": "lf",
+    "lineWidth": 80,
+    "trailingNewline": true
+  },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "recommended": true,
+      "emptyErbBranch": "error",
+      "emptyErbCodeTag": "error",
+      "emptyErbControlBlock": "error",
+      "noDeprecatedHtmlTag": "error",
+      "noDuplicateHtmlAttribute": "error",
+      "noInvalidHtmlBooleanAttribute": "error",
+      "noInvalidHtmlNesting": "error",
+      "noSelfClosingHtmlTag": "error",
+      "unsupportedErbBlockStarter": "error"
+    }
+  }
+}</code></pre>
+
+        <h2 id="formatter">Formatter</h2>
+        <dl class="option-list">
+          <div class="option"><dt><code>formatter.enabled</code><span class="meta">boolean · default: true</span></dt><dd><p>format全体を有効または無効にします。無効な場合、formatter modeはsource textを変更しません。</p></dd></div>
+          <div class="option"><dt><code>formatter.indentStyle</code><span class="meta">"space" | "tab" · default: "space"</span></dt><dd><p>erbfmtが生成するindentにspaceまたはtab characterを使います。</p></dd></div>
+          <div class="option"><dt><code>formatter.indentWidth</code><span class="meta">1以上のinteger · default: 2</span></dt><dd><p><code>indentStyle</code>が <code>space</code>の場合に、indent 1 levelで使うspace数を指定します。</p></dd></div>
+          <div class="option"><dt><code>formatter.indentHtml</code><span class="meta">boolean · default: true</span></dt><dd><p>nested HTML elementに合わせてcontentをindentします。無効にしてもERB control-flowのindentは維持されます。</p></dd></div>
+          <div class="option"><dt><code>formatter.lineEnding</code><span class="meta">"lf" | "crlf" · default: "lf"</span></dt><dd><p>format結果のline endingをUnix LFまたはWindows CRLFから選びます。</p></dd></div>
+          <div class="option"><dt><code>formatter.lineWidth</code><span class="meta">1以上のinteger · default: 80</span></dt><dd><p>目標line widthを指定します。長いHTML opening tagはattributeごとに展開されます。standalone ERB tagはmarkerを別行へ移し、安全に認識できるmethod callはtop-level argumentごとに折り返すことがあります。曖昧なRuby式は変更しません。</p></dd></div>
+          <div class="option"><dt><code>formatter.trailingNewline</code><span class="meta">boolean · default: true</span></dt><dd><p>format結果の末尾へ1つのnewlineを追加します。追加しない場合は <code>false</code>を指定します。</p></dd></div>
+        </dl>
+
+        <h2 id="linter">Linter</h2>
+        <dl class="option-list">
+          <div class="option"><dt><code>linter.enabled</code><span class="meta">boolean · default: true</span></dt><dd><p>すべてのlint diagnosticsを有効または無効にします。</p></dd></div>
+          <div class="option"><dt><code>linter.rules.recommended</code><span class="meta">boolean · default: true</span></dt><dd><p>個別指定していないruleのdefault stateを制御します。<code>true</code>では未指定ruleをerrorとして有効にし、<code>false</code>では無効にします。</p></dd></div>
+        </dl>
+        <div class="callout"><p>個別ruleには <code>"off"</code>、<code>"warn"</code>、<code>"error"</code>を指定できます。warnは表示されますが <code>erbfmt --lint</code>を失敗させません。errorはnonzero exit statusになります。</p></div>
+
+        <h2 id="rules">Lint rules</h2>
+        <dl class="option-list">
+          <div class="option"><dt><code>emptyErbBranch</code><span class="meta">off | warn | error</span></dt><dd><p><span class="rule-name">空のERB branchを検出します。</span> <code>else</code>、<code>elsif</code>、<code>when</code>、<code>rescue</code>、<code>ensure</code>などに意味のあるcontentがない場合に報告します。</p></dd></div>
+          <div class="option"><dt><code>emptyErbCodeTag</code><span class="meta">off | warn | error</span></dt><dd><p><span class="rule-name">空のcode/output tagを検出します。</span> Ruby式を含まない <code>&lt;% %&gt;</code>や <code>&lt;%= %&gt;</code>を報告します。</p></dd></div>
+          <div class="option"><dt><code>emptyErbControlBlock</code><span class="meta">off | warn | error</span></dt><dd><p><span class="rule-name">空のcontrol-flow blockを検出します。</span> 対応しているERB block openerと、それに対応する <code>end</code>の間に意味のあるbodyがない場合に報告します。</p></dd></div>
+          <div class="option"><dt><code>noDeprecatedHtmlTag</code><span class="meta">off | warn | error</span></dt><dd><p><span class="rule-name">非推奨HTML elementを禁止します。</span> 現在のHTMLとCSSへ置き換えるべきpresentationalまたはobsolete tagを報告します。</p></dd></div>
+          <div class="option"><dt><code>noDuplicateHtmlAttribute</code><span class="meta">off | warn | error</span></dt><dd><p><span class="rule-name">重複attributeを禁止します。</span> ひとつのHTML opening tagで同じattribute名を複数回指定した場合に報告します。</p></dd></div>
+          <div class="option"><dt><code>noInvalidHtmlBooleanAttribute</code><span class="meta">off | warn | error</span></dt><dd><p><span class="rule-name">boolean attributeの値を検証します。</span> HTML boolean attributeは値を省略するかattribute自身の名前を使い、任意のstring valueは指定しません。</p></dd></div>
+          <div class="option"><dt><code>noInvalidHtmlNesting</code><span class="meta">off | warn | error</span></dt><dd><p><span class="rule-name">一般的なHTML content modelを検証します。</span> list child、table構造、paragraph内のblock-level elementを確認します。</p></dd></div>
+          <div class="option"><dt><code>noSelfClosingHtmlTag</code><span class="meta">off | warn | error</span></dt><dd><p><span class="rule-name">XML形式のself-closing HTML構文を禁止します。</span> HTML5で通常のopening/closing pair、またはslashなしのvoid elementを使う場所の <code>/&gt;</code>を報告します。</p></dd></div>
+          <div class="option"><dt><code>unsupportedErbBlockStarter</code><span class="meta">off | warn | error</span></dt><dd><p><span class="rule-name">未対応のblock starterを検出します。</span> ERB blockに見えるものの、formatterの対応範囲外にあるRuby control-flow formを報告します。</p></dd></div>
+        </dl>
+
+        <footer class="footer">erbfmt 0.1.0 configuration · <a href="https://github.com/hinamimi/erbfmt/blob/main/docs/schema/erbfmt.schema.json">schema sourceを見る</a></footer>
+      </main>
+    </div>
+  </body>
+</html>

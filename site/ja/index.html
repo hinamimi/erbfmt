@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="erbfmtはERBとHTML+ERBを整形、lintするtoolです。">
+    <title>erbfmt ドキュメント</title>
+    <link rel="icon" href="../assets/icon.png">
+    <link rel="stylesheet" href="../assets/styles.css">
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="./"><img src="../assets/icon.png" alt="">erbfmt</a>
+      <nav class="topnav" aria-label="メインナビゲーション">
+        <a aria-current="page" href="./">Docs</a>
+        <a class="optional" href="https://github.com/hinamimi/erbfmt">GitHub</a>
+        <a href="../" lang="en">English</a>
+      </nav>
+    </header>
+    <div class="docs-layout">
+      <aside class="sidebar">
+        <p class="sidebar-title">ドキュメント</p>
+        <nav aria-label="ドキュメント">
+          <a aria-current="page" href="./">概要</a>
+          <a href="./configuration/">設定</a>
+        </nav>
+        <div class="on-page">
+          <p class="sidebar-title">このページ</p>
+          <nav aria-label="このページ">
+            <a href="#install">インストール</a>
+            <a href="#quick-start">クイックスタート</a>
+            <a href="#principles">設計方針</a>
+          </nav>
+        </div>
+      </aside>
+      <main>
+        <p class="eyebrow">ERB formatter and linter</p>
+        <h1>erbfmt</h1>
+        <p class="lede">RailsのERBとHTML+ERB向けの高速な、Prettier/BiomeのようなFormatter/Linterです。</p>
+        <div class="actions">
+          <a class="action primary" href="#install">はじめる</a>
+          <a class="action" href="https://github.com/hinamimi/erbfmt/releases/tag/v0.1.0">v0.1.0をdownload</a>
+        </div>
+        <pre aria-label="整形例"><code><span class="diff-remove">-&lt;div&gt;&lt;% if user.admin? %&gt;&lt;span&gt;Admin&lt;/span&gt;&lt;% end %&gt;&lt;/div&gt;</span>
+<span class="diff-add">+&lt;div&gt;</span>
+<span class="diff-add">+  &lt;% if user.admin? %&gt;</span>
+<span class="diff-add">+    &lt;span&gt;Admin&lt;/span&gt;</span>
+<span class="diff-add">+  &lt;% end %&gt;</span>
+<span class="diff-add">+&lt;/div&gt;</span></code></pre>
+
+        <div class="feature-grid" aria-label="主な機能">
+          <section class="feature">
+            <h2>ひとつの構造</h2>
+            <p>HTMLのnestingとERB制御構文を別々のtextではなく、ひとつのtemplateとして整形します。</p>
+          </section>
+          <section class="feature">
+            <h2>安全を優先</h2>
+            <p>安全に認識して書き換えられないRuby式は、積極的に変更せず保持します。</p>
+          </section>
+          <section class="feature">
+            <h2>Formatter + Linter</h2>
+            <p>local、CI、first-party VS Code extensionから同じRust CLIを利用できます。</p>
+          </section>
+        </div>
+
+        <h2 id="install">インストール</h2>
+        <p><a href="https://github.com/hinamimi/erbfmt/releases/tag/v0.1.0">v0.1.0 release</a>からLinux、macOS、Windows向けarchiveをdownloadして展開し、<code>erbfmt</code>または <code>erbfmt.exe</code>を <code>PATH</code>へ配置します。</p>
+        <p>Rust toolchainがある場合はtagged sourceから直接installできます。</p>
+        <pre><code>cargo install --git https://github.com/hinamimi/erbfmt --tag v0.1.0 --locked</code></pre>
+        <p>commandが利用できることを確認します。</p>
+        <pre><code>erbfmt --version
+erbfmt --help</code></pre>
+        <div class="callout"><p>初期releaseはGitHub Releasesだけで配布し、crates.io、npm、RubyGems.org、extension marketplaceには登録しません。</p></div>
+
+        <h2 id="quick-start">クイックスタート</h2>
+        <p>Rails projectに <code>erbfmt.json</code>を作り、templateをformatまたはlintします。</p>
+        <pre><code>cd your-rails-project
+erbfmt init
+erbfmt --write app/views/users/show.html.erb
+erbfmt --check app/views/users/show.html.erb
+erbfmt --lint app/views/users/show.html.erb</code></pre>
+        <p><code>--write</code>、<code>--check</code>、<code>--lint</code>は同時に指定できません。checkはformatによる変更が必要な場合、lintはerror levelの診断が見つかった場合に失敗します。</p>
+        <p>indent、line width、lint severityの変更は<a href="./configuration/">設定リファレンス</a>を参照してください。</p>
+
+        <h2 id="principles">設計方針</h2>
+        <h3>HTMLとERBを一緒に扱う</h3>
+        <p>erbfmtはHTML elementと、<code>if</code>、<code>case</code>、<code>do</code>、branch、<code>end</code>などのERB control-flow markerを認識します。長いHTML tagと、安全に認識できるstandalone ERB callは設定したline widthに合わせて折り返します。</p>
+        <h3>曖昧なRubyは保持する</h3>
+        <p>完全なRuby ASTの構築やRails applicationのsemantic analysisは行いません。複雑な式は積極的に書き換えず、そのまま保持します。</p>
+        <h3>どこでも同じCLI</h3>
+        <p>VS Code extensionはterminalやCIと同じCLIを呼び出す薄いwrapperです。formatとdiagnosticsの結果を揃えられます。</p>
+
+        <footer class="footer">erbfmt documentation · <a href="https://github.com/hinamimi/erbfmt">GitHubでsourceを見る</a></footer>
+      </main>
+    </div>
+  </body>
+</html>

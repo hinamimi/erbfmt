@@ -148,6 +148,7 @@ resolution details.
 
 ## Documentation
 
+- [Documentation site](https://hinamimi.github.io/erbfmt/)
 - [Configuration](docs/Configuration.md)
 - [Lint Rules](docs/LintRules.md)
 - [Ignore Directives](docs/Ignore.md)

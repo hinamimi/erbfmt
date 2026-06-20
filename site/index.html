@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="erbfmt formats and lints ERB and HTML+ERB templates.">
+    <title>erbfmt documentation</title>
+    <link rel="icon" href="./assets/icon.png">
+    <link rel="stylesheet" href="./assets/styles.css">
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="./"><img src="./assets/icon.png" alt="">erbfmt</a>
+      <nav class="topnav" aria-label="Primary navigation">
+        <a aria-current="page" href="./">Docs</a>
+        <a class="optional" href="https://github.com/hinamimi/erbfmt">GitHub</a>
+        <a href="./ja/" lang="ja">日本語</a>
+      </nav>
+    </header>
+    <div class="docs-layout">
+      <aside class="sidebar">
+        <p class="sidebar-title">Documentation</p>
+        <nav aria-label="Documentation">
+          <a aria-current="page" href="./">Overview</a>
+          <a href="./configuration/">Configuration</a>
+        </nav>
+        <div class="on-page">
+          <p class="sidebar-title">On this page</p>
+          <nav aria-label="On this page">
+            <a href="#install">Install</a>
+            <a href="#quick-start">Quick start</a>
+            <a href="#principles">Principles</a>
+          </nav>
+        </div>
+      </aside>
+      <main>
+        <p class="eyebrow">ERB formatter and linter</p>
+        <h1>erbfmt</h1>
+        <p class="lede">A fast, Prettier/Biome-like formatter and linter for Rails ERB and HTML+ERB templates.</p>
+        <div class="actions">
+          <a class="action primary" href="#install">Get started</a>
+          <a class="action" href="https://github.com/hinamimi/erbfmt/releases/tag/v0.1.0">Download v0.1.0</a>
+        </div>
+        <pre aria-label="Formatting example"><code><span class="diff-remove">-&lt;div&gt;&lt;% if user.admin? %&gt;&lt;span&gt;Admin&lt;/span&gt;&lt;% end %&gt;&lt;/div&gt;</span>
+<span class="diff-add">+&lt;div&gt;</span>
+<span class="diff-add">+  &lt;% if user.admin? %&gt;</span>
+<span class="diff-add">+    &lt;span&gt;Admin&lt;/span&gt;</span>
+<span class="diff-add">+  &lt;% end %&gt;</span>
+<span class="diff-add">+&lt;/div&gt;</span></code></pre>
+
+        <div class="feature-grid" aria-label="Key features">
+          <section class="feature">
+            <h2>One structure</h2>
+            <p>Formats HTML nesting and ERB control flow together instead of treating them as unrelated text.</p>
+          </section>
+          <section class="feature">
+            <h2>Safe by default</h2>
+            <p>Preserves Ruby expressions when they cannot be recognized and rewritten safely.</p>
+          </section>
+          <section class="feature">
+            <h2>Formatter + linter</h2>
+            <p>Use the same Rust CLI locally, in CI, and through the first-party VS Code extension.</p>
+          </section>
+        </div>
+
+        <h2 id="install">Install</h2>
+        <p>Download the archive for Linux, macOS, or Windows from the <a href="https://github.com/hinamimi/erbfmt/releases/tag/v0.1.0">v0.1.0 release</a>, extract it, and place <code>erbfmt</code> or <code>erbfmt.exe</code> on your <code>PATH</code>.</p>
+        <p>With a Rust toolchain, install the tagged source directly:</p>
+        <pre><code>cargo install --git https://github.com/hinamimi/erbfmt --tag v0.1.0 --locked</code></pre>
+        <p>Confirm the command is available:</p>
+        <pre><code>erbfmt --version
+erbfmt --help</code></pre>
+        <div class="callout"><p>Initial releases are distributed through GitHub Releases, not crates.io, npm, RubyGems.org, or extension marketplaces.</p></div>
+
+        <h2 id="quick-start">Quick start</h2>
+        <p>Create <code>erbfmt.json</code> in the Rails project, then format or lint templates.</p>
+        <pre><code>cd your-rails-project
+erbfmt init
+erbfmt --write app/views/users/show.html.erb
+erbfmt --check app/views/users/show.html.erb
+erbfmt --lint app/views/users/show.html.erb</code></pre>
+        <p><code>--write</code>, <code>--check</code>, and <code>--lint</code> are mutually exclusive. Check mode fails when formatting would change a file. Lint mode fails when it finds an error-level diagnostic.</p>
+        <p>Continue with the <a href="./configuration/">configuration reference</a> to choose indentation, line width, and lint severities.</p>
+
+        <h2 id="principles">Principles</h2>
+        <h3>HTML and ERB belong together</h3>
+        <p>erbfmt understands HTML elements and ERB control-flow markers such as <code>if</code>, <code>case</code>, <code>do</code>, branches, and <code>end</code>. Long HTML tags and safely recognized standalone ERB calls can be wrapped to the configured line width.</p>
+        <h3>Ambiguous Ruby stays intact</h3>
+        <p>erbfmt does not build a full Ruby AST or analyze Rails application semantics. Complex expressions are preserved rather than aggressively rewritten.</p>
+        <h3>One CLI everywhere</h3>
+        <p>The VS Code extension is a thin wrapper around the same CLI used in a terminal and CI, keeping formatting and diagnostics consistent.</p>
+
+        <footer class="footer">erbfmt documentation · <a href="https://github.com/hinamimi/erbfmt">Source on GitHub</a></footer>
+      </main>
+    </div>
+  </body>
+</html>
