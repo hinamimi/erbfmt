@@ -108,6 +108,10 @@ impl<'a> Formatter<'a> {
                     index += 1;
                 }
 
+                if index < nodes.len() && is_inline_line_tail(&nodes[index]) {
+                    index += 1;
+                }
+
                 if index - start == 1 {
                     self.format_node(&nodes[start], depth);
                 } else {
@@ -208,7 +212,7 @@ impl<'a> Formatter<'a> {
         }
 
         if can_render_inline(children) && self.can_keep_html_element_inline(open, depth) {
-            let content = render_inline_nodes(children);
+            let content = render_inline_nodes_untrimmed(children);
             self.write_indented_line(depth, &format!("{open}{content}{close}"));
         } else {
             self.write_tag(open, depth);
@@ -624,40 +628,53 @@ fn can_render_inline(nodes: &[Node]) -> bool {
 fn is_inline_node(node: &Node) -> bool {
     match node.unspanned() {
         Node::HtmlText(text) => !text.contains('\n'),
+        Node::HtmlElement { children, .. } => can_render_inline(children),
         Node::HtmlSelfClosing { .. }
         | Node::HtmlVoid { .. }
+        | Node::HtmlComment(_)
+        | Node::ErbComment(_)
         | Node::ErbCode(_)
         | Node::ErbOutput(_) => true,
-        Node::HtmlElement { .. }
-        | Node::HtmlComment(_)
-        | Node::HtmlDoctype(_)
-        | Node::ErbComment(_)
-        | Node::Spanned { .. }
-        | Node::ErbBlock { .. } => false,
+        Node::HtmlDoctype(_) | Node::Spanned { .. } | Node::ErbBlock { .. } => false,
     }
 }
 
+fn is_inline_line_tail(node: &Node) -> bool {
+    let Node::HtmlText(text) = node.unspanned() else {
+        return false;
+    };
+    let Some(line) = text.strip_suffix('\n') else {
+        return false;
+    };
+
+    !line.contains('\n') && line.chars().any(|ch| !ch.is_whitespace())
+}
+
 fn render_inline_nodes(nodes: &[Node]) -> String {
-    nodes
-        .iter()
-        .map(render_inline_node)
-        .collect::<String>()
-        .trim()
-        .to_string()
+    render_inline_nodes_untrimmed(nodes).trim().to_string()
+}
+
+fn render_inline_nodes_untrimmed(nodes: &[Node]) -> String {
+    nodes.iter().map(render_inline_node).collect::<String>()
 }
 
 fn render_inline_node(node: &Node) -> String {
     match node.unspanned() {
         Node::HtmlText(text) => text.clone(),
+        Node::HtmlElement {
+            open,
+            close,
+            children,
+            ..
+        } => format!("{open}{}{close}", render_inline_nodes_untrimmed(children)),
         Node::HtmlSelfClosing { raw, .. } | Node::HtmlVoid { raw, .. } => raw.clone(),
+        Node::HtmlComment(comment) => comment.clone(),
         Node::ErbCode(code) => format_erb_tag_inline(ErbTagMarker::Code, code.trim()),
+        Node::ErbComment(comment) => format_erb_comment(comment),
         Node::ErbOutput(code) => format_erb_tag_inline(ErbTagMarker::Output, code.trim()),
-        Node::HtmlElement { .. }
-        | Node::HtmlComment(_)
-        | Node::HtmlDoctype(_)
-        | Node::ErbComment(_)
-        | Node::Spanned { .. }
-        | Node::ErbBlock { .. } => unreachable!("node cannot render inline"),
+        Node::HtmlDoctype(_) | Node::Spanned { .. } | Node::ErbBlock { .. } => {
+            unreachable!("node cannot render inline")
+        }
     }
 }
 
@@ -886,6 +903,48 @@ mod tests {
             format("<h1><%= page_title %></h1>\n<p>Hello, <%= user.name %></p>\n"),
             "<h1><%= page_title %></h1>\n<p>Hello, <%= user.name %></p>\n"
         );
+    }
+
+    #[test]
+    fn preserves_text_adjacent_to_inline_html_inside_erb_blocks() {
+        let code_block =
+            "<% link_to(user_path(user)) do %>\n<i class=\"icon\"></i>test\n<% end %>\n";
+        let output_block =
+            "<%= link_to(user_path(user)) do %>\n<i class=\"icon\"></i>test\n<% end %>\n";
+        let formatted =
+            "<% link_to(user_path(user)) do %>\n  <i class=\"icon\"></i>test\n<% end %>\n";
+
+        assert_eq!(format(code_block), formatted);
+        assert_eq!(format(formatted), formatted);
+        assert_eq!(
+            format(output_block),
+            "<%= link_to(user_path(user)) do %>\n  <i class=\"icon\"></i>test\n<% end %>\n"
+        );
+
+        assert_eq!(
+            format_with_options(
+                "<p><i class=\"long-icon-name\"></i>test</p>\n",
+                FormatOptions {
+                    line_width: 20,
+                    ..FormatOptions::default()
+                }
+            ),
+            "<p><i class=\"long-icon-name\"></i>test</p>\n"
+        );
+    }
+
+    #[test]
+    fn preserves_whitespace_boundaries_around_inline_html() {
+        let input = "<p>Hello <strong>world</strong>!</p>\n<span> padded </span>\n<i></i>\ntext\n";
+
+        assert_eq!(format(input), input);
+    }
+
+    #[test]
+    fn preserves_text_adjacency_across_inline_comments() {
+        let input = "<p>first<!-- separator -->second<%# note %>third</p>\n";
+
+        assert_eq!(format(input), input);
     }
 
     #[test]

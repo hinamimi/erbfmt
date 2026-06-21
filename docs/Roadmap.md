@@ -1318,6 +1318,44 @@ workflowへ移します。
 - `v0.1.0` artifactを使い、13assetの収集と4checksumの一致を再現確認した。
 - 実際のdraft作成は次のrelease tagで確認する。
 
+## Milestone 66
+
+`v0.1.1` formatter safety patch
+
+Status: In Progress
+
+実利用で見つかった、`lineWidth`とinline whitespaceに関する安全性の修正を
+`v0.1.1`としてまとめます。
+
+やること:
+
+- parenthesized Ruby helper callをtop-level argumentごとに安全に折り返す。
+- inline HTML elementと隣接textの間へ新しいwhitespaceを追加しない。
+- sourceに存在するinline element内部と前後のspaceを保持する。
+- 既存newlineは維持し、whitespace semanticを`lineWidth`より優先する。
+- full test / clippy後にversionを`0.1.1`へ更新してreleaseする。
+
+完了条件:
+
+- `form_with(...)`、`image_tag(...)`などのlong callを安全に折り返せる。
+- `<i></i>text`がformat後も同一行かつ隣接したままになる。
+- inline commentやnested inline elementでも隣接textを壊さない。
+- format結果がidempotentである。
+- `v0.1.1` draft release workflowが成功する。
+
+範囲外:
+
+- full Ruby AST formatting
+- CSS display propertyのsemantic analysis
+- whitespaceを変更してよいinline contentのaggressive wrapping
+
+進行状況:
+
+- parenthesized Ruby helper call wrappingをmainへmerge済み。
+- inline HTML element、text、commentを同一line sequenceとしてrenderするようにした。
+- line末尾textだけをsequenceへ取り込み、次行のelementは結合しないようにした。
+- code/output ERB block、space保持、既存newline、idempotency、短い`lineWidth`をtestした。
+
 ## 後で考えること
 
 - VSCode Marketplace publishing
