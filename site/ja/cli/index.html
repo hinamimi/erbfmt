@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="erbfmt command-line interfaceのリファレンスです。">
+    <title>CLI · erbfmt</title>
+    <link rel="icon" href="../../assets/icon.png">
+    <link rel="stylesheet" href="../../assets/styles.css">
+    <script defer src="../../assets/highlight.js"></script>
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="../"><img src="../../assets/icon.png" alt="">erbfmt</a>
+      <nav class="topnav" aria-label="メインナビゲーション">
+        <a aria-current="page" href="../">Docs</a>
+        <a class="optional" href="https://github.com/hinamimi/erbfmt">GitHub</a>
+        <a href="../../cli/" lang="en">English</a>
+      </nav>
+    </header>
+    <div class="docs-layout">
+      <aside class="sidebar">
+        <p class="sidebar-title">ドキュメント</p>
+        <nav aria-label="ドキュメント">
+          <a href="../">概要</a>
+          <a aria-current="page" href="./">CLI</a>
+          <a href="../configuration/">設定</a>
+        </nav>
+        <div class="on-page">
+          <p class="sidebar-title">目次</p>
+          <nav aria-label="目次">
+            <a href="#usage">使い方</a>
+            <a href="#modes">モード</a>
+            <a href="#options">オプション</a>
+            <a href="#init">初期化</a>
+            <a href="#exit-status">終了ステータス</a>
+          </nav>
+        </div>
+      </aside>
+      <main>
+        <p class="eyebrow">リファレンス</p>
+        <h1 class="doc-title">CLI</h1>
+        <p class="lede">terminalやCIからHTML+ERB fileをformat、check、lintします。</p>
+
+        <h2 id="usage">使い方</h2>
+        <pre><code class="language-bash">erbfmt [OPTIONS] [FILE]...
+erbfmt init [--force]</code></pre>
+        <p>format、check、lintには1つ以上のfile pathが必要です。現在は標準入力に対応していません。単一fileはすべてのmodeを利用でき、複数fileには <code>--write</code>、<code>--check</code>、<code>--lint</code>のいずれかが必要です。</p>
+        <p>shellのglob展開で複数pathを渡せます。</p>
+        <pre><code class="language-bash">erbfmt --write app/views/**/*.html.erb</code></pre>
+
+        <h2 id="modes">モード</h2>
+        <dl class="option-list">
+          <div class="option"><dt><code>erbfmt FILE</code><span class="meta">標準出力 · 単一file</span></dt><dd><p>1つのfileをformatし、source fileを変更せず結果を標準出力へ表示します。</p></dd></div>
+          <div class="option"><dt><code>--write</code><span class="meta">1つ以上のfile</span></dt><dd><p>各fileをformatして上書きします。成功するとfileごとに確認messageを表示します。</p></dd></div>
+          <div class="option"><dt><code>--check</code><span class="meta">1つ以上のfile</span></dt><dd><p>fileを書き換えず、formatによる変更が必要か確認します。未formatのfileが1つでもあると失敗します。</p></dd></div>
+          <div class="option"><dt><code>--lint</code><span class="meta">1つ以上のfile</span></dt><dd><p>formatせずlint diagnosticsを実行します。errorがある場合は失敗し、warningだけの場合は成功します。</p></dd></div>
+        </dl>
+        <div class="callout"><p><code>--write</code>、<code>--check</code>、<code>--lint</code>は同時に指定できません。</p></div>
+
+        <h2 id="options">オプション</h2>
+        <dl class="option-list">
+          <div class="option"><dt><code>--config PATH</code></dt><dd><p>指定した <code>erbfmt.json</code>を使います。指定しない場合はcurrent directoryから親directoryへ向かって検索し、見つからなければbuilt-in defaultを使います。</p></dd></div>
+          <div class="option"><dt><code>-h, --help</code></dt><dd><p>command helpを表示して終了します。</p></dd></div>
+          <div class="option"><dt><code>-V, --version</code></dt><dd><p>installされているerbfmtのversionを表示して終了します。</p></dd></div>
+        </dl>
+        <p>formatterとlinterの全項目は<a href="../configuration/">設定リファレンス</a>を参照してください。</p>
+
+        <h2 id="init">初期化</h2>
+        <p>current directoryにdefaultの <code>erbfmt.json</code>を作成します。</p>
+        <pre><code class="language-bash">erbfmt init</code></pre>
+        <p>既存fileは自動的に置き換えません。明示的に上書きする場合は次を実行します。</p>
+        <pre><code class="language-bash">erbfmt init --force</code></pre>
+
+        <h2 id="exit-status">終了ステータス</h2>
+        <dl class="option-list">
+          <div class="option"><dt><code>0</code><span class="meta">成功</span></dt><dd><p>formatまたはwriteが完了した、すべてのcheck対象がformat済みだった、またはlintでerrorが見つからなかった場合です。</p></dd></div>
+          <div class="option"><dt><code>1</code><span class="meta">処理失敗</span></dt><dd><p>未formatのfile、lint error、file path不足、file/configの読み込みやparse失敗などが発生した場合です。</p></dd></div>
+          <div class="option"><dt><code>2</code><span class="meta">不正なCLI指定</span></dt><dd><p>無効なoptionを指定した、または同時に使えないmode flagを組み合わせた場合です。</p></dd></div>
+        </dl>
+
+        <h3>CIでの例</h3>
+        <pre><code class="language-bash">erbfmt --check app/views/**/*.html.erb
+erbfmt --lint app/views/**/*.html.erb</code></pre>
+
+        <footer class="footer">erbfmt 0.1.1 CLI reference · <a href="https://github.com/hinamimi/erbfmt/blob/main/src/main.rs">CLI sourceを見る</a></footer>
+      </main>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="erbfmt command-line interface reference.">
+    <title>CLI · erbfmt</title>
+    <link rel="icon" href="../assets/icon.png">
+    <link rel="stylesheet" href="../assets/styles.css">
+    <script defer src="../assets/highlight.js"></script>
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="../"><img src="../assets/icon.png" alt="">erbfmt</a>
+      <nav class="topnav" aria-label="Primary navigation">
+        <a aria-current="page" href="../">Docs</a>
+        <a class="optional" href="https://github.com/hinamimi/erbfmt">GitHub</a>
+        <a href="../ja/cli/" lang="ja">日本語</a>
+      </nav>
+    </header>
+    <div class="docs-layout">
+      <aside class="sidebar">
+        <p class="sidebar-title">Documentation</p>
+        <nav aria-label="Documentation">
+          <a href="../">Overview</a>
+          <a aria-current="page" href="./">CLI</a>
+          <a href="../configuration/">Configuration</a>
+        </nav>
+        <div class="on-page">
+          <p class="sidebar-title">On this page</p>
+          <nav aria-label="On this page">
+            <a href="#usage">Usage</a>
+            <a href="#modes">Modes</a>
+            <a href="#options">Options</a>
+            <a href="#init">Init</a>
+            <a href="#exit-status">Exit status</a>
+          </nav>
+        </div>
+      </aside>
+      <main>
+        <p class="eyebrow">Reference</p>
+        <h1 class="doc-title">CLI</h1>
+        <p class="lede">Format, check, and lint HTML+ERB files from a terminal or CI.</p>
+
+        <h2 id="usage">Usage</h2>
+        <pre><code class="language-bash">erbfmt [OPTIONS] [FILE]...
+erbfmt init [--force]</code></pre>
+        <p>At least one file path is required for formatting, checking, or linting. Standard input is not currently supported. A single file can use any mode; multiple files require <code>--write</code>, <code>--check</code>, or <code>--lint</code>.</p>
+        <p>Shell glob expansion can provide multiple paths:</p>
+        <pre><code class="language-bash">erbfmt --write app/views/**/*.html.erb</code></pre>
+
+        <h2 id="modes">Modes</h2>
+        <dl class="option-list">
+          <div class="option"><dt><code>erbfmt FILE</code><span class="meta">stdout · one file</span></dt><dd><p>Formats one file and prints the result to standard output without changing the source file.</p></dd></div>
+          <div class="option"><dt><code>--write</code><span class="meta">one or more files</span></dt><dd><p>Formats each file in place. A successful write prints one confirmation line per file.</p></dd></div>
+          <div class="option"><dt><code>--check</code><span class="meta">one or more files</span></dt><dd><p>Checks whether formatting would change each file without writing it. The command fails when any file is not formatted.</p></dd></div>
+          <div class="option"><dt><code>--lint</code><span class="meta">one or more files</span></dt><dd><p>Runs lint diagnostics without formatting. Error diagnostics fail the command; warning-only results succeed.</p></dd></div>
+        </dl>
+        <div class="callout"><p><code>--write</code>, <code>--check</code>, and <code>--lint</code> are mutually exclusive.</p></div>
+
+        <h2 id="options">Options</h2>
+        <dl class="option-list">
+          <div class="option"><dt><code>--config PATH</code></dt><dd><p>Uses the specified <code>erbfmt.json</code>. Without this option, erbfmt searches the current directory and then its parents. If no config is found, built-in defaults are used.</p></dd></div>
+          <div class="option"><dt><code>-h, --help</code></dt><dd><p>Prints command help and exits.</p></dd></div>
+          <div class="option"><dt><code>-V, --version</code></dt><dd><p>Prints the installed erbfmt version and exits.</p></dd></div>
+        </dl>
+        <p>See the <a href="../configuration/">configuration reference</a> for every formatter and linter setting.</p>
+
+        <h2 id="init">Init</h2>
+        <p>Create the default <code>erbfmt.json</code> in the current directory:</p>
+        <pre><code class="language-bash">erbfmt init</code></pre>
+        <p>The command refuses to replace an existing file. Overwrite it explicitly with:</p>
+        <pre><code class="language-bash">erbfmt init --force</code></pre>
+
+        <h2 id="exit-status">Exit status</h2>
+        <dl class="option-list">
+          <div class="option"><dt><code>0</code><span class="meta">success</span></dt><dd><p>Formatting or writing completed, every checked file was formatted, or lint found no error-level diagnostics.</p></dd></div>
+          <div class="option"><dt><code>1</code><span class="meta">operation failed</span></dt><dd><p>A checked file needs formatting, lint found an error, a required file was missing, or file/config parsing failed.</p></dd></div>
+          <div class="option"><dt><code>2</code><span class="meta">invalid CLI usage</span></dt><dd><p>An option was invalid or mutually exclusive mode flags were combined.</p></dd></div>
+        </dl>
+
+        <h3>CI examples</h3>
+        <pre><code class="language-bash">erbfmt --check app/views/**/*.html.erb
+erbfmt --lint app/views/**/*.html.erb</code></pre>
+
+        <footer class="footer">CLI reference for erbfmt 0.1.1 · <a href="https://github.com/hinamimi/erbfmt/blob/main/src/main.rs">View CLI source</a></footer>
+      </main>
+    </div>
+  </body>
+</html>

@@ -23,11 +23,12 @@
         <p class="sidebar-title">ドキュメント</p>
         <nav aria-label="ドキュメント">
           <a href="../">概要</a>
+          <a href="../cli/">CLI</a>
           <a aria-current="page" href="./">設定</a>
         </nav>
         <div class="on-page">
-          <p class="sidebar-title">このページ</p>
-          <nav aria-label="このページ">
+          <p class="sidebar-title">目次</p>
+          <nav aria-label="目次">
             <a href="#config-file">設定ファイル</a>
             <a href="#formatter">Formatter</a>
             <a href="#linter">Linter</a>
@@ -48,12 +49,12 @@ erbfmt init --force</code></pre>
         <pre><code class="language-bash">erbfmt --config path/to/erbfmt.json app/views/users/show.html.erb</code></pre>
         <p>公開schemaを追加すると、editorの補完とvalidationを利用できます。</p>
         <pre><code class="language-json">{
-  "$schema": "https://hinamimi.github.io/erbfmt/schema/erbfmt.schema.json"
+  "$schema": "https://raw.githubusercontent.com/hinamimi/erbfmt/main/docs/schema/erbfmt.schema.json"
 }</code></pre>
 
         <h3>全項目の例</h3>
         <pre><code class="language-json">{
-  "$schema": "https://hinamimi.github.io/erbfmt/schema/erbfmt.schema.json",
+  "$schema": "https://raw.githubusercontent.com/hinamimi/erbfmt/main/docs/schema/erbfmt.schema.json",
   "formatter": {
     "enabled": true,
     "indentStyle": "space",

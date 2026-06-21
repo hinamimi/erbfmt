@@ -23,6 +23,7 @@
         <p class="sidebar-title">Documentation</p>
         <nav aria-label="Documentation">
           <a href="../">Overview</a>
+          <a href="../cli/">CLI</a>
           <a aria-current="page" href="./">Configuration</a>
         </nav>
         <div class="on-page">
@@ -48,12 +49,12 @@ erbfmt init --force</code></pre>
         <pre><code class="language-bash">erbfmt --config path/to/erbfmt.json app/views/users/show.html.erb</code></pre>
         <p>Add the published schema for editor completion and validation:</p>
         <pre><code class="language-json">{
-  "$schema": "https://hinamimi.github.io/erbfmt/schema/erbfmt.schema.json"
+  "$schema": "https://raw.githubusercontent.com/hinamimi/erbfmt/main/docs/schema/erbfmt.schema.json"
 }</code></pre>
 
         <h3>Complete example</h3>
         <pre><code class="language-json">{
-  "$schema": "https://hinamimi.github.io/erbfmt/schema/erbfmt.schema.json",
+  "$schema": "https://raw.githubusercontent.com/hinamimi/erbfmt/main/docs/schema/erbfmt.schema.json",
   "formatter": {
     "enabled": true,
     "indentStyle": "space",
