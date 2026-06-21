@@ -78,6 +78,12 @@ struct Formatter<'a> {
     preserved_ranges: HashMap<SourceRange, SourceRange>,
 }
 
+#[derive(Clone, Copy)]
+enum FormattingNode<'a> {
+    Node(&'a Node),
+    HtmlText(&'a str),
+}
+
 impl<'a> Formatter<'a> {
     fn new(document: &Document, source: Option<&'a str>, options: FormatOptions) -> Self {
         let preserved_ranges = source
@@ -93,34 +99,40 @@ impl<'a> Formatter<'a> {
     }
 
     fn format_nodes(&mut self, nodes: &[Node], depth: usize) {
+        let nodes = split_formatting_nodes(nodes, &self.preserved_ranges);
         let mut index = 0;
 
         while index < nodes.len() {
-            if self.write_ignored_node(&nodes[index]) {
+            if let FormattingNode::Node(node) = nodes[index]
+                && self.write_ignored_node(node)
+            {
                 index += 1;
                 continue;
             }
 
-            if is_inline_node(&nodes[index]) {
+            if is_inline_formatting_node(nodes[index]) {
                 let start = index;
 
-                while index < nodes.len() && is_inline_node(&nodes[index]) {
-                    index += 1;
-                }
-
-                if index < nodes.len() && is_inline_line_tail(&nodes[index]) {
+                while index < nodes.len() && is_inline_formatting_node(nodes[index]) {
                     index += 1;
                 }
 
                 if index - start == 1 {
-                    self.format_node(&nodes[start], depth);
+                    self.format_formatting_node(nodes[start], depth);
                 } else {
-                    self.write_inline_nodes(&nodes[start..index], depth);
+                    self.write_inline_formatting_nodes(&nodes[start..index], depth);
                 }
             } else {
-                self.format_node(&nodes[index], depth);
+                self.format_formatting_node(nodes[index], depth);
                 index += 1;
             }
+        }
+    }
+
+    fn format_formatting_node(&mut self, node: FormattingNode<'_>, depth: usize) {
+        match node {
+            FormattingNode::Node(node) => self.format_node(node, depth),
+            FormattingNode::HtmlText(text) => self.write_text(text, depth),
         }
     }
 
@@ -221,8 +233,8 @@ impl<'a> Formatter<'a> {
         }
     }
 
-    fn write_inline_nodes(&mut self, nodes: &[Node], depth: usize) {
-        let inline = render_inline_nodes(nodes);
+    fn write_inline_formatting_nodes(&mut self, nodes: &[FormattingNode<'_>], depth: usize) {
+        let inline = render_inline_formatting_nodes(nodes);
 
         if inline.is_empty() {
             return;
@@ -625,6 +637,58 @@ fn can_render_inline(nodes: &[Node]) -> bool {
     nodes.iter().all(is_inline_node)
 }
 
+fn split_formatting_nodes<'a>(
+    nodes: &'a [Node],
+    preserved_ranges: &HashMap<SourceRange, SourceRange>,
+) -> Vec<FormattingNode<'a>> {
+    let mut split = Vec::new();
+
+    for node in nodes {
+        let is_preserved = node
+            .source_range()
+            .is_some_and(|range| preserved_ranges.contains_key(&range));
+
+        if !is_preserved
+            && let Node::HtmlText(text) = node.unspanned()
+            && text.contains('\n')
+        {
+            split_multiline_html_text(text, &mut split);
+        } else {
+            split.push(FormattingNode::Node(node));
+        }
+    }
+
+    split
+}
+
+fn split_multiline_html_text<'a>(text: &'a str, nodes: &mut Vec<FormattingNode<'a>>) {
+    let mut characters = text.char_indices();
+    let Some((_, first)) = characters.next() else {
+        return;
+    };
+    let mut start = 0;
+    let mut is_whitespace = first.is_whitespace();
+
+    for (index, character) in characters {
+        if character.is_whitespace() == is_whitespace {
+            continue;
+        }
+
+        nodes.push(FormattingNode::HtmlText(&text[start..index]));
+        start = index;
+        is_whitespace = !is_whitespace;
+    }
+
+    nodes.push(FormattingNode::HtmlText(&text[start..]));
+}
+
+fn is_inline_formatting_node(node: FormattingNode<'_>) -> bool {
+    match node {
+        FormattingNode::Node(node) => is_inline_node(node),
+        FormattingNode::HtmlText(text) => !text.contains('\n'),
+    }
+}
+
 fn is_inline_node(node: &Node) -> bool {
     match node.unspanned() {
         Node::HtmlText(text) => !text.contains('\n'),
@@ -639,19 +703,16 @@ fn is_inline_node(node: &Node) -> bool {
     }
 }
 
-fn is_inline_line_tail(node: &Node) -> bool {
-    let Node::HtmlText(text) = node.unspanned() else {
-        return false;
-    };
-    let Some(line) = text.strip_suffix('\n') else {
-        return false;
-    };
-
-    !line.contains('\n') && line.chars().any(|ch| !ch.is_whitespace())
-}
-
-fn render_inline_nodes(nodes: &[Node]) -> String {
-    render_inline_nodes_untrimmed(nodes).trim().to_string()
+fn render_inline_formatting_nodes(nodes: &[FormattingNode<'_>]) -> String {
+    nodes
+        .iter()
+        .map(|node| match node {
+            FormattingNode::Node(node) => render_inline_node(node),
+            FormattingNode::HtmlText(text) => (*text).to_string(),
+        })
+        .collect::<String>()
+        .trim()
+        .to_string()
 }
 
 fn render_inline_nodes_untrimmed(nodes: &[Node]) -> String {
@@ -930,6 +991,31 @@ mod tests {
                 }
             ),
             "<p><i class=\"long-icon-name\"></i>test</p>\n"
+        );
+    }
+
+    #[test]
+    fn preserves_inline_html_adjacency_in_both_directions_across_lines() {
+        let input = "<i class=\"icon\"></i>テスト\nテスト<i class=\"icon\"></i>\n";
+
+        assert_eq!(format(input), input);
+
+        assert_eq!(
+            format(&format!("<% if visible? %>\n{input}<% end %>\n")),
+            "<% if visible? %>\n  <i class=\"icon\"></i>テスト\n  テスト<i class=\"icon\"></i>\n<% end %>\n"
+        );
+
+        let long_input =
+            "<i class=\"long-icon-name\"></i>テスト\nテスト<i class=\"long-icon-name\"></i>\n";
+        assert_eq!(
+            format_with_options(
+                long_input,
+                FormatOptions {
+                    line_width: 20,
+                    ..FormatOptions::default()
+                }
+            ),
+            long_input
         );
     }
 
