@@ -9,10 +9,17 @@ module ErbfmtVersioning
 
   ROOT = File.expand_path("..", __dir__)
   VERSION_PATTERN = /\A(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?\z/
-  VSCODE_VERSION_DOCS = [
+  VERSION_REFERENCE_DOCS = [
+    "README.md",
+    "README_ja.md",
     "docs/VSCode.md",
     "editors/vscode/README.md",
-    "editors/vscode/README_ja.md"
+    "editors/vscode/README_ja.md",
+    "packages/ruby/README.md",
+    "site/index.html",
+    "site/ja/index.html",
+    "site/configuration/index.html",
+    "site/ja/configuration/index.html"
   ].freeze
 
   module_function
@@ -46,12 +53,8 @@ module ErbfmtVersioning
 
     update_json_version(path(root, "editors/vscode/package.json"), version)
     update_package_lock(path(root, "editors/vscode/package-lock.json"), version)
-    VSCODE_VERSION_DOCS.each do |relative|
-      replace_all(
-        path(root, relative),
-        /erbfmt-vscode-#{Regexp.escape(current)}\.vsix/,
-        "erbfmt-vscode-#{version}.vsix"
-      )
+    VERSION_REFERENCE_DOCS.each do |relative|
+      replace_version_references(path(root, relative), current, version)
     end
 
     verify(root, expected: version)
@@ -69,9 +72,13 @@ module ErbfmtVersioning
     %i[ruby_gem ruby_gem_lock].each do |key|
       mismatches << "#{key}=#{versions.fetch(key)}" unless versions.fetch(key) == expected_gem
     end
-    VSCODE_VERSION_DOCS.each do |relative|
-      values = File.read(path(root, relative)).scan(/erbfmt-vscode-([0-9A-Za-z.-]+)\.vsix/).flatten.uniq
-      mismatches << "#{relative}=#{values.join(",")}" unless values == [expected]
+    expected_core = expected.split("-", 2).first
+    VERSION_REFERENCE_DOCS.each do |relative|
+      content = File.read(path(root, relative))
+      cores = content.scan(/v?(\d+\.\d+\.\d+)/).flatten.uniq
+      unless content.include?(expected) && cores == [expected_core]
+        mismatches << "#{relative}=#{cores.join(",")}"
+      end
     end
 
     return versions if mismatches.empty?
@@ -139,6 +146,14 @@ module ErbfmtVersioning
     raise Error, "expected at least one version entry in #{file}" if matches.zero?
 
     File.write(file, content.gsub(pattern, replacement))
+  end
+
+  def replace_version_references(file, current, version)
+    content = File.read(file)
+    matches = content.scan(current).length
+    raise Error, "expected at least one version reference in #{file}" if matches.zero?
+
+    File.write(file, content.gsub(current, version))
   end
 
   def update_json_version(file, version)

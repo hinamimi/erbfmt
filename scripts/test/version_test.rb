@@ -13,7 +13,7 @@ class VersionTest < Minitest::Test
     "packages/ruby/Gemfile.lock",
     "editors/vscode/package.json",
     "editors/vscode/package-lock.json",
-    *ErbfmtVersioning::VSCODE_VERSION_DOCS
+    *ErbfmtVersioning::VERSION_REFERENCE_DOCS
   ].freeze
 
   def test_sets_and_verifies_a_stable_version_in_an_isolated_copy
@@ -25,6 +25,11 @@ class VersionTest < Minitest::Test
       assert_equal "1.2.3", versions.fetch(:cargo_toml)
       assert_equal "1.2.3", versions.fetch(:ruby_gem)
       assert_equal "1.2.3", versions.fetch(:vscode_lock_root)
+      ErbfmtVersioning::VERSION_REFERENCE_DOCS.each do |relative|
+        content = File.read(File.join(root, relative))
+        assert_includes content, "1.2.3"
+        refute_includes content, repository_version
+      end
       assert_equal repository_version, ErbfmtVersioning.collect_versions.fetch(:cargo_toml)
     end
   end
@@ -41,6 +46,20 @@ class VersionTest < Minitest::Test
       end
 
       assert_includes error.message, "vscode_package=9.9.9"
+    end
+  end
+
+  def test_reports_a_user_facing_version_mismatch
+    with_version_files do |root|
+      readme = File.join(root, "README.md")
+      current = ErbfmtVersioning.collect_versions(root).fetch(:cargo_toml)
+      File.write(readme, File.read(readme).sub(current, "9.9.9"))
+
+      error = assert_raises(ErbfmtVersioning::Error) do
+        ErbfmtVersioning.verify(root)
+      end
+
+      assert_includes error.message, "README.md="
     end
   end
 

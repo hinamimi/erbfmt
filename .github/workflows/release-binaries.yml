@@ -1,6 +1,13 @@
 name: Release Binaries
 
 on:
+  workflow_call:
+    inputs:
+      rehearsal_version:
+        description: Optional stable version used only inside the workflow runner
+        required: false
+        type: string
+        default: ""
   workflow_dispatch:
     inputs:
       rehearsal_version:
@@ -42,7 +49,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
 
       - name: Install Rust target
         run: rustup target add ${{ matrix.target }}
@@ -107,7 +114,7 @@ jobs:
           fi
 
       - name: Upload binary archive
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: erbfmt-${{ matrix.target }}
           path: |
@@ -116,6 +123,7 @@ jobs:
             dist/*.sha256
             packages/ruby/pkg/*.gem
           if-no-files-found: error
+          retention-days: 7
 
   vscode:
     name: Build VSCode extension
@@ -123,10 +131,10 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
 
       - name: Setup Node
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@v6
         with:
           node-version-file: .node-version
           cache: npm
@@ -154,8 +162,9 @@ jobs:
         run: npm run package --prefix editors/vscode
 
       - name: Upload VSIX
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: erbfmt-vscode
           path: editors/vscode/*.vsix
           if-no-files-found: error
+          retention-days: 7

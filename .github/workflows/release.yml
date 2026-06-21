@@ -1,0 +1,148 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    name: Verify release tag
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Verify tag and repository versions
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          tag="${GITHUB_REF_NAME}"
+          version="${tag#v}"
+
+          if [[ ! "$version" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+            echo "invalid release tag: $tag" >&2
+            exit 1
+          fi
+
+          ruby scripts/version.rb verify "$version"
+
+  package:
+    name: Build release assets
+    needs: verify
+    permissions:
+      contents: read
+    uses: ./.github/workflows/release-binaries.yml
+
+  release:
+    name: Create draft release
+    needs: package
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: write
+
+    steps:
+      - name: Download release artifacts
+        uses: actions/download-artifact@v8
+        with:
+          path: artifacts
+
+      - name: Collect and verify release assets
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          version="${GITHUB_REF_NAME#v}"
+          expected=(
+            "erbfmt-${version}-x86_64-unknown-linux-gnu.tar.gz"
+            "erbfmt-${version}-x86_64-unknown-linux-gnu.tar.gz.sha256"
+            "erbfmt-${version}-x86_64-apple-darwin.tar.gz"
+            "erbfmt-${version}-x86_64-apple-darwin.tar.gz.sha256"
+            "erbfmt-${version}-aarch64-apple-darwin.tar.gz"
+            "erbfmt-${version}-aarch64-apple-darwin.tar.gz.sha256"
+            "erbfmt-${version}-x86_64-pc-windows-msvc.zip"
+            "erbfmt-${version}-x86_64-pc-windows-msvc.zip.sha256"
+            "erbfmt-${version}-x86_64-linux-gnu.gem"
+            "erbfmt-${version}-x86_64-darwin.gem"
+            "erbfmt-${version}-arm64-darwin.gem"
+            "erbfmt-${version}-x64-mingw-ucrt.gem"
+            "erbfmt-vscode-${version}.vsix"
+          )
+
+          mkdir release-assets
+
+          for asset in "${expected[@]}"; do
+            mapfile -t matches < <(find artifacts -type f -name "$asset")
+
+            if [[ "${#matches[@]}" -ne 1 ]]; then
+              echo "expected one $asset artifact, found ${#matches[@]}" >&2
+              exit 1
+            fi
+
+            cp "${matches[0]}" "release-assets/$asset"
+          done
+
+          asset_count="$(find release-assets -maxdepth 1 -type f | wc -l)"
+          if [[ "$asset_count" -ne "${#expected[@]}" ]]; then
+            echo "expected ${#expected[@]} release assets, found $asset_count" >&2
+            exit 1
+          fi
+
+          (
+            cd release-assets
+            sha256sum -c ./*.sha256
+          )
+
+      - name: Create or update draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          tag="${GITHUB_REF_NAME}"
+          version="${tag#v}"
+
+          if gh release view "$tag" >/dev/null 2>&1; then
+            is_draft="$(gh release view "$tag" --json isDraft --jq .isDraft)"
+
+            if [[ "$is_draft" != "true" ]]; then
+              echo "release $tag is already published; refusing to replace its assets" >&2
+              exit 1
+            fi
+
+            gh release upload "$tag" release-assets/* --clobber
+          else
+            release_flags=(
+              --draft
+              --verify-tag
+              --title "erbfmt ${tag}"
+              --generate-notes
+            )
+
+            if [[ "$version" == 0.* ]]; then
+              release_flags+=(--prerelease)
+            fi
+
+            gh release create "$tag" "${release_flags[@]}" release-assets/*
+          fi
+
+          release_url="$(gh release view "$tag" --json url --jq .url)"
+          {
+            echo "### Draft release created"
+            echo
+            echo "[$tag]($release_url)"
+            echo
+            echo "Verified and attached 13 release assets. Review the notes and publish manually."
+          } >> "$GITHUB_STEP_SUMMARY"

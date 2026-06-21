@@ -98,12 +98,11 @@ Build a local archive for an explicit installed Rust target:
 scripts/package-binary.sh x86_64-unknown-linux-gnu
 ```
 
-The `Release Binaries` GitHub Actions workflow is manual-only
-(`workflow_dispatch`). It uploads binary archives and matching platform-specific
-Ruby gems from four native runners, and builds the thin VSIX in a separate job.
-Each native runner installs its gem into an isolated `GEM_HOME` and executes
-`erbfmt --version`. The workflow does not publish a GitHub Release or push to
-RubyGems.org.
+The `Release Binaries` GitHub Actions workflow can run manually for rehearsals
+or as a reusable workflow for tagged releases. It uploads binary archives and
+matching platform-specific Ruby gems from four native runners, and builds the
+thin VSIX in a separate job. Each native runner installs its gem into an
+isolated `GEM_HOME` and executes `erbfmt --version`.
 
 For an unpublished stable-version rehearsal, provide the optional workflow
 input while running from `main`:
@@ -196,5 +195,35 @@ Before a public release:
 - Run `ruby scripts/version.rb verify <version>`.
 - Confirm `cargo run --quiet -- --version` prints the new version.
 - Confirm `erbfmt --version` after local install.
-- Confirm the manual `Release Binaries` workflow produced all four expected
-  archives and sibling `.sha256` files from the release tag or tagged commit.
+- Confirm the `Release` workflow produced all four expected archives, sibling
+  `.sha256` files, platform-specific gems, and the VSIX from the release tag.
+
+## Tagged Release Workflow
+
+The `Release` workflow runs when a tag matching `v*.*.*` is pushed, then
+requires the exact `vMAJOR.MINOR.PATCH` form. It:
+
+1. verifies that the tag version matches every repository version source;
+2. calls `Release Binaries` to build on Linux, Intel and Apple Silicon macOS,
+   and Windows;
+3. collects an exact set of 13 binary, checksum, gem, and VSIX assets;
+4. verifies every standalone archive checksum; and
+5. creates a draft GitHub Release with generated notes.
+
+Pre-1.0 versions are marked as prereleases. The workflow never publishes the
+draft automatically. Review the generated notes and assets, smoke test the
+matching local platform, and publish it manually.
+
+The workflow refuses to overwrite assets on an already published release. A
+rerun may update assets only while the release remains a draft.
+
+For the next release:
+
+```bash
+ruby scripts/version.rb set 0.1.1
+ruby scripts/version.rb verify 0.1.1
+# Run the release verification commands above, then commit.
+git tag -a v0.1.1 -m "erbfmt 0.1.1"
+git push origin main
+git push origin v0.1.1
+```
