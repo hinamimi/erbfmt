@@ -143,7 +143,7 @@ Release version. A gem must contain the binary built from the same tagged commit
 
 The unpublished development wrapper used RubyGems version `0.0.0.dev` while
 Cargo and the VSCode extension used `0.0.0-dev`. The current release version
-`0.1.0` is identical everywhere.
+`0.1.1` is identical everywhere.
 
 `lib/erbfmt/version.rb` is the gem version source. The release verification task
 must compare its normalized value with `Cargo.toml` and `erbfmt --version`.
@@ -154,19 +154,68 @@ passes installation and execution tests from the tagged commit.
 
 ## Bundler And Ruby LSP
 
-Rails projects add the CLI without auto-requiring Ruby code:
+### Installing from a Gemfile
+
+The initial GitHub-only distribution does not provide a RubyGems package index.
+Bundler therefore cannot resolve erbfmt from a normal `source` entry alone.
+Download the platform-specific gem from the matching GitHub Release into the
+Rails project's `vendor/cache` directory. For glibc Linux x64:
+
+```bash
+mkdir -p vendor/cache
+curl -L \
+  -o vendor/cache/erbfmt-0.1.1-x86_64-linux-gnu.gem \
+  https://github.com/hinamimi/erbfmt/releases/download/v0.1.1/erbfmt-0.1.1-x86_64-linux-gnu.gem
+```
+
+Rails projects add the CLI at an exact version without auto-requiring Ruby
+code:
 
 ```ruby
 group :development do
-  gem "erbfmt", require: false
+  gem "erbfmt", "0.1.1", require: false
 end
 ```
 
-Run it through the project bundle:
+Install and run it through the project bundle:
 
 ```bash
+bundle install
 bundle exec erbfmt app/views/users/show.html.erb
 ```
+
+Bundler uses the package in `vendor/cache` for erbfmt and may still use the
+configured gem source for other dependencies. Use `bundle install --local`
+when every dependency is already installed or cached and the installation must
+not contact a registry.
+
+For a shared project, commit the downloaded gem and `Gemfile.lock` so other
+developers do not need a separate erbfmt download step. The package must match
+the local RubyGems platform:
+
+| Development platform | Release gem |
+| --- | --- |
+| glibc Linux x64 | `erbfmt-0.1.1-x86_64-linux-gnu.gem` |
+| macOS Intel | `erbfmt-0.1.1-x86_64-darwin.gem` |
+| macOS Apple Silicon | `erbfmt-0.1.1-arm64-darwin.gem` |
+| Windows RubyInstaller UCRT x64 | `erbfmt-0.1.1-x64-mingw-ucrt.gem` |
+
+Projects used on multiple platforms should keep every required variant in
+`vendor/cache` and include those platforms in `Gemfile.lock`. Unsupported
+platforms, including Alpine/musl and Linux arm64, do not currently have a gem.
+
+Do not use a Git source as a substitute:
+
+```ruby
+# Unsupported: the repository does not contain a staged Rust binary.
+gem "erbfmt", git: "https://github.com/hinamimi/erbfmt.git", tag: "v0.1.1"
+```
+
+The Rust binary is inserted only while each release gem is built. Installing
+the gemspec directly from the Git repository would produce a launcher without
+the binary it needs.
+
+### Ruby LSP
 
 erbfmt is not a Ruby LSP add-on and does not need to be inserted into Ruby
 LSP's composed bundle. It can coexist in the project Gemfile without sharing

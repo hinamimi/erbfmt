@@ -18,6 +18,12 @@ Ruby expressions that it cannot safely rewrite. It is built as a Rust CLI for
 Rails `*.html.erb` templates and works locally, in CI, and through the
 first-party VSCode extension.
 
+> [!WARNING]
+> erbfmt is beta software. Formatting output, configuration, lint rules, and
+> CLI behavior may change without backward compatibility before the stable release.
+> Review formatting diffs before committing them and pin an exact version in
+> automated environments.
+
 > erbfmt is currently in pre-release development. Version `0.1.1` is available
 > through GitHub Releases. Initial releases are not registered with package
 > indexes or extension marketplaces.
@@ -49,6 +55,29 @@ erbfmt --help
 The release also provides platform-specific `.gem` files and a VSIX. erbfmt is
 not published to crates.io, npm, or RubyGems.org, so registry-based installation
 commands are not currently supported.
+
+To manage erbfmt through a Rails project's Gemfile, download the matching
+platform gem into `vendor/cache`, add the exact version without auto-requiring
+it, and install the bundle:
+
+```ruby
+group :development do
+  gem "erbfmt", "0.1.1", require: false
+end
+```
+
+```bash
+mkdir -p vendor/cache
+curl -L \
+  -o vendor/cache/erbfmt-0.1.1-x86_64-linux-gnu.gem \
+  https://github.com/hinamimi/erbfmt/releases/download/v0.1.1/erbfmt-0.1.1-x86_64-linux-gnu.gem
+bundle install
+bundle exec erbfmt --version
+```
+
+Use the gem matching each development platform. See
+[Ruby Gem Wrapper](docs/RubyGem.md#installing-from-a-gemfile) for platform names,
+offline installation, and multi-platform projects.
 
 ## Quick Start
 

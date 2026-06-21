@@ -12,6 +12,38 @@ gem install --local ./erbfmt-0.1.1-x86_64-linux-gnu.gem
 erbfmt --version
 ```
 
+## Installing from a Gemfile
+
+Since the gem is not on RubyGems.org, place the matching release asset in the
+project's `vendor/cache` directory:
+
+```bash
+mkdir -p vendor/cache
+curl -L \
+  -o vendor/cache/erbfmt-0.1.1-x86_64-linux-gnu.gem \
+  https://github.com/hinamimi/erbfmt/releases/download/v0.1.1/erbfmt-0.1.1-x86_64-linux-gnu.gem
+```
+
+Add the exact version to the project Gemfile:
+
+```ruby
+group :development do
+  gem "erbfmt", "0.1.1", require: false
+end
+```
+
+Then install and run it through Bundler:
+
+```bash
+bundle install
+bundle exec erbfmt --version
+```
+
+Commit the platform gem in `vendor/cache` when the project should be
+installable by other team members without a separate download step. See
+[RubyGem.md](../../docs/RubyGem.md#installing-from-a-gemfile) for supported
+platforms and multi-platform guidance.
+
 The wrapper packages one Rust binary and does not implement formatting or
 linting in Ruby.
 
