@@ -3,12 +3,12 @@
 This gem is a thin launcher for the platform-specific erbfmt Rust binary.
 
 Initial releases are distributed as platform-specific `.gem` files attached to
-the [erbfmt GitHub Release](https://github.com/hinamimi/erbfmt/releases/tag/v0.1.0)
+the [erbfmt GitHub Release](https://github.com/hinamimi/erbfmt/releases/tag/v0.1.1)
 rather than through RubyGems.org. Download the file matching the local platform
 and install it directly. For example, on glibc Linux x64:
 
 ```bash
-gem install --local ./erbfmt-0.1.0-x86_64-linux-gnu.gem
+gem install --local ./erbfmt-0.1.1-x86_64-linux-gnu.gem
 erbfmt --version
 ```
 
@@ -31,8 +31,8 @@ The shared version check covers Cargo, this gem, the VSCode extension, and
 their lockfiles. Release versions are updated from the repository root:
 
 ```bash
-ruby scripts/version.rb set 0.1.0
-ruby scripts/version.rb verify 0.1.0
+ruby scripts/version.rb set 0.1.1
+ruby scripts/version.rb verify 0.1.1
 ```
 
 Build, install, and execute a local platform-specific gem in isolation:

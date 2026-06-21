@@ -1355,6 +1355,11 @@ Status: In Progress
 - inline HTML element、text、commentを同一line sequenceとしてrenderするようにした。
 - line末尾textだけをsequenceへ取り込み、次行のelementは結合しないようにした。
 - code/output ERB block、space保持、既存newline、idempotency、短い`lineWidth`をtestした。
+- repository、VSCode extension、Ruby gem、公開documentのversionを`0.1.1`へ同期した。
+- Rustのformat、check、test、clippyと主要sampleのformat / lintを完了した。
+- VSCode extensionのBiome、TypeScript、test、VSIX packageを検証した。
+- Linux x64 Ruby gemをbuild、installし、同梱binaryが`erbfmt 0.1.1`を返すことを確認した。
+- 残作業はrelease準備commit、`v0.1.1` tag push、生成されるdraft releaseのasset確認と公開。
 
 ## 後で考えること
 

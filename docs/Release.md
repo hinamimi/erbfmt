@@ -181,9 +181,9 @@ Keep these files in the release verification surface:
 
 ## Versioning
 
-The repository is currently set to `0.1.0` for first-release preparation.
-Before this point, ordinary milestone work used the fixed development version
-`0.0.0-dev`.
+The repository is currently set to `0.1.1` for the next prerelease.
+Earlier milestone work used the fixed development version `0.0.0-dev`, and the
+first public prerelease used `0.1.0`.
 
 The canonical CLI version is read from `Cargo.toml`. Ruby gem and VSCode
 versions are checked against it by `scripts/version.rb`.

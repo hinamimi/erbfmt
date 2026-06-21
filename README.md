@@ -18,14 +18,14 @@ Ruby expressions that it cannot safely rewrite. It is built as a Rust CLI for
 Rails `*.html.erb` templates and works locally, in CI, and through the
 first-party VSCode extension.
 
-> erbfmt is currently in pre-release development. Version `0.1.0` is available
+> erbfmt is currently in pre-release development. Version `0.1.1` is available
 > through GitHub Releases. Initial releases are not registered with package
 > indexes or extension marketplaces.
 
 ## Install
 
 Download the archive for your platform from the
-[v0.1.0 release](https://github.com/hinamimi/erbfmt/releases/tag/v0.1.0), extract
+[v0.1.1 release](https://github.com/hinamimi/erbfmt/releases/tag/v0.1.1), extract
 it, and place `erbfmt` or `erbfmt.exe` on your `PATH`.
 
 - Linux x64: `x86_64-unknown-linux-gnu`
@@ -36,7 +36,7 @@ it, and place `erbfmt` or `erbfmt.exe` on your `PATH`.
 With a Rust toolchain, install the tagged source directly from GitHub:
 
 ```bash
-cargo install --git https://github.com/hinamimi/erbfmt --tag v0.1.0 --locked
+cargo install --git https://github.com/hinamimi/erbfmt --tag v0.1.1 --locked
 ```
 
 Confirm that the command is available:

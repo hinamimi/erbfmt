@@ -105,13 +105,13 @@ Install it locally:
 From the repository root:
 
 ```bash
-code --install-extension editors/vscode/erbfmt-vscode-0.1.0.vsix
+code --install-extension editors/vscode/erbfmt-vscode-0.1.1.vsix
 ```
 
 From `editors/vscode`:
 
 ```bash
-code --install-extension erbfmt-vscode-0.1.0.vsix
+code --install-extension erbfmt-vscode-0.1.1.vsix
 ```
 
 The package includes the compiled extension JavaScript in `out/`, but it does
