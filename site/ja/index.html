@@ -7,6 +7,7 @@
     <title>erbfmt ドキュメント</title>
     <link rel="icon" href="../assets/icon.png">
     <link rel="stylesheet" href="../assets/styles.css">
+    <script defer src="../assets/highlight.js"></script>
   </head>
   <body>
     <header class="topbar">
@@ -41,7 +42,7 @@
           <a class="action primary" href="#install">はじめる</a>
           <a class="action" href="https://github.com/hinamimi/erbfmt/releases/tag/v0.1.1">v0.1.1をdownload</a>
         </div>
-        <pre aria-label="整形例"><code><span class="diff-remove">-&lt;div&gt;&lt;% if user.admin? %&gt;&lt;span&gt;Admin&lt;/span&gt;&lt;% end %&gt;&lt;/div&gt;</span>
+        <pre aria-label="整形例"><code class="nohighlight"><span class="diff-remove">-&lt;div&gt;&lt;% if user.admin? %&gt;&lt;span&gt;Admin&lt;/span&gt;&lt;% end %&gt;&lt;/div&gt;</span>
 <span class="diff-add">+&lt;div&gt;</span>
 <span class="diff-add">+  &lt;% if user.admin? %&gt;</span>
 <span class="diff-add">+    &lt;span&gt;Admin&lt;/span&gt;</span>
@@ -66,15 +67,15 @@
         <h2 id="install">インストール</h2>
         <p><a href="https://github.com/hinamimi/erbfmt/releases/tag/v0.1.1">v0.1.1 release</a>からLinux、macOS、Windows向けarchiveをdownloadして展開し、<code>erbfmt</code>または <code>erbfmt.exe</code>を <code>PATH</code>へ配置します。</p>
         <p>Rust toolchainがある場合はtagged sourceから直接installできます。</p>
-        <pre><code>cargo install --git https://github.com/hinamimi/erbfmt --tag v0.1.1 --locked</code></pre>
+        <pre><code class="language-bash">cargo install --git https://github.com/hinamimi/erbfmt --tag v0.1.1 --locked</code></pre>
         <p>commandが利用できることを確認します。</p>
-        <pre><code>erbfmt --version
+        <pre><code class="language-bash">erbfmt --version
 erbfmt --help</code></pre>
         <div class="callout"><p>初期releaseはGitHub Releasesだけで配布し、crates.io、npm、RubyGems.org、extension marketplaceには登録しません。</p></div>
 
         <h2 id="quick-start">クイックスタート</h2>
         <p>Rails projectに <code>erbfmt.json</code>を作り、templateをformatまたはlintします。</p>
-        <pre><code>cd your-rails-project
+        <pre><code class="language-bash">cd your-rails-project
 erbfmt init
 erbfmt --write app/views/users/show.html.erb
 erbfmt --check app/views/users/show.html.erb

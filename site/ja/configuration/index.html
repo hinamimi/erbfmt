@@ -7,6 +7,7 @@
     <title>設定 · erbfmt</title>
     <link rel="icon" href="../../assets/icon.png">
     <link rel="stylesheet" href="../../assets/styles.css">
+    <script defer src="../../assets/highlight.js"></script>
   </head>
   <body>
     <header class="topbar">
@@ -41,17 +42,17 @@
 
         <h2 id="config-file">設定ファイル</h2>
         <p><code>erbfmt init</code>を実行すると、current directoryにdefault configを作成します。既存ファイルを置き換える場合は <code>erbfmt init --force</code>を使います。</p>
-        <pre><code>erbfmt init
+        <pre><code class="language-bash">erbfmt init
 erbfmt init --force</code></pre>
         <p><code>--config</code>を指定しない場合、current directoryから親directoryへ向かって <code>erbfmt.json</code>を検索します。明示したpathが常に優先されます。</p>
-        <pre><code>erbfmt --config path/to/erbfmt.json app/views/users/show.html.erb</code></pre>
+        <pre><code class="language-bash">erbfmt --config path/to/erbfmt.json app/views/users/show.html.erb</code></pre>
         <p>公開schemaを追加すると、editorの補完とvalidationを利用できます。</p>
-        <pre><code>{
+        <pre><code class="language-json">{
   "$schema": "https://hinamimi.github.io/erbfmt/schema/erbfmt.schema.json"
 }</code></pre>
 
         <h3>全項目の例</h3>
-        <pre><code>{
+        <pre><code class="language-json">{
   "$schema": "https://hinamimi.github.io/erbfmt/schema/erbfmt.schema.json",
   "formatter": {
     "enabled": true,

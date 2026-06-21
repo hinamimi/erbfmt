@@ -261,6 +261,50 @@ pre {
   color: #8de0b3;
 }
 
+.hljs-comment,
+.hljs-quote {
+  color: #9ba6ae;
+}
+
+.hljs-keyword,
+.hljs-literal,
+.hljs-meta,
+.hljs-selector-tag {
+  color: #ff9a91;
+}
+
+.hljs-attr,
+.hljs-attribute,
+.hljs-name,
+.hljs-selector-attr,
+.hljs-selector-class,
+.hljs-selector-id,
+.hljs-title {
+  color: #8fc8ff;
+}
+
+.hljs-number,
+.hljs-regexp,
+.hljs-symbol,
+.hljs-variable {
+  color: #e4b8ff;
+}
+
+.hljs-built_in,
+.hljs-bullet,
+.hljs-code,
+.hljs-string {
+  color: #a8ddb5;
+}
+
+.hljs-addition {
+  color: #8de0b3;
+}
+
+.hljs-deletion {
+  color: #ff9a91;
+}
+
 .feature-grid {
   display: grid;
   margin-top: 38px;

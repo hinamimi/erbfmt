@@ -7,6 +7,7 @@
     <title>Configuration · erbfmt</title>
     <link rel="icon" href="../assets/icon.png">
     <link rel="stylesheet" href="../assets/styles.css">
+    <script defer src="../assets/highlight.js"></script>
   </head>
   <body>
     <header class="topbar">
@@ -41,17 +42,17 @@
 
         <h2 id="config-file">Config file</h2>
         <p>Run <code>erbfmt init</code> to create the default configuration in the current directory. Use <code>erbfmt init --force</code> to replace an existing file.</p>
-        <pre><code>erbfmt init
+        <pre><code class="language-bash">erbfmt init
 erbfmt init --force</code></pre>
         <p>Without <code>--config</code>, erbfmt searches the current directory and then each parent directory for <code>erbfmt.json</code>. An explicit path takes precedence:</p>
-        <pre><code>erbfmt --config path/to/erbfmt.json app/views/users/show.html.erb</code></pre>
+        <pre><code class="language-bash">erbfmt --config path/to/erbfmt.json app/views/users/show.html.erb</code></pre>
         <p>Add the published schema for editor completion and validation:</p>
-        <pre><code>{
+        <pre><code class="language-json">{
   "$schema": "https://hinamimi.github.io/erbfmt/schema/erbfmt.schema.json"
 }</code></pre>
 
         <h3>Complete example</h3>
-        <pre><code>{
+        <pre><code class="language-json">{
   "$schema": "https://hinamimi.github.io/erbfmt/schema/erbfmt.schema.json",
   "formatter": {
     "enabled": true,
