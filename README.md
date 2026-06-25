@@ -98,6 +98,12 @@ method calls, with or without explicit parentheses, may be wrapped one argument
 per line when erbfmt can split them safely. Complex or ambiguous Ruby
 expressions are preserved.
 
+Whitespace-sensitive inline output is handled conservatively. Adjacent inline
+HTML, adjacent ERB outputs, and ERB blocks that were originally written on one
+line are kept inline, even when that is longer than `formatter.lineWidth`.
+Subtrees under `pre`, `textarea`, `script`, `style`, `svg`, `math`, and elements
+with `contenteditable` are preserved on the safe side.
+
 The linter reports malformed HTML structure, invalid list and table nesting,
 deprecated or self-closing HTML tags, duplicate attributes, and unsupported or
 empty ERB control-flow constructs.
@@ -122,6 +128,11 @@ width, line endings, and per-rule lint severity. See
 [Configuration](docs/Configuration.md) for the complete format and
 [Lint Rules](docs/LintRules.md) for available diagnostics.
 
+`formatter.trailingNewline` defaults to `true`, which is appropriate for normal
+template files. If an ERB file is intentionally rendered as an inline partial
+inside surrounding text, set it to `false` for that file or project to avoid
+adding a final newline to the rendered fragment.
+
 Use `erbfmt-ignore` comments when generated or third-party markup must be left
 untouched. See [Ignore Directives](docs/Ignore.md) for the supported syntax.
 
@@ -143,8 +154,9 @@ resolution details.
   `<%%`, and `<%==` are rejected instead of being rewritten unsafely.
 - Expressions that cannot be recognized safely are preserved rather than
   aggressively rewritten.
-- Preformatted content such as `pre`, `textarea`, `script`, and `style` is kept
-  on the safe side.
+- Preformatted or format-sensitive content such as `pre`, `textarea`, `script`,
+  `style`, `svg`, `math`, and `contenteditable` subtrees is kept on the safe
+  side.
 - Initial releases are distributed only through GitHub Releases, not package
   registries or extension marketplaces.
 

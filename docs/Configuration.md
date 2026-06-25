@@ -65,7 +65,10 @@ option for the existing HTML indentation behavior.
   arguments, erbfmt may place one argument per line. Command-style calls gain
   explicit parentheses; calls that already have parentheses retain them. Ruby
   expressions that cannot be recognized safely are left intact.
-- `formatter.trailingNewline`: keep or remove the final newline.
+- `formatter.trailingNewline`: keep or remove the final newline. The default
+  `true` follows normal source-file conventions. Use `false` for ERB files that
+  are intentionally rendered as inline partial fragments where a final newline
+  would become visible whitespace in the surrounding output.
 
 ## Linter
 

@@ -169,6 +169,11 @@ impl<'a> Formatter<'a> {
                 branches,
                 ..
             } => {
+                if self.can_keep_erb_block_inline(range) {
+                    self.write_indented_line(depth, &render_preserved_node(node));
+                    return;
+                }
+
                 self.write_erb_tag(depth, ErbTagMarker::from_output(*output), code);
                 self.format_nodes(children, depth + 1);
                 self.format_erb_branches(branches, depth);
@@ -221,7 +226,7 @@ impl<'a> Formatter<'a> {
         range: Option<SourceRange>,
         depth: usize,
     ) {
-        if is_format_sensitive_html_tag(name) {
+        if is_format_sensitive_html_element(name, open) {
             self.write_preserved_block(
                 depth,
                 &render_preserved_html_element(open, close, children),
@@ -477,6 +482,20 @@ impl<'a> Formatter<'a> {
                 .next_back()
                 .is_some_and(|ch| !is_line_ending_char(ch)),
         }
+    }
+
+    fn can_keep_erb_block_inline(&self, range: Option<SourceRange>) -> bool {
+        let Some(source) = self.source else {
+            return false;
+        };
+        let Some(range) = range else {
+            return false;
+        };
+        let Some(raw) = source.get(range.start..range.end) else {
+            return false;
+        };
+
+        !raw.contains(['\n', '\r'])
     }
 }
 
@@ -981,11 +1000,30 @@ fn render_preserved_node(node: &Node) -> String {
     }
 }
 
+fn is_format_sensitive_html_element(name: &str, open: &str) -> bool {
+    is_format_sensitive_html_tag(name) || has_contenteditable_attribute(open)
+}
+
 fn is_format_sensitive_html_tag(name: &str) -> bool {
     matches!(
         name.to_ascii_lowercase().as_str(),
-        "pre" | "textarea" | "script" | "style" | "xmp" | "listing"
+        "pre" | "textarea" | "script" | "style" | "xmp" | "listing" | "svg" | "math"
     )
+}
+
+fn has_contenteditable_attribute(open: &str) -> bool {
+    ParsedTag::parse(open).is_some_and(|tag| {
+        tag.attributes
+            .iter()
+            .any(|attribute| attribute_name(attribute).eq_ignore_ascii_case("contenteditable"))
+    })
+}
+
+fn attribute_name(attribute: &str) -> &str {
+    attribute
+        .split_once('=')
+        .map_or(attribute, |(name, _)| name)
+        .trim()
 }
 
 fn is_line_ending_char(ch: char) -> bool {
@@ -1285,6 +1323,22 @@ mod tests {
     }
 
     #[test]
+    fn preserves_single_line_erb_blocks_inline() {
+        let options = FormatOptions {
+            line_width: 24,
+            ..FormatOptions::default()
+        };
+        let code_block = "<% if visible? %><span>Visible</span><% end %>\n";
+        let output_block = "<%= link_to profile_path do %><i class=\"icon\"></i>Profile<% end %>\n";
+
+        assert_eq!(format_source_with_options(code_block, options), code_block);
+        assert_eq!(
+            format_source_with_options(output_block, options),
+            output_block
+        );
+    }
+
+    #[test]
     fn preserves_formatter_ignored_html_and_erb_nodes() {
         assert_eq!(
             format_source(formatter_ignore_fixture()),
@@ -1377,6 +1431,16 @@ mod tests {
         assert_eq!(
             format("<form>\n<textarea>\n  keep me\n</textarea>\n</form>\n"),
             "<form>\n  <textarea>\n  keep me\n</textarea>\n</form>\n"
+        );
+    }
+
+    #[test]
+    fn preserves_svg_math_and_contenteditable_subtrees() {
+        let input = "<section>\n<svg viewBox=\"0 0 10 10\">\n  <path   d=\"M0 0L10 10\"></path>\n</svg>\n<math><mi>x</mi>  <mo>=</mo><mn>1</mn></math>\n<div contenteditable=\"true\"><p> keep  spacing</p></div>\n</section>\n";
+
+        assert_eq!(
+            format(input),
+            "<section>\n  <svg viewBox=\"0 0 10 10\">\n  <path   d=\"M0 0L10 10\"></path>\n</svg>\n  <math><mi>x</mi>  <mo>=</mo><mn>1</mn></math>\n  <div contenteditable=\"true\"><p> keep  spacing</p></div>\n</section>\n"
         );
     }
 
