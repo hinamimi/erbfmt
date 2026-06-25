@@ -81,7 +81,10 @@ struct Formatter<'a> {
 #[derive(Clone, Copy)]
 enum FormattingNode<'a> {
     Node(&'a Node),
-    HtmlText(&'a str),
+    HtmlText {
+        text: &'a str,
+        range: Option<SourceRange>,
+    },
 }
 
 impl<'a> Formatter<'a> {
@@ -114,6 +117,13 @@ impl<'a> Formatter<'a> {
                 continue;
             }
 
+            if let Some(next_index) =
+                self.write_erb_block_with_inline_boundaries(nodes, index, depth)
+            {
+                index = next_index;
+                continue;
+            }
+
             if is_inline_formatting_node(nodes[index]) {
                 let start = index;
 
@@ -136,7 +146,7 @@ impl<'a> Formatter<'a> {
     fn format_formatting_node(&mut self, node: FormattingNode<'_>, depth: usize) {
         match node {
             FormattingNode::Node(node) => self.format_node(node, depth),
-            FormattingNode::HtmlText(text) => self.write_text(text, depth),
+            FormattingNode::HtmlText { text, .. } => self.write_text(text, depth),
         }
     }
 
@@ -169,18 +179,133 @@ impl<'a> Formatter<'a> {
                 branches,
                 ..
             } => {
-                if self.can_keep_erb_block_inline(range) {
-                    self.write_indented_line(depth, &render_preserved_node(node));
-                    return;
-                }
-
-                self.write_erb_tag(depth, ErbTagMarker::from_output(*output), code);
-                self.format_nodes(children, depth + 1);
-                self.format_erb_branches(branches, depth);
-                self.write_indented_line(depth, "<% end %>");
+                self.write_erb_block(
+                    node,
+                    ErbBlockParts {
+                        code,
+                        output: *output,
+                        children,
+                        branches,
+                        range,
+                    },
+                    depth,
+                    "",
+                    "",
+                );
             }
             Node::Spanned { .. } => unreachable!("unspanned node cannot remain wrapped"),
         }
+    }
+
+    fn write_erb_block_with_inline_boundaries(
+        &mut self,
+        nodes: &[FormattingNode<'_>],
+        index: usize,
+        depth: usize,
+    ) -> Option<usize> {
+        let (prefix_start, prefix_end, block_index) = if is_inline_formatting_node(nodes[index]) {
+            let start = index;
+            let mut end = index;
+
+            while end < nodes.len() && is_inline_formatting_node(nodes[end]) {
+                end += 1;
+            }
+
+            if end >= nodes.len()
+                || !self.formatting_nodes_share_source_line(nodes[end - 1], nodes[end])
+            {
+                return None;
+            }
+
+            (start, end, end)
+        } else {
+            (index, index, index)
+        };
+
+        let FormattingNode::Node(block) = nodes[block_index] else {
+            return None;
+        };
+        let Node::ErbBlock {
+            code,
+            output,
+            children,
+            branches,
+            ..
+        } = block.unspanned()
+        else {
+            return None;
+        };
+
+        if self.is_ignored_node(block) {
+            return None;
+        }
+
+        let mut suffix_start = block_index + 1;
+        let mut suffix_end = suffix_start;
+
+        if suffix_start < nodes.len()
+            && self.formatting_nodes_share_source_line(nodes[block_index], nodes[suffix_start])
+        {
+            while suffix_end < nodes.len() && is_inline_formatting_node(nodes[suffix_end]) {
+                suffix_end += 1;
+            }
+        } else {
+            suffix_start = suffix_end;
+        }
+
+        if prefix_start == prefix_end && suffix_start == suffix_end {
+            return None;
+        }
+
+        let prefix = render_inline_formatting_nodes_untrimmed(&nodes[prefix_start..prefix_end]);
+        let suffix = render_inline_formatting_nodes_untrimmed(&nodes[suffix_start..suffix_end]);
+
+        self.write_erb_block(
+            block,
+            ErbBlockParts {
+                code,
+                output: *output,
+                children,
+                branches,
+                range: block.source_range(),
+            },
+            depth,
+            &prefix,
+            &suffix,
+        );
+
+        Some(suffix_end)
+    }
+
+    fn write_erb_block(
+        &mut self,
+        node: &Node,
+        parts: ErbBlockParts<'_>,
+        depth: usize,
+        prefix: &str,
+        suffix: &str,
+    ) {
+        if self.can_keep_erb_block_inline(parts.range) {
+            self.write_indented_line(
+                depth,
+                &format!("{prefix}{}{suffix}", render_preserved_node(node)),
+            );
+            return;
+        }
+
+        let marker = ErbTagMarker::from_output(parts.output);
+        if prefix.is_empty() {
+            self.write_erb_tag(depth, marker, parts.code);
+        } else {
+            self.write_indented_line(
+                depth,
+                &format!("{prefix}{}", format_erb_tag_inline(marker, parts.code)),
+            );
+        }
+
+        self.format_nodes(parts.children, depth + 1);
+        self.format_erb_branches(parts.branches, depth);
+        self.write_indented_line(depth, &format!("<% end %>{suffix}"));
     }
 
     fn format_erb_branches(&mut self, branches: &[ErbBranch], depth: usize) {
@@ -226,7 +351,9 @@ impl<'a> Formatter<'a> {
         range: Option<SourceRange>,
         depth: usize,
     ) {
-        if is_format_sensitive_html_element(name, open) {
+        if is_format_sensitive_html_element(name, open)
+            || self.has_erb_block_inline_child_boundary(children)
+        {
             self.write_preserved_block(
                 depth,
                 &render_preserved_html_element(open, close, children),
@@ -433,6 +560,10 @@ impl<'a> Formatter<'a> {
     }
 
     fn write_ignored_node(&mut self, node: &Node) -> bool {
+        if !self.is_ignored_node(node) {
+            return false;
+        }
+
         let Some(source) = self.source else {
             return false;
         };
@@ -448,6 +579,66 @@ impl<'a> Formatter<'a> {
 
         self.output.push_str(raw);
         true
+    }
+
+    fn is_ignored_node(&self, node: &Node) -> bool {
+        node.source_range()
+            .is_some_and(|range| self.preserved_ranges.contains_key(&range))
+    }
+
+    fn formatting_nodes_share_source_line(
+        &self,
+        left: FormattingNode<'_>,
+        right: FormattingNode<'_>,
+    ) -> bool {
+        let Some(left) = formatting_node_source_range(left) else {
+            return false;
+        };
+        let Some(right) = formatting_node_source_range(right) else {
+            return false;
+        };
+
+        self.source_ranges_share_line(left, right)
+    }
+
+    fn has_erb_block_inline_child_boundary(&self, children: &[Node]) -> bool {
+        children.iter().enumerate().any(|(index, child)| {
+            if !matches!(child.unspanned(), Node::ErbBlock { .. }) {
+                return false;
+            }
+
+            let previous_is_inline = index
+                .checked_sub(1)
+                .and_then(|previous| children.get(previous))
+                .is_some_and(|previous| self.nodes_share_source_line(previous, child));
+            let next_is_inline = children
+                .get(index + 1)
+                .is_some_and(|next| self.nodes_share_source_line(child, next));
+
+            previous_is_inline || next_is_inline
+        })
+    }
+
+    fn nodes_share_source_line(&self, left: &Node, right: &Node) -> bool {
+        let Some(left) = left.source_range() else {
+            return false;
+        };
+        let Some(right) = right.source_range() else {
+            return false;
+        };
+
+        self.source_ranges_share_line(left, right)
+    }
+
+    fn source_ranges_share_line(&self, left: SourceRange, right: SourceRange) -> bool {
+        let Some(source) = self.source else {
+            return false;
+        };
+        if left.end > right.start || right.end > source.len() {
+            return false;
+        }
+
+        !source[left.end..right.start].contains(['\n', '\r'])
     }
 
     fn html_element_boundaries(
@@ -503,6 +694,14 @@ impl<'a> Formatter<'a> {
 struct HtmlElementBoundaries {
     open_child_same_line: bool,
     child_close_same_line: bool,
+}
+
+struct ErbBlockParts<'a> {
+    code: &'a str,
+    output: bool,
+    children: &'a [Node],
+    branches: &'a [ErbBranch],
+    range: Option<SourceRange>,
 }
 
 fn formatter_ignore_ranges(nodes: &[Node], source: &str) -> HashMap<SourceRange, SourceRange> {
@@ -770,7 +969,7 @@ fn split_formatting_nodes<'a>(
             && let Node::HtmlText(text) = node.unspanned()
             && text.contains('\n')
         {
-            split_multiline_html_text(text, &mut split);
+            split_multiline_html_text(text, node.source_range(), &mut split);
         } else {
             split.push(FormattingNode::Node(node));
         }
@@ -779,7 +978,11 @@ fn split_formatting_nodes<'a>(
     split
 }
 
-fn split_multiline_html_text<'a>(text: &'a str, nodes: &mut Vec<FormattingNode<'a>>) {
+fn split_multiline_html_text<'a>(
+    text: &'a str,
+    range: Option<SourceRange>,
+    nodes: &mut Vec<FormattingNode<'a>>,
+) {
     let mut characters = text.char_indices();
     let Some((_, first)) = characters.next() else {
         return;
@@ -792,18 +995,42 @@ fn split_multiline_html_text<'a>(text: &'a str, nodes: &mut Vec<FormattingNode<'
             continue;
         }
 
-        nodes.push(FormattingNode::HtmlText(&text[start..index]));
+        nodes.push(FormattingNode::HtmlText {
+            text: &text[start..index],
+            range: split_html_text_range(range, start, index),
+        });
         start = index;
         is_whitespace = !is_whitespace;
     }
 
-    nodes.push(FormattingNode::HtmlText(&text[start..]));
+    nodes.push(FormattingNode::HtmlText {
+        text: &text[start..],
+        range: split_html_text_range(range, start, text.len()),
+    });
+}
+
+fn split_html_text_range(
+    range: Option<SourceRange>,
+    start: usize,
+    end: usize,
+) -> Option<SourceRange> {
+    range.map(|range| SourceRange {
+        start: range.start + start,
+        end: range.start + end,
+    })
+}
+
+fn formatting_node_source_range(node: FormattingNode<'_>) -> Option<SourceRange> {
+    match node {
+        FormattingNode::Node(node) => node.source_range(),
+        FormattingNode::HtmlText { range, .. } => range,
+    }
 }
 
 fn is_inline_formatting_node(node: FormattingNode<'_>) -> bool {
     match node {
         FormattingNode::Node(node) => is_inline_node(node),
-        FormattingNode::HtmlText(text) => !text.contains('\n'),
+        FormattingNode::HtmlText { text, .. } => !text.contains('\n'),
     }
 }
 
@@ -842,7 +1069,7 @@ fn is_inline_node(node: &Node) -> bool {
 
 fn is_inline_boundary_node(node: FormattingNode<'_>) -> bool {
     match node {
-        FormattingNode::HtmlText(text) => !text.contains('\n'),
+        FormattingNode::HtmlText { text, .. } => !text.contains('\n'),
         FormattingNode::Node(node) => is_inline_boundary_html_node(node),
     }
 }
@@ -927,7 +1154,7 @@ fn render_inline_formatting_nodes_untrimmed(nodes: &[FormattingNode<'_>]) -> Str
         .iter()
         .map(|node| match node {
             FormattingNode::Node(node) => render_inline_node(node),
-            FormattingNode::HtmlText(text) => (*text).to_string(),
+            FormattingNode::HtmlText { text, .. } => (*text).to_string(),
         })
         .collect()
 }
@@ -1001,7 +1228,9 @@ fn render_preserved_node(node: &Node) -> String {
 }
 
 fn is_format_sensitive_html_element(name: &str, open: &str) -> bool {
-    is_format_sensitive_html_tag(name) || has_contenteditable_attribute(open)
+    is_format_sensitive_html_tag(name)
+        || has_contenteditable_attribute(open)
+        || has_whitespace_sensitive_style_attribute(open)
 }
 
 fn is_format_sensitive_html_tag(name: &str) -> bool {
@@ -1019,11 +1248,26 @@ fn has_contenteditable_attribute(open: &str) -> bool {
     })
 }
 
+fn has_whitespace_sensitive_style_attribute(open: &str) -> bool {
+    ParsedTag::parse(open).is_some_and(|tag| {
+        tag.attributes.iter().any(|attribute| {
+            attribute_name(attribute).eq_ignore_ascii_case("style")
+                && attribute_value(attribute)
+                    .is_some_and(|value| value.to_ascii_lowercase().contains("white-space"))
+        })
+    })
+}
+
 fn attribute_name(attribute: &str) -> &str {
     attribute
         .split_once('=')
         .map_or(attribute, |(name, _)| name)
         .trim()
+}
+
+fn attribute_value(attribute: &str) -> Option<&str> {
+    let (_, value) = attribute.split_once('=')?;
+    Some(value.trim().trim_matches(['"', '\'']))
 }
 
 fn is_line_ending_char(ch: char) -> bool {
@@ -1339,6 +1583,18 @@ mod tests {
     }
 
     #[test]
+    fn preserves_inline_text_boundaries_around_multiline_erb_blocks() {
+        let input = "Hello<% if user %>\n<span><%= user.name %></span>\n<% end %>!\n";
+        let expected = "Hello<% if user %>\n  <span><%= user.name %></span>\n<% end %>!\n";
+
+        assert_eq!(format_source(input), expected);
+        assert_eq!(format_source(expected), expected);
+
+        let paragraph = "<p>Hello<% if user %>\n<span>Admin</span>\n<% end %>!</p>\n";
+        assert_eq!(format_source(paragraph), paragraph);
+    }
+
+    #[test]
     fn preserves_formatter_ignored_html_and_erb_nodes() {
         assert_eq!(
             format_source(formatter_ignore_fixture()),
@@ -1436,11 +1692,11 @@ mod tests {
 
     #[test]
     fn preserves_svg_math_and_contenteditable_subtrees() {
-        let input = "<section>\n<svg viewBox=\"0 0 10 10\">\n  <path   d=\"M0 0L10 10\"></path>\n</svg>\n<math><mi>x</mi>  <mo>=</mo><mn>1</mn></math>\n<div contenteditable=\"true\"><p> keep  spacing</p></div>\n</section>\n";
+        let input = "<section>\n<svg viewBox=\"0 0 10 10\">\n  <path   d=\"M0 0L10 10\"></path>\n</svg>\n<math><mi>x</mi>  <mo>=</mo><mn>1</mn></math>\n<div contenteditable=\"true\"><p> keep  spacing</p></div>\n<div style=\"white-space: pre-line\"><span>A</span>\n    B</div>\n</section>\n";
 
         assert_eq!(
             format(input),
-            "<section>\n  <svg viewBox=\"0 0 10 10\">\n  <path   d=\"M0 0L10 10\"></path>\n</svg>\n  <math><mi>x</mi>  <mo>=</mo><mn>1</mn></math>\n  <div contenteditable=\"true\"><p> keep  spacing</p></div>\n</section>\n"
+            "<section>\n  <svg viewBox=\"0 0 10 10\">\n  <path   d=\"M0 0L10 10\"></path>\n</svg>\n  <math><mi>x</mi>  <mo>=</mo><mn>1</mn></math>\n  <div contenteditable=\"true\"><p> keep  spacing</p></div>\n  <div style=\"white-space: pre-line\"><span>A</span>\n    B</div>\n</section>\n"
         );
     }
 
