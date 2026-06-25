@@ -354,10 +354,7 @@ impl<'a> Formatter<'a> {
         if is_format_sensitive_html_element(name, open)
             || self.has_erb_block_inline_child_boundary(children)
         {
-            self.write_preserved_block(
-                depth,
-                &render_preserved_html_element(open, close, children),
-            );
+            self.write_format_sensitive_html_element(open, close, children, depth);
             return;
         }
 
@@ -420,6 +417,24 @@ impl<'a> Formatter<'a> {
         }
     }
 
+    fn write_format_sensitive_html_element(
+        &mut self,
+        open: &str,
+        close: &str,
+        children: &[Node],
+        depth: usize,
+    ) {
+        let mut rendered = self.render_tag_with_indent(open, depth);
+        rendered.push_str(&render_preserved_nodes(children));
+        rendered.push_str(close);
+
+        self.output.push_str(&rendered);
+
+        if !rendered.ends_with(['\n', '\r']) {
+            self.output.push_str(self.options.line_ending.as_str());
+        }
+    }
+
     fn write_inline_formatting_nodes(&mut self, nodes: &[FormattingNode<'_>], depth: usize) {
         let inline = render_inline_formatting_nodes(nodes);
 
@@ -468,6 +483,37 @@ impl<'a> Formatter<'a> {
         self.write_indented_line(depth, &format!("{}{suffix}", tag.closing_marker()));
     }
 
+    fn render_tag_with_indent(&self, raw: &str, depth: usize) -> String {
+        let trimmed = raw.trim();
+        let indent = self.indent(depth);
+        let is_multiline = trimmed.contains('\n');
+
+        if !is_multiline && self.fits_on_line(depth, trimmed) {
+            return format!("{indent}{trimmed}");
+        }
+
+        let Some(tag) = ParsedTag::parse(trimmed) else {
+            return format!("{indent}{trimmed}");
+        };
+
+        if tag.attributes.is_empty() {
+            return format!("{indent}{}", tag.inline());
+        }
+
+        let line_ending = self.options.line_ending.as_str();
+        let mut rendered = format!("{indent}<{}{}", tag.name, line_ending);
+
+        for attribute in &tag.attributes {
+            rendered.push_str(&self.indent(depth + 1));
+            rendered.push_str(attribute);
+            rendered.push_str(line_ending);
+        }
+
+        rendered.push_str(&indent);
+        rendered.push_str(tag.closing_marker());
+        rendered
+    }
+
     fn write_erb_tag(&mut self, depth: usize, marker: ErbTagMarker, code: &str) {
         let code = code.trim();
         let inline = format_erb_tag_inline(marker, code);
@@ -503,19 +549,6 @@ impl<'a> Formatter<'a> {
         self.output.push_str(&self.indent(depth));
         self.output.push_str(trimmed);
         self.output.push_str(self.options.line_ending.as_str());
-    }
-
-    fn write_preserved_block(&mut self, depth: usize, block: &str) {
-        if block.is_empty() {
-            return;
-        }
-
-        self.output.push_str(&self.indent(depth));
-        self.output.push_str(block);
-
-        if !block.ends_with(['\n', '\r']) {
-            self.output.push_str(self.options.line_ending.as_str());
-        }
     }
 
     fn write_blank_line(&mut self) {
@@ -1736,6 +1769,30 @@ mod tests {
         assert_eq!(
             format(input),
             "<section>\n  <svg viewBox=\"0 0 10 10\">\n  <path   d=\"M0 0L10 10\"></path>\n</svg>\n  <math><mi>x</mi>  <mo>=</mo><mn>1</mn></math>\n  <div contenteditable=\"true\"><p> keep  spacing</p></div>\n  <div style=\"white-space: pre-line\"><span>A</span>\n    B</div>\n</section>\n"
+        );
+    }
+
+    #[test]
+    fn wraps_format_sensitive_opening_tags_without_touching_content() {
+        let options = FormatOptions {
+            line_width: 42,
+            ..FormatOptions::default()
+        };
+
+        assert_eq!(
+            format_source_with_options(
+                "<svg class=\"icon icon--large\" viewBox=\"0 0 10 10\"><text>Hi</text></svg>\n",
+                options
+            ),
+            "<svg\n  class=\"icon icon--large\"\n  viewBox=\"0 0 10 10\"\n><text>Hi</text></svg>\n"
+        );
+
+        assert_eq!(
+            format_source_with_options(
+                "<div class=\"editable editable--wide\" contenteditable=\"true\"><p> keep  spacing</p></div>\n",
+                options
+            ),
+            "<div\n  class=\"editable editable--wide\"\n  contenteditable=\"true\"\n><p> keep  spacing</p></div>\n"
         );
     }
 
