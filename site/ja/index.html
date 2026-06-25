@@ -80,6 +80,7 @@ erbfmt --write app/views/users/show.html.erb
 erbfmt --check app/views/users/show.html.erb
 erbfmt --lint app/views/users/show.html.erb</code></pre>
         <p><code>--write</code>、<code>--check</code>、<code>--lint</code>は同時に指定できません。checkはformatによる変更が必要な場合、lintはerror levelの診断が見つかった場合に失敗します。</p>
+        <div class="callout"><p><code>&lt;%-</code>、<code>-%&gt;</code>、<code>&lt;%%</code>、<code>&lt;%==</code>などのstandalone ERB trim、escaped、raw-output markerは現在errorになります。semanticを変更する代わりに、fileを書き込まず終了します。</p></div>
         <p>indent、line width、lint severityの変更は<a href="./configuration/">設定リファレンス</a>を参照してください。</p>
 
         <h2 id="principles">設計方針</h2>

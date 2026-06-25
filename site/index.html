@@ -80,6 +80,7 @@ erbfmt --write app/views/users/show.html.erb
 erbfmt --check app/views/users/show.html.erb
 erbfmt --lint app/views/users/show.html.erb</code></pre>
         <p><code>--write</code>, <code>--check</code>, and <code>--lint</code> are mutually exclusive. Check mode fails when formatting would change a file. Lint mode fails when it finds an error-level diagnostic.</p>
+        <div class="callout"><p>Standalone ERB trim, escaped, and raw-output markers such as <code>&lt;%-</code>, <code>-%&gt;</code>, <code>&lt;%%</code>, and <code>&lt;%==</code> are currently rejected. erbfmt fails without writing the file rather than changing their semantics.</p></div>
         <p>Continue with the <a href="./configuration/">configuration reference</a> to choose indentation, line width, and lint severities.</p>
 
         <h2 id="principles">Principles</h2>

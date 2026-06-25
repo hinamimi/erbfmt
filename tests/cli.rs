@@ -144,6 +144,24 @@ fn write_formats_file_in_place() {
 }
 
 #[test]
+fn write_rejects_unsupported_erb_markers_without_changing_the_file() {
+    let dir = TestDir::new("unsupported_erb_marker");
+    let input = "<%- if visible? -%>\n<span>Visible</span>\n<%- end -%>\n";
+    let file = dir.write("input.html.erb", input);
+
+    let output = run(["--write".as_ref(), file.as_path()]);
+
+    assert_failure(&output);
+    assert_eq!(stdout(&output), "");
+    assert!(
+        stderr(&output).contains("unsupported ERB marker `<%-` at line 1, column 1"),
+        "{}",
+        stderr(&output)
+    );
+    assert_eq!(fs::read_to_string(file).unwrap(), input);
+}
+
+#[test]
 fn check_passes_for_formatted_file() {
     let dir = TestDir::new("check_pass");
     let file = dir.write("input.html.erb", FORMATTED);

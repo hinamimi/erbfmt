@@ -139,6 +139,8 @@ resolution details.
 
 - Ruby code is not parsed into a full Ruby AST.
 - Rails application semantics are not analyzed.
+- Standalone ERB trim, escaped, and raw-output markers such as `<%-`, `-%>`,
+  `<%%`, and `<%==` are rejected instead of being rewritten unsafely.
 - Expressions that cannot be recognized safely are preserved rather than
   aggressively rewritten.
 - Preformatted content such as `pre`, `textarea`, `script`, and `style` is kept

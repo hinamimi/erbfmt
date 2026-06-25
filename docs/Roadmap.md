@@ -1361,6 +1361,47 @@ Status: In Progress
 - Linux x64 Ruby gemをbuild、installし、同梱binaryが`erbfmt 0.1.1`を返すことを確認した。
 - 残作業はrelease準備commit、`v0.1.1` tag push、生成されるdraft releaseのasset確認と公開。
 
+## Milestone 67
+
+ERB marker preservation
+
+Status: Planned
+
+現在はsemanticを壊さないため、standaloneの`<%-`、`-%>`、`<%%`、`<%==`を
+安全に拒否します。次の段階では、これらを拒否ではなくmarkerを保持したまま
+formatできるようにします。
+
+難易度:
+
+- full Ruby AST formattingではなく、lexer / parser / formatterでERB marker metadataを
+  round-tripする作業なので、small-to-mediumの範囲に収まる見込み。
+- `<%-`と`-%>`はtrim markerとしてopener / closerを保持すれば対応しやすい。
+- `<%==`はraw output markerとして、通常の`<%=`へ変換しないように保持する。
+- `<%%`はliteral ERBとして扱う必要があり、実行ERBへ変換しない境界設計に注意する。
+
+やること:
+
+- token / nodeにraw opener、raw closer、trim flag、raw output flagを持たせる。
+- `<%- ... %>`と`<% ... -%>`をformat後も同じmarkerで出力する。
+- `<%== ... %>`をraw output ERBとして保持する。
+- `<%% ... %>`をliteral ERB textまたは専用nodeとして保持し、実行ERBに変えない。
+- 現在のsafe rejection testを、対応できるmarkerについてround-trip testへ置き換える。
+- `--write`でmarker semanticを変えないregression testを追加する。
+
+完了条件:
+
+- `<%- if visible? -%>`、`<%- end -%>`がtrim markerを保ったままformatできる。
+- `<%== raw_html %>`が`<%= = raw_html %>`のような別semanticへ変わらない。
+- `<%%= literal %>`がliteralとして保持される。
+- HTML tag attribute内のERB fragmentは従来どおりraw保持される。
+- unsupported markerが残る場合でも、fileを書き換える前に安全に失敗する。
+
+範囲外:
+
+- Ruby ASTの導入
+- trim markerによるHTML whitespaceの評価や最適化
+- ERB engineごとの細かい差分の完全互換
+
 ## 後で考えること
 
 - VSCode Marketplace publishing

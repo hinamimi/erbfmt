@@ -76,6 +76,14 @@ impl LexError {
             message: "unterminated ERB tag".to_string(),
         }
     }
+
+    fn unsupported_erb_marker(input: &str, position: usize, marker: &str) -> Self {
+        Self {
+            position,
+            location: source_location(input, position),
+            message: format!("unsupported ERB marker `{marker}`"),
+        }
+    }
 }
 
 impl fmt::Display for LexError {
@@ -117,6 +125,14 @@ pub fn tokenize_with_spans(input: &str) -> Result<Vec<SpannedToken>, LexError> {
         }
 
         let tag_content_start = start + "<%".len();
+        let opening = &input[tag_content_start..];
+
+        for marker in ["<%-", "<%%", "<%=="] {
+            if opening.starts_with(&marker["<%".len()..]) {
+                return Err(LexError::unsupported_erb_marker(input, start, marker));
+            }
+        }
+
         let (is_output, is_comment, code_start) = if input[tag_content_start..].starts_with('=') {
             (true, false, tag_content_start + "=".len())
         } else if input[tag_content_start..].starts_with('#') {
@@ -130,6 +146,13 @@ pub fn tokenize_with_spans(input: &str) -> Result<Vec<SpannedToken>, LexError> {
         };
 
         let code_end = code_start + relative_end;
+        if input[..code_end].ends_with('-') {
+            return Err(LexError::unsupported_erb_marker(
+                input,
+                code_end - '-'.len_utf8(),
+                "-%>",
+            ));
+        }
         let code = input[code_start..code_end].trim().to_string();
         let token_end = code_end + "%>".len();
         let token = if is_comment {
@@ -557,5 +580,31 @@ mod tests {
             error.to_string(),
             "unterminated ERB tag at line 1, column 6"
         );
+    }
+
+    #[test]
+    fn rejects_unsupported_erb_markers_without_rewriting_them() {
+        let cases = [
+            (
+                "<%- if user %>",
+                "unsupported ERB marker `<%-` at line 1, column 1",
+            ),
+            (
+                "<%%= literal %>",
+                "unsupported ERB marker `<%%` at line 1, column 1",
+            ),
+            (
+                "<%== raw_html %>",
+                "unsupported ERB marker `<%==` at line 1, column 1",
+            ),
+            (
+                "<%= user -%>",
+                "unsupported ERB marker `-%>` at line 1, column 10",
+            ),
+        ];
+
+        for (input, expected) in cases {
+            assert_eq!(tokenize(input).unwrap_err().to_string(), expected);
+        }
     }
 }
