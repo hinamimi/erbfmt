@@ -100,6 +100,10 @@ impl<'a> Formatter<'a> {
 
     fn format_nodes(&mut self, nodes: &[Node], depth: usize) {
         let nodes = split_formatting_nodes(nodes, &self.preserved_ranges);
+        self.format_split_nodes(&nodes, depth);
+    }
+
+    fn format_split_nodes(&mut self, nodes: &[FormattingNode<'_>], depth: usize) {
         let mut index = 0;
 
         while index < nodes.len() {
@@ -137,16 +141,16 @@ impl<'a> Formatter<'a> {
     }
 
     fn format_node(&mut self, node: &Node, depth: usize) {
-        match node {
-            Node::Spanned { node, .. } => self.format_node(node, depth),
+        let range = node.source_range();
+
+        match node.unspanned() {
             Node::HtmlText(text) => self.write_text(text, depth),
             Node::HtmlElement {
                 name,
                 open,
                 close,
                 children,
-                ..
-            } => self.write_html_element(name, open, close, children, depth),
+            } => self.write_html_element(name, open, close, children, range, depth),
             Node::HtmlSelfClosing { raw, .. } | Node::HtmlVoid { raw, .. } => {
                 self.write_tag(raw, depth)
             }
@@ -170,6 +174,7 @@ impl<'a> Formatter<'a> {
                 self.format_erb_branches(branches, depth);
                 self.write_indented_line(depth, "<% end %>");
             }
+            Node::Spanned { .. } => unreachable!("unspanned node cannot remain wrapped"),
         }
     }
 
@@ -213,6 +218,7 @@ impl<'a> Formatter<'a> {
         open: &str,
         close: &str,
         children: &[Node],
+        range: Option<SourceRange>,
         depth: usize,
     ) {
         if is_format_sensitive_html_tag(name) {
@@ -227,8 +233,57 @@ impl<'a> Formatter<'a> {
             let content = render_inline_nodes_untrimmed(children);
             self.write_indented_line(depth, &format!("{open}{content}{close}"));
         } else {
-            self.write_tag(open, depth);
-            self.format_nodes(children, self.html_child_depth(depth));
+            self.write_html_element_multiline(open, close, children, range, depth);
+        }
+    }
+
+    fn write_html_element_multiline(
+        &mut self,
+        open: &str,
+        close: &str,
+        children: &[Node],
+        range: Option<SourceRange>,
+        depth: usize,
+    ) {
+        let boundaries = self.html_element_boundaries(range, open, close);
+        let children = split_formatting_nodes(children, &self.preserved_ranges);
+        let prefix_count = if boundaries.open_child_same_line {
+            leading_inline_boundary_nodes(&children)
+        } else {
+            0
+        };
+        let suffix_start = if boundaries.child_close_same_line {
+            trailing_inline_boundary_nodes(&children, prefix_count)
+        } else {
+            children.len()
+        };
+        let prefix = render_inline_formatting_nodes_untrimmed(&children[..prefix_count]);
+
+        if prefix_count == children.len() {
+            let suffix = if boundaries.child_close_same_line {
+                format!("{prefix}{close}")
+            } else {
+                prefix
+            };
+            self.write_tag_with_suffix(open, depth, &suffix);
+
+            if !boundaries.child_close_same_line {
+                self.write_indented_line(depth, close);
+            }
+
+            return;
+        }
+
+        self.write_tag_with_suffix(open, depth, &prefix);
+        self.format_split_nodes(
+            &children[prefix_count..suffix_start],
+            self.html_child_depth(depth),
+        );
+
+        if suffix_start < children.len() {
+            let suffix = render_inline_formatting_nodes_untrimmed(&children[suffix_start..]);
+            self.write_indented_line(self.html_child_depth(depth), &format!("{suffix}{close}"));
+        } else {
             self.write_indented_line(depth, close);
         }
     }
@@ -250,21 +305,25 @@ impl<'a> Formatter<'a> {
     }
 
     fn write_tag(&mut self, raw: &str, depth: usize) {
+        self.write_tag_with_suffix(raw, depth, "");
+    }
+
+    fn write_tag_with_suffix(&mut self, raw: &str, depth: usize, suffix: &str) {
         let trimmed = raw.trim();
         let is_multiline = trimmed.contains('\n');
 
         if !is_multiline && self.fits_on_line(depth, trimmed) {
-            self.write_indented_line(depth, trimmed);
+            self.write_indented_line(depth, &format!("{trimmed}{suffix}"));
             return;
         }
 
         let Some(tag) = ParsedTag::parse(trimmed) else {
-            self.write_indented_line(depth, trimmed);
+            self.write_indented_line(depth, &format!("{trimmed}{suffix}"));
             return;
         };
 
         if tag.attributes.is_empty() {
-            self.write_indented_line(depth, &tag.inline());
+            self.write_indented_line(depth, &format!("{}{}", tag.inline(), suffix));
             return;
         }
 
@@ -274,7 +333,7 @@ impl<'a> Formatter<'a> {
             self.write_indented_line(depth + 1, attribute);
         }
 
-        self.write_indented_line(depth, tag.closing_marker());
+        self.write_indented_line(depth, &format!("{}{suffix}", tag.closing_marker()));
     }
 
     fn write_erb_tag(&mut self, depth: usize, marker: ErbTagMarker, code: &str) {
@@ -385,6 +444,46 @@ impl<'a> Formatter<'a> {
         self.output.push_str(raw);
         true
     }
+
+    fn html_element_boundaries(
+        &self,
+        range: Option<SourceRange>,
+        open: &str,
+        close: &str,
+    ) -> HtmlElementBoundaries {
+        let Some(source) = self.source else {
+            return HtmlElementBoundaries::default();
+        };
+        let Some(range) = range else {
+            return HtmlElementBoundaries::default();
+        };
+        let content_start = range.start + open.len();
+        let Some(content_end) = range.end.checked_sub(close.len()) else {
+            return HtmlElementBoundaries::default();
+        };
+        if content_start >= content_end || content_end > source.len() {
+            return HtmlElementBoundaries::default();
+        }
+
+        let content = &source[content_start..content_end];
+
+        HtmlElementBoundaries {
+            open_child_same_line: content
+                .chars()
+                .next()
+                .is_some_and(|ch| !is_line_ending_char(ch)),
+            child_close_same_line: content
+                .chars()
+                .next_back()
+                .is_some_and(|ch| !is_line_ending_char(ch)),
+        }
+    }
+}
+
+#[derive(Default)]
+struct HtmlElementBoundaries {
+    open_child_same_line: bool,
+    child_close_same_line: bool,
 }
 
 fn formatter_ignore_ranges(nodes: &[Node], source: &str) -> HashMap<SourceRange, SourceRange> {
@@ -689,6 +788,25 @@ fn is_inline_formatting_node(node: FormattingNode<'_>) -> bool {
     }
 }
 
+fn leading_inline_boundary_nodes(nodes: &[FormattingNode<'_>]) -> usize {
+    nodes
+        .iter()
+        .take_while(|node| is_inline_boundary_node(**node))
+        .count()
+}
+
+fn trailing_inline_boundary_nodes(nodes: &[FormattingNode<'_>], prefix_count: usize) -> usize {
+    nodes
+        .iter()
+        .enumerate()
+        .rev()
+        .take_while(|(_, node)| is_inline_boundary_node(**node))
+        .map(|(index, _)| index)
+        .last()
+        .unwrap_or(nodes.len())
+        .max(prefix_count)
+}
+
 fn is_inline_node(node: &Node) -> bool {
     match node.unspanned() {
         Node::HtmlText(text) => !text.contains('\n'),
@@ -703,16 +821,96 @@ fn is_inline_node(node: &Node) -> bool {
     }
 }
 
+fn is_inline_boundary_node(node: FormattingNode<'_>) -> bool {
+    match node {
+        FormattingNode::HtmlText(text) => !text.contains('\n'),
+        FormattingNode::Node(node) => is_inline_boundary_html_node(node),
+    }
+}
+
+fn is_inline_boundary_html_node(node: &Node) -> bool {
+    match node.unspanned() {
+        Node::HtmlText(text) => !text.contains('\n'),
+        Node::HtmlElement { name, children, .. } => {
+            is_inline_boundary_html_tag(name) && children.iter().all(is_inline_boundary_html_node)
+        }
+        Node::HtmlVoid { name, .. } | Node::HtmlSelfClosing { name, .. } => {
+            is_inline_boundary_html_tag(name)
+        }
+        Node::HtmlComment(_) | Node::ErbComment(_) | Node::ErbCode(_) | Node::ErbOutput(_) => true,
+        Node::HtmlDoctype(_) | Node::Spanned { .. } | Node::ErbBlock { .. } => false,
+    }
+}
+
+fn is_inline_boundary_html_tag(name: &str) -> bool {
+    matches!(
+        name.to_ascii_lowercase().as_str(),
+        "a" | "abbr"
+            | "area"
+            | "audio"
+            | "b"
+            | "bdi"
+            | "bdo"
+            | "br"
+            | "button"
+            | "canvas"
+            | "cite"
+            | "code"
+            | "data"
+            | "del"
+            | "dfn"
+            | "em"
+            | "embed"
+            | "i"
+            | "iframe"
+            | "img"
+            | "input"
+            | "ins"
+            | "kbd"
+            | "label"
+            | "mark"
+            | "meter"
+            | "noscript"
+            | "object"
+            | "output"
+            | "picture"
+            | "progress"
+            | "q"
+            | "ruby"
+            | "s"
+            | "samp"
+            | "select"
+            | "slot"
+            | "small"
+            | "span"
+            | "strong"
+            | "sub"
+            | "sup"
+            | "svg"
+            | "template"
+            | "textarea"
+            | "time"
+            | "u"
+            | "var"
+            | "video"
+            | "wbr"
+    )
+}
+
 fn render_inline_formatting_nodes(nodes: &[FormattingNode<'_>]) -> String {
+    render_inline_formatting_nodes_untrimmed(nodes)
+        .trim()
+        .to_string()
+}
+
+fn render_inline_formatting_nodes_untrimmed(nodes: &[FormattingNode<'_>]) -> String {
     nodes
         .iter()
         .map(|node| match node {
             FormattingNode::Node(node) => render_inline_node(node),
             FormattingNode::HtmlText(text) => (*text).to_string(),
         })
-        .collect::<String>()
-        .trim()
-        .to_string()
+        .collect()
 }
 
 fn render_inline_nodes_untrimmed(nodes: &[Node]) -> String {
@@ -788,6 +986,10 @@ fn is_format_sensitive_html_tag(name: &str) -> bool {
         name.to_ascii_lowercase().as_str(),
         "pre" | "textarea" | "script" | "style" | "xmp" | "listing"
     )
+}
+
+fn is_line_ending_char(ch: char) -> bool {
+    matches!(ch, '\n' | '\r')
 }
 
 fn format_erb_tag_inline(marker: ErbTagMarker, code: &str) -> String {
@@ -1024,6 +1226,29 @@ mod tests {
         let input = "<p>Hello <strong>world</strong>!</p>\n<span> padded </span>\n<i></i>\ntext\n";
 
         assert_eq!(format(input), input);
+    }
+
+    #[test]
+    fn preserves_source_boundaries_between_opening_tags_and_inline_children() {
+        let options = FormatOptions {
+            line_width: 36,
+            ..FormatOptions::default()
+        };
+        let input = "<a class=\"button button--primary\" href=\"/profile\">Profile</a>\n";
+        let expected =
+            "<a\n  class=\"button button--primary\"\n  href=\"/profile\"\n>Profile</a>\n";
+
+        assert_eq!(format_source_with_options(input, options), expected);
+        assert_eq!(format_source_with_options(expected, options), expected);
+    }
+
+    #[test]
+    fn preserves_source_boundaries_between_closing_tags_and_inline_children() {
+        let input = "<p>Lead\n<strong>Body</strong>\nTail</p>\n";
+        let expected = "<p>Lead\n  <strong>Body</strong>\n  Tail</p>\n";
+
+        assert_eq!(format_source(input), expected);
+        assert_eq!(format_source(expected), expected);
     }
 
     #[test]
