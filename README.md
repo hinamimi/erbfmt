@@ -102,7 +102,9 @@ Whitespace-sensitive inline output is handled conservatively. Adjacent inline
 HTML, adjacent ERB outputs, and ERB blocks that were originally written on one
 line are kept inline, even when that is longer than `formatter.lineWidth`.
 Subtrees under `pre`, `textarea`, `script`, `style`, `svg`, `math`, and elements
-with `contenteditable` are preserved on the safe side.
+with `contenteditable` or inline `white-space` styles are preserved on the safe
+side. `template` and `noscript` subtrees are also preserved rather than being
+rewrapped.
 
 The linter reports malformed HTML structure, invalid list and table nesting,
 deprecated or self-closing HTML tags, duplicate attributes, and unsupported or
@@ -155,8 +157,8 @@ resolution details.
 - Expressions that cannot be recognized safely are preserved rather than
   aggressively rewritten.
 - Preformatted or format-sensitive content such as `pre`, `textarea`, `script`,
-  `style`, `svg`, `math`, and `contenteditable` subtrees is kept on the safe
-  side.
+  `style`, `svg`, `math`, `template`, `noscript`, `contenteditable` subtrees,
+  and inline `white-space` styles is kept on the safe side.
 - Initial releases are distributed only through GitHub Releases, not package
   registries or extension marketplaces.
 

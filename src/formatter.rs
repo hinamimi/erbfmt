@@ -1056,7 +1056,12 @@ fn trailing_inline_boundary_nodes(nodes: &[FormattingNode<'_>], prefix_count: us
 fn is_inline_node(node: &Node) -> bool {
     match node.unspanned() {
         Node::HtmlText(text) => !text.contains('\n'),
-        Node::HtmlElement { children, .. } => can_render_inline(children),
+        Node::HtmlElement {
+            name,
+            open,
+            children,
+            ..
+        } => !is_format_sensitive_html_element(name, open) && can_render_inline(children),
         Node::HtmlSelfClosing { .. }
         | Node::HtmlVoid { .. }
         | Node::HtmlComment(_)
@@ -1077,8 +1082,15 @@ fn is_inline_boundary_node(node: FormattingNode<'_>) -> bool {
 fn is_inline_boundary_html_node(node: &Node) -> bool {
     match node.unspanned() {
         Node::HtmlText(text) => !text.contains('\n'),
-        Node::HtmlElement { name, children, .. } => {
-            is_inline_boundary_html_tag(name) && children.iter().all(is_inline_boundary_html_node)
+        Node::HtmlElement {
+            name,
+            open,
+            children,
+            ..
+        } => {
+            !is_format_sensitive_html_element(name, open)
+                && is_inline_boundary_html_tag(name)
+                && children.iter().all(is_inline_boundary_html_node)
         }
         Node::HtmlVoid { name, .. } | Node::HtmlSelfClosing { name, .. } => {
             is_inline_boundary_html_tag(name)
@@ -1089,58 +1101,63 @@ fn is_inline_boundary_html_node(node: &Node) -> bool {
 }
 
 fn is_inline_boundary_html_tag(name: &str) -> bool {
-    matches!(
-        name.to_ascii_lowercase().as_str(),
-        "a" | "abbr"
-            | "area"
-            | "audio"
-            | "b"
-            | "bdi"
-            | "bdo"
-            | "br"
-            | "button"
-            | "canvas"
-            | "cite"
-            | "code"
-            | "data"
-            | "del"
-            | "dfn"
-            | "em"
-            | "embed"
-            | "i"
-            | "iframe"
-            | "img"
-            | "input"
-            | "ins"
-            | "kbd"
-            | "label"
-            | "mark"
-            | "meter"
-            | "noscript"
-            | "object"
-            | "output"
-            | "picture"
-            | "progress"
-            | "q"
-            | "ruby"
-            | "s"
-            | "samp"
-            | "select"
-            | "slot"
-            | "small"
-            | "span"
-            | "strong"
-            | "sub"
-            | "sup"
-            | "svg"
-            | "template"
-            | "textarea"
-            | "time"
-            | "u"
-            | "var"
-            | "video"
-            | "wbr"
-    )
+    let normalized = name.to_ascii_lowercase();
+
+    is_custom_html_element_name(&normalized)
+        || matches!(
+            normalized.as_str(),
+            "a" | "abbr"
+                | "area"
+                | "audio"
+                | "b"
+                | "bdi"
+                | "bdo"
+                | "br"
+                | "button"
+                | "canvas"
+                | "cite"
+                | "code"
+                | "data"
+                | "del"
+                | "dfn"
+                | "em"
+                | "embed"
+                | "i"
+                | "iframe"
+                | "img"
+                | "input"
+                | "ins"
+                | "kbd"
+                | "label"
+                | "mark"
+                | "meter"
+                | "object"
+                | "output"
+                | "picture"
+                | "progress"
+                | "q"
+                | "ruby"
+                | "s"
+                | "samp"
+                | "select"
+                | "slot"
+                | "small"
+                | "span"
+                | "strong"
+                | "sub"
+                | "sup"
+                | "svg"
+                | "textarea"
+                | "time"
+                | "u"
+                | "var"
+                | "video"
+                | "wbr"
+        )
+}
+
+fn is_custom_html_element_name(name: &str) -> bool {
+    name.contains('-')
 }
 
 fn render_inline_formatting_nodes(nodes: &[FormattingNode<'_>]) -> String {
@@ -1236,7 +1253,16 @@ fn is_format_sensitive_html_element(name: &str, open: &str) -> bool {
 fn is_format_sensitive_html_tag(name: &str) -> bool {
     matches!(
         name.to_ascii_lowercase().as_str(),
-        "pre" | "textarea" | "script" | "style" | "xmp" | "listing" | "svg" | "math"
+        "pre"
+            | "textarea"
+            | "script"
+            | "style"
+            | "xmp"
+            | "listing"
+            | "svg"
+            | "math"
+            | "template"
+            | "noscript"
     )
 }
 
@@ -1511,6 +1537,19 @@ mod tests {
     }
 
     #[test]
+    fn preserves_inline_boundaries_around_custom_elements() {
+        let options = FormatOptions {
+            line_width: 36,
+            ..FormatOptions::default()
+        };
+        let input = "<a class=\"button button--primary button--wide\"><ui-icon name=\"check\"></ui-icon>Done</a>\n";
+        let expected = "<a\n  class=\"button button--primary button--wide\"\n><ui-icon name=\"check\"></ui-icon>Done</a>\n";
+
+        assert_eq!(format_source_with_options(input, options), expected);
+        assert_eq!(format_source_with_options(expected, options), expected);
+    }
+
+    #[test]
     fn preserves_source_boundaries_between_opening_tags_and_inline_children() {
         let options = FormatOptions {
             line_width: 36,
@@ -1697,6 +1736,16 @@ mod tests {
         assert_eq!(
             format(input),
             "<section>\n  <svg viewBox=\"0 0 10 10\">\n  <path   d=\"M0 0L10 10\"></path>\n</svg>\n  <math><mi>x</mi>  <mo>=</mo><mn>1</mn></math>\n  <div contenteditable=\"true\"><p> keep  spacing</p></div>\n  <div style=\"white-space: pre-line\"><span>A</span>\n    B</div>\n</section>\n"
+        );
+    }
+
+    #[test]
+    fn preserves_template_and_noscript_subtrees() {
+        let input = "<section>\n<template><div   class=\"legacy\">Keep  spacing</div></template>\n<noscript><p> keep  spacing</p></noscript>\n</section>\n";
+
+        assert_eq!(
+            format(input),
+            "<section>\n  <template><div   class=\"legacy\">Keep  spacing</div></template>\n  <noscript><p> keep  spacing</p></noscript>\n</section>\n"
         );
     }
 
