@@ -59,11 +59,14 @@ option for the existing HTML indentation behavior.
 - `formatter.lineEnding`: `lf` or `crlf`.
 - `formatter.lineWidth`: target line width. Opening, void, and self-closing
   HTML tags that exceed this width are expanded one attribute per line, with
-  the closing marker on its own line. Standalone ERB tags that exceed this
-  width are expanded by moving `<%` / `<%=` and `%>` onto their own lines.
-  When the Ruby code is a simple method call with top-level comma-separated
-  arguments, erbfmt may place one argument per line. Command-style calls gain
-  explicit parentheses; calls that already have parentheses retain them. Ruby
+  the closing marker on its own line. For format-sensitive subtrees such as
+  `pre`, `svg`, `math`, `template`, `noscript`, `contenteditable`, and inline
+  `white-space` styles, erbfmt preserves the subtree content but may still wrap
+  the opening tag attributes. Standalone ERB tags that exceed this width are
+  expanded by moving `<%` / `<%=` and `%>` onto their own lines. When the Ruby
+  code is a simple method call with top-level comma-separated arguments, erbfmt
+  may place one argument per line. Command-style calls gain explicit
+  parentheses; calls that already have parentheses retain them. Ruby
   expressions that cannot be recognized safely are left intact.
 - `formatter.trailingNewline`: keep or remove the final newline. The default
   `true` follows normal source-file conventions. Use `false` for ERB files that

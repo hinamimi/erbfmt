@@ -88,7 +88,7 @@ erbfmt init --force</code></pre>
           <div class="option"><dt><code>formatter.indentWidth</code><span class="meta">1以上のinteger · default: 2</span></dt><dd><p><code>indentStyle</code>が <code>space</code>の場合に、indent 1 levelで使うspace数を指定します。</p></dd></div>
           <div class="option"><dt><code>formatter.indentHtml</code><span class="meta">boolean · default: true</span></dt><dd><p>nested HTML elementに合わせてcontentをindentします。無効にしてもERB control-flowのindentは維持されます。</p></dd></div>
           <div class="option"><dt><code>formatter.lineEnding</code><span class="meta">"lf" | "crlf" · default: "lf"</span></dt><dd><p>format結果のline endingをUnix LFまたはWindows CRLFから選びます。</p></dd></div>
-          <div class="option"><dt><code>formatter.lineWidth</code><span class="meta">1以上のinteger · default: 80</span></dt><dd><p>目標line widthを指定します。長いHTML opening tagはattributeごとに展開されます。standalone ERB tagはmarkerを別行へ移し、安全に認識できるmethod callはtop-level argumentごとに折り返すことがあります。曖昧なRuby式は変更しません。</p></dd></div>
+          <div class="option"><dt><code>formatter.lineWidth</code><span class="meta">1以上のinteger · default: 80</span></dt><dd><p>目標line widthを指定します。長いHTML opening tagはattributeごとに展開されます。format-sensitive subtreeはcontentを保持しますが、opening tagのattributeは折り返すことがあります。standalone ERB tagはmarkerを別行へ移し、安全に認識できるmethod callはtop-level argumentごとに折り返すことがあります。曖昧なRuby式は変更しません。</p></dd></div>
           <div class="option"><dt><code>formatter.trailingNewline</code><span class="meta">boolean · default: true</span></dt><dd><p>format結果の末尾へ1つのnewlineを追加します。defaultは通常のsource file conventionsに合わせています。周囲のtextへinline partial fragmentとして差し込むERB fileで、末尾newlineがvisible whitespaceになる場合は <code>false</code>を指定します。</p></dd></div>
         </dl>
 

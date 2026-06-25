@@ -124,7 +124,8 @@ whitespaceの意味が変わりやすいinline outputは安全側に倒します
 隣接するERB output、元ソースで1行だったERB blockは、`formatter.lineWidth`を超えても
 inlineのまま保持します。`pre`、`textarea`、`script`、`style`、`svg`、`math`、
 `contenteditable` やinline `white-space` styleを持つelementのsubtreeも保持します。
-`template` と `noscript` のsubtreeも折り返さず保持します。
+`template` と `noscript` のsubtreeも折り返さず保持します。ただし、保持対象の
+opening tagは、contentを変えずに安全に扱える場合、attributeごとに整形することがあります。
 
 Linterは不正なHTML構造、list/tableの不正なnesting、非推奨tag、self-closing tag、
 重複attribute、未対応または空のERB制御構文を検出します。

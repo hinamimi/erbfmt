@@ -133,7 +133,8 @@ line are kept inline, even when that is longer than `formatter.lineWidth`.
 Subtrees under `pre`, `textarea`, `script`, `style`, `svg`, `math`, and elements
 with `contenteditable` or inline `white-space` styles are preserved on the safe
 side. `template` and `noscript` subtrees are also preserved rather than being
-rewrapped.
+rewrapped. Their opening tags may still be normalized or wrapped by attribute
+when erbfmt can do so without changing the preserved content.
 
 The linter reports malformed HTML structure, invalid list and table nesting,
 deprecated or self-closing HTML tags, duplicate attributes, and unsupported or
