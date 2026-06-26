@@ -70,11 +70,11 @@ second ERB formatter implementation.
 
 The core implementation is developed incrementally:
 
-1. `src/lexer.rs` separates HTML fragments and ERB tags.
+1. `src/lexer/` separates HTML fragments and ERB tags.
 2. `src/html.rs` tokenizes the HTML portions.
 3. `src/mixed_parser.rs` builds the mixed HTML/ERB structure.
-4. `src/formatter.rs` produces formatted output.
-5. `src/linter.rs` reports configurable diagnostics.
+4. `src/formatter/` produces formatted output.
+5. `src/linter/` reports configurable diagnostics.
 
 Ruby expressions are still treated conservatively. `src/ruby_format.rs`
 recognizes only the narrow command-call shapes that can be wrapped without a
