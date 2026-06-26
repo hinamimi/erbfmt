@@ -1,4 +1,4 @@
-pub(crate) fn fold_command_call(code: &str) -> Option<Vec<String>> {
+pub(super) fn fold_command_call(code: &str) -> Option<Vec<String>> {
     let code = code.trim();
 
     if code.is_empty() || code.contains('#') || code.contains(';') {

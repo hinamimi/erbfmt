@@ -76,7 +76,7 @@ The core implementation is developed incrementally:
 4. `src/formatter/` produces formatted output.
 5. `src/linter/` reports configurable diagnostics.
 
-Ruby expressions are still treated conservatively. `src/ruby_format.rs`
+Ruby expressions are still treated conservatively. `src/formatter/ruby_wrap.rs`
 recognizes only the narrow command-call shapes that can be wrapped without a
 full Ruby AST.
 

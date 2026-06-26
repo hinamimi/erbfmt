@@ -5,7 +5,6 @@ mod ignore;
 mod lexer;
 mod linter;
 mod mixed_parser;
-mod ruby_format;
 
 use anyhow::{Context, Result, bail};
 use clap::{ArgGroup, Parser};
