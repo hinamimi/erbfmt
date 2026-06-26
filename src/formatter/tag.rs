@@ -51,6 +51,51 @@ impl ParsedTag {
     }
 }
 
+pub(super) struct TagRenderContext<'a> {
+    pub(super) indent: &'a str,
+    pub(super) child_indent: &'a str,
+    pub(super) line_ending: &'a str,
+    pub(super) line_width: usize,
+}
+
+pub(super) fn render_tag(raw: &str, suffix: &str, context: TagRenderContext<'_>) -> Option<String> {
+    let trimmed = raw.trim();
+    let suffix = suffix.trim_end();
+    if trimmed.is_empty() {
+        return None;
+    }
+
+    let is_multiline = trimmed.contains('\n');
+    if !is_multiline && fits_on_line(context.indent, trimmed, context.line_width) {
+        return Some(format!("{}{trimmed}{suffix}", context.indent));
+    }
+
+    let Some(tag) = ParsedTag::parse(trimmed) else {
+        return Some(format!("{}{trimmed}{suffix}", context.indent));
+    };
+
+    if tag.attributes.is_empty() {
+        return Some(format!("{}{}{}", context.indent, tag.inline(), suffix));
+    }
+
+    let mut rendered = format!("{}<{}{}", context.indent, tag.name, context.line_ending);
+
+    for attribute in &tag.attributes {
+        rendered.push_str(context.child_indent);
+        rendered.push_str(attribute);
+        rendered.push_str(context.line_ending);
+    }
+
+    rendered.push_str(context.indent);
+    rendered.push_str(tag.closing_marker());
+    rendered.push_str(suffix);
+    Some(rendered)
+}
+
+fn fits_on_line(indent: &str, text: &str, line_width: usize) -> bool {
+    indent.chars().count() + text.chars().count() <= line_width
+}
+
 fn split_attributes(input: &str) -> Vec<String> {
     let mut attributes = Vec::new();
     let mut start = None;

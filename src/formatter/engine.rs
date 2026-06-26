@@ -16,7 +16,7 @@ use super::options::{FormatOptions, IndentStyle};
 use super::preserve::{
     is_format_sensitive_html_element, render_preserved_node, render_preserved_nodes,
 };
-use super::tag::ParsedTag;
+use super::tag::{TagRenderContext, render_tag};
 
 #[allow(dead_code)]
 pub fn format_document(document: &Document) -> String {
@@ -415,62 +415,33 @@ impl<'a> Formatter<'a> {
     }
 
     fn write_tag_with_suffix(&mut self, raw: &str, depth: usize, suffix: &str) {
-        let trimmed = raw.trim();
-        let is_multiline = trimmed.contains('\n');
-
-        if !is_multiline && self.fits_on_line(depth, trimmed) {
-            self.write_indented_line(depth, &format!("{trimmed}{suffix}"));
-            return;
-        }
-
-        let Some(tag) = ParsedTag::parse(trimmed) else {
-            self.write_indented_line(depth, &format!("{trimmed}{suffix}"));
+        let Some(rendered) = self.render_tag_with_suffix(raw, depth, suffix) else {
             return;
         };
 
-        if tag.attributes.is_empty() {
-            self.write_indented_line(depth, &format!("{}{}", tag.inline(), suffix));
-            return;
-        }
-
-        self.write_indented_line(depth, &format!("<{}", tag.name));
-
-        for attribute in &tag.attributes {
-            self.write_indented_line(depth + 1, attribute);
-        }
-
-        self.write_indented_line(depth, &format!("{}{suffix}", tag.closing_marker()));
+        self.output.push_str(&rendered);
+        self.output.push_str(self.options.line_ending.as_str());
     }
 
     fn render_tag_with_indent(&self, raw: &str, depth: usize) -> String {
-        let trimmed = raw.trim();
+        self.render_tag_with_suffix(raw, depth, "")
+            .unwrap_or_default()
+    }
+
+    fn render_tag_with_suffix(&self, raw: &str, depth: usize, suffix: &str) -> Option<String> {
         let indent = self.indent(depth);
-        let is_multiline = trimmed.contains('\n');
+        let child_indent = self.indent(depth + 1);
 
-        if !is_multiline && self.fits_on_line(depth, trimmed) {
-            return format!("{indent}{trimmed}");
-        }
-
-        let Some(tag) = ParsedTag::parse(trimmed) else {
-            return format!("{indent}{trimmed}");
-        };
-
-        if tag.attributes.is_empty() {
-            return format!("{indent}{}", tag.inline());
-        }
-
-        let line_ending = self.options.line_ending.as_str();
-        let mut rendered = format!("{indent}<{}{}", tag.name, line_ending);
-
-        for attribute in &tag.attributes {
-            rendered.push_str(&self.indent(depth + 1));
-            rendered.push_str(attribute);
-            rendered.push_str(line_ending);
-        }
-
-        rendered.push_str(&indent);
-        rendered.push_str(tag.closing_marker());
-        rendered
+        render_tag(
+            raw,
+            suffix,
+            TagRenderContext {
+                indent: &indent,
+                child_indent: &child_indent,
+                line_ending: self.options.line_ending.as_str(),
+                line_width: self.options.line_width,
+            },
+        )
     }
 
     fn write_erb_tag(&mut self, depth: usize, marker: ErbTagMarker, code: &str) {
