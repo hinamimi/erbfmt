@@ -80,6 +80,13 @@ Ruby expressions are still treated conservatively. `src/ruby_format.rs`
 recognizes only the narrow command-call shapes that can be wrapped without a
 full Ruby AST.
 
+## Refactoring TODO
+
+- Split the remaining `src/mixed_parser/mod.rs` parser body into smaller parser
+  modules when parser behavior changes next.
+- Split `src/linter/html_rules.rs` by HTML rule domain as new HTML lint rules
+  are added.
+
 ## Test Fixtures
 
 - `samples/sample.html.erb`: intentionally unformatted user-facing demo
