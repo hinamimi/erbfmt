@@ -3,12 +3,12 @@
 This gem is a thin launcher for the platform-specific erbfmt Rust binary.
 
 Initial releases are distributed as platform-specific `.gem` files attached to
-the [erbfmt GitHub Release](https://github.com/hinamimi/erbfmt/releases/tag/v0.1.1)
+the [erbfmt GitHub Release](https://github.com/hinamimi/erbfmt/releases/tag/v0.1.2)
 rather than through RubyGems.org. Download the file matching the local platform
 and install it directly. For example, on glibc Linux x64:
 
 ```bash
-gem install --local ./erbfmt-0.1.1-x86_64-linux-gnu.gem
+gem install --local ./erbfmt-0.1.2-x86_64-linux-gnu.gem
 erbfmt --version
 ```
 
@@ -20,15 +20,15 @@ project's `vendor/cache` directory:
 ```bash
 mkdir -p vendor/cache
 curl -L \
-  -o vendor/cache/erbfmt-0.1.1-x86_64-linux-gnu.gem \
-  https://github.com/hinamimi/erbfmt/releases/download/v0.1.1/erbfmt-0.1.1-x86_64-linux-gnu.gem
+  -o vendor/cache/erbfmt-0.1.2-x86_64-linux-gnu.gem \
+  https://github.com/hinamimi/erbfmt/releases/download/v0.1.2/erbfmt-0.1.2-x86_64-linux-gnu.gem
 ```
 
 Add the exact version to the project Gemfile:
 
 ```ruby
 group :development do
-  gem "erbfmt", "0.1.1", require: false
+  gem "erbfmt", "0.1.2", require: false
 end
 ```
 
@@ -63,8 +63,8 @@ The shared version check covers Cargo, this gem, the VSCode extension, and
 their lockfiles. Release versions are updated from the repository root:
 
 ```bash
-ruby scripts/version.rb set 0.1.1
-ruby scripts/version.rb verify 0.1.1
+ruby scripts/version.rb set 0.1.2
+ruby scripts/version.rb verify 0.1.2
 ```
 
 Build, install, and execute a local platform-specific gem in isolation:

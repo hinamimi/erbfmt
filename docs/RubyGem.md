@@ -143,7 +143,7 @@ Release version. A gem must contain the binary built from the same tagged commit
 
 The unpublished development wrapper used RubyGems version `0.0.0.dev` while
 Cargo and the VSCode extension used `0.0.0-dev`. The current release version
-`0.1.1` is identical everywhere.
+`0.1.2` is identical everywhere.
 
 `lib/erbfmt/version.rb` is the gem version source. The release verification task
 must compare its normalized value with `Cargo.toml` and `erbfmt --version`.
@@ -164,8 +164,8 @@ Rails project's `vendor/cache` directory. For glibc Linux x64:
 ```bash
 mkdir -p vendor/cache
 curl -L \
-  -o vendor/cache/erbfmt-0.1.1-x86_64-linux-gnu.gem \
-  https://github.com/hinamimi/erbfmt/releases/download/v0.1.1/erbfmt-0.1.1-x86_64-linux-gnu.gem
+  -o vendor/cache/erbfmt-0.1.2-x86_64-linux-gnu.gem \
+  https://github.com/hinamimi/erbfmt/releases/download/v0.1.2/erbfmt-0.1.2-x86_64-linux-gnu.gem
 ```
 
 Rails projects add the CLI at an exact version without auto-requiring Ruby
@@ -173,7 +173,7 @@ code:
 
 ```ruby
 group :development do
-  gem "erbfmt", "0.1.1", require: false
+  gem "erbfmt", "0.1.2", require: false
 end
 ```
 
@@ -195,10 +195,10 @@ the local RubyGems platform:
 
 | Development platform | Release gem |
 | --- | --- |
-| glibc Linux x64 | `erbfmt-0.1.1-x86_64-linux-gnu.gem` |
-| macOS Intel | `erbfmt-0.1.1-x86_64-darwin.gem` |
-| macOS Apple Silicon | `erbfmt-0.1.1-arm64-darwin.gem` |
-| Windows RubyInstaller UCRT x64 | `erbfmt-0.1.1-x64-mingw-ucrt.gem` |
+| glibc Linux x64 | `erbfmt-0.1.2-x86_64-linux-gnu.gem` |
+| macOS Intel | `erbfmt-0.1.2-x86_64-darwin.gem` |
+| macOS Apple Silicon | `erbfmt-0.1.2-arm64-darwin.gem` |
+| Windows RubyInstaller UCRT x64 | `erbfmt-0.1.2-x64-mingw-ucrt.gem` |
 
 Projects used on multiple platforms should keep every required variant in
 `vendor/cache` and include those platforms in `Gemfile.lock`. Unsupported
@@ -208,7 +208,7 @@ Do not use a Git source as a substitute:
 
 ```ruby
 # Unsupported: the repository does not contain a staged Rust binary.
-gem "erbfmt", git: "https://github.com/hinamimi/erbfmt.git", tag: "v0.1.1"
+gem "erbfmt", git: "https://github.com/hinamimi/erbfmt.git", tag: "v0.1.2"
 ```
 
 The Rust binary is inserted only while each release gem is built. Installing
