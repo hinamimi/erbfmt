@@ -1,196 +1,15 @@
-use std::fmt;
-
 use crate::{
     html::{self, HtmlTag, HtmlToken},
-    lexer::{self, ErbBlockKind, ErbBranchKind, SourceLocation, SpannedToken, Token},
+    lexer::{self, ErbBranchKind, SourceLocation, SpannedToken, Token},
 };
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Document {
-    pub children: Vec<Node>,
-}
+mod ast;
+mod error;
+mod frame;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct SourceRange {
-    pub start: usize,
-    pub end: usize,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Node {
-    HtmlText(String),
-    HtmlElement {
-        name: String,
-        open: String,
-        close: String,
-        children: Vec<Node>,
-    },
-    HtmlSelfClosing {
-        name: String,
-        raw: String,
-    },
-    HtmlVoid {
-        name: String,
-        raw: String,
-    },
-    HtmlComment(String),
-    HtmlDoctype(String),
-    ErbCode(String),
-    ErbComment(String),
-    ErbOutput(String),
-    ErbBlock {
-        kind: ErbBlockKind,
-        code: String,
-        output: bool,
-        children: Vec<Node>,
-        branches: Vec<ErbBranch>,
-    },
-    Spanned {
-        node: Box<Node>,
-        range: SourceRange,
-    },
-}
-
-impl Node {
-    pub fn unspanned(&self) -> &Self {
-        match self {
-            Self::Spanned { node, .. } => node.unspanned(),
-            node => node,
-        }
-    }
-
-    pub fn source_range(&self) -> Option<SourceRange> {
-        match self {
-            Self::Spanned { range, .. } => Some(*range),
-            _ => None,
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ErbBranch {
-    pub kind: ErbBranchKind,
-    pub code: String,
-    pub children: Vec<Node>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum ParseError {
-    UnexpectedErbBlockEnd {
-        token_index: usize,
-        code: String,
-    },
-    UnexpectedErbBranch {
-        token_index: usize,
-        code: String,
-    },
-    UnclosedErbBlock {
-        token_index: usize,
-        code: String,
-    },
-    UnexpectedHtmlCloseTag {
-        name: String,
-        raw: String,
-        location: Option<SourceLocation>,
-    },
-    MismatchedHtmlCloseTag {
-        expected: String,
-        found: String,
-        raw: String,
-        location: Option<SourceLocation>,
-    },
-    UnclosedHtmlTag {
-        name: String,
-        raw: String,
-        location: Option<SourceLocation>,
-    },
-}
-
-impl fmt::Display for ParseError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::UnexpectedErbBlockEnd { token_index, code } => {
-                write!(
-                    f,
-                    "unexpected ERB block end `{code}` at token {token_index}"
-                )
-            }
-            Self::UnexpectedErbBranch { token_index, code } => {
-                write!(f, "unexpected ERB branch `{code}` at token {token_index}")
-            }
-            Self::UnclosedErbBlock { token_index, code } => {
-                write!(f, "unclosed ERB block `{code}` at token {token_index}")
-            }
-            Self::UnexpectedHtmlCloseTag { raw, .. } => {
-                write!(f, "unexpected HTML close tag `{raw}`")
-            }
-            Self::MismatchedHtmlCloseTag { expected, raw, .. } => {
-                write!(
-                    f,
-                    "mismatched HTML close tag `{raw}`, expected `</{expected}>`"
-                )
-            }
-            Self::UnclosedHtmlTag { raw, .. } => write!(f, "unclosed HTML tag `{raw}`"),
-        }
-    }
-}
-
-impl std::error::Error for ParseError {}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct LocatedParseError {
-    error: ParseError,
-    location: Option<SourceLocation>,
-}
-
-impl fmt::Display for LocatedParseError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let Some(location) = self.location else {
-            return write!(f, "{}", self.error);
-        };
-
-        match &self.error {
-            ParseError::UnexpectedErbBlockEnd { code, .. } => {
-                write!(f, "unexpected ERB block end `{code}` at {location}")
-            }
-            ParseError::UnexpectedErbBranch { code, .. } => {
-                write!(f, "unexpected ERB branch `{code}` at {location}")
-            }
-            ParseError::UnclosedErbBlock { code, .. } => {
-                write!(f, "unclosed ERB block `{code}` at {location}")
-            }
-            ParseError::UnexpectedHtmlCloseTag { .. }
-            | ParseError::MismatchedHtmlCloseTag { .. }
-            | ParseError::UnclosedHtmlTag { .. } => write!(f, "{} at {location}", self.error),
-        }
-    }
-}
-
-impl std::error::Error for LocatedParseError {}
-
-impl ParseError {
-    fn token_index(&self) -> Option<usize> {
-        match self {
-            Self::UnexpectedErbBlockEnd { token_index, .. }
-            | Self::UnexpectedErbBranch { token_index, .. }
-            | Self::UnclosedErbBlock { token_index, .. } => Some(*token_index),
-            Self::UnexpectedHtmlCloseTag { .. }
-            | Self::MismatchedHtmlCloseTag { .. }
-            | Self::UnclosedHtmlTag { .. } => None,
-        }
-    }
-
-    fn html_location(&self) -> Option<SourceLocation> {
-        match self {
-            Self::UnexpectedHtmlCloseTag { location, .. }
-            | Self::MismatchedHtmlCloseTag { location, .. }
-            | Self::UnclosedHtmlTag { location, .. } => *location,
-            Self::UnexpectedErbBlockEnd { .. }
-            | Self::UnexpectedErbBranch { .. }
-            | Self::UnclosedErbBlock { .. } => None,
-        }
-    }
-}
+pub use ast::{Document, ErbBranch, Node, SourceRange};
+pub use error::{LocatedParseError, ParseError};
+use frame::{Frame, FrameKind};
 
 #[allow(dead_code)]
 pub fn parse(tokens: &[Token]) -> Result<Document, ParseError> {
@@ -229,7 +48,7 @@ fn located_parse_error(error: ParseError, tokens: &[SpannedToken]) -> LocatedPar
             .map(|spanned| spanned.span.location)
     });
 
-    LocatedParseError { error, location }
+    error::located_parse_error(error, location)
 }
 
 fn relative_source_location(
@@ -650,118 +469,10 @@ fn wrap_spanned_node(node: Node, start: Option<SourceRange>, end: Option<usize>)
     }
 }
 
-struct Frame {
-    kind: FrameKind,
-    children: Vec<Node>,
-    initial_children: Option<Vec<Node>>,
-    branches: Vec<ErbBranch>,
-    active_branch: Option<ErbBranchHeader>,
-}
-
-impl Frame {
-    fn root() -> Self {
-        Self {
-            kind: FrameKind::Root,
-            children: Vec::new(),
-            initial_children: None,
-            branches: Vec::new(),
-            active_branch: None,
-        }
-    }
-
-    fn html(tag: HtmlTag, location: Option<SourceLocation>, range: Option<SourceRange>) -> Self {
-        Self {
-            kind: FrameKind::Html {
-                name: tag.name,
-                raw: tag.raw,
-                location,
-                range,
-            },
-            children: Vec::new(),
-            initial_children: None,
-            branches: Vec::new(),
-            active_branch: None,
-        }
-    }
-
-    fn erb(
-        kind: ErbBlockKind,
-        code: String,
-        output: bool,
-        token_index: usize,
-        range: Option<SourceRange>,
-    ) -> Self {
-        Self {
-            kind: FrameKind::Erb {
-                kind,
-                code,
-                output,
-                token_index,
-                range,
-            },
-            children: Vec::new(),
-            initial_children: None,
-            branches: Vec::new(),
-            active_branch: None,
-        }
-    }
-
-    fn start_erb_branch(&mut self, kind: ErbBranchKind, code: String) {
-        if let Some(active_branch) = self.active_branch.take() {
-            self.branches.push(ErbBranch {
-                kind: active_branch.kind,
-                code: active_branch.code,
-                children: std::mem::take(&mut self.children),
-            });
-        } else {
-            self.initial_children = Some(std::mem::take(&mut self.children));
-        }
-
-        self.active_branch = Some(ErbBranchHeader { kind, code });
-    }
-
-    fn finish_erb_branches(mut self) -> (Vec<Node>, Vec<ErbBranch>) {
-        if let Some(active_branch) = self.active_branch.take() {
-            self.branches.push(ErbBranch {
-                kind: active_branch.kind,
-                code: active_branch.code,
-                children: std::mem::take(&mut self.children),
-            });
-        }
-
-        (
-            self.initial_children.unwrap_or(self.children),
-            self.branches,
-        )
-    }
-}
-
-struct ErbBranchHeader {
-    kind: ErbBranchKind,
-    code: String,
-}
-
-enum FrameKind {
-    Root,
-    Html {
-        name: String,
-        raw: String,
-        location: Option<SourceLocation>,
-        range: Option<SourceRange>,
-    },
-    Erb {
-        kind: ErbBlockKind,
-        code: String,
-        output: bool,
-        token_index: usize,
-        range: Option<SourceRange>,
-    },
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::lexer::{tokenize, tokenize_with_spans};
+    use crate::lexer::{ErbBlockKind, tokenize, tokenize_with_spans};
 
     #[test]
     fn keeps_absolute_ranges_for_spanned_html_subtrees() {

@@ -72,7 +72,7 @@ The core implementation is developed incrementally:
 
 1. `src/lexer/` separates HTML fragments and ERB tags.
 2. `src/html/` tokenizes the HTML portions.
-3. `src/mixed_parser.rs` builds the mixed HTML/ERB structure.
+3. `src/mixed_parser/` builds the mixed HTML/ERB structure.
 4. `src/formatter/` produces formatted output.
 5. `src/linter/` reports configurable diagnostics.
 
