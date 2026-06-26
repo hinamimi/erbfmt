@@ -1,10 +1,11 @@
 use std::collections::HashMap;
 
-use crate::mixed_parser::{Document, ErbBranch, Node, SourceRange};
+use crate::mixed_parser::{Document, Node, SourceRange};
 
 use super::erb::{
     ErbTagMarker, format_erb_comment, format_erb_tag_inline, formatted_erb_code_lines,
 };
+use super::erb_block::ErbBlockParts;
 use super::ignore_directive::formatter_ignore_ranges;
 use super::inline::{
     FormattingNode, can_render_inline, formatting_node_source_range, is_inline_formatting_node,
@@ -13,9 +14,7 @@ use super::inline::{
     split_formatting_nodes, trailing_inline_boundary_nodes,
 };
 use super::options::{FormatOptions, IndentStyle};
-use super::preserve::{
-    is_format_sensitive_html_element, render_preserved_node, render_preserved_nodes,
-};
+use super::preserve::{is_format_sensitive_html_element, render_preserved_nodes};
 use super::tag::{TagRenderContext, render_tag};
 
 #[allow(dead_code)]
@@ -39,10 +38,10 @@ pub fn format_document_with_source(
     formatter.finish()
 }
 
-struct Formatter<'a> {
+pub(super) struct Formatter<'a> {
     options: FormatOptions,
     output: String,
-    source: Option<&'a str>,
+    pub(super) source: Option<&'a str>,
     preserved_ranges: HashMap<SourceRange, SourceRange>,
 }
 
@@ -60,7 +59,7 @@ impl<'a> Formatter<'a> {
         }
     }
 
-    fn format_nodes(&mut self, nodes: &[Node], depth: usize) {
+    pub(super) fn format_nodes(&mut self, nodes: &[Node], depth: usize) {
         let nodes = split_formatting_nodes(nodes, &self.preserved_ranges);
         self.format_split_nodes(&nodes, depth);
     }
@@ -153,124 +152,6 @@ impl<'a> Formatter<'a> {
                 );
             }
             Node::Spanned { .. } => unreachable!("unspanned node cannot remain wrapped"),
-        }
-    }
-
-    fn write_erb_block_with_inline_boundaries(
-        &mut self,
-        nodes: &[FormattingNode<'_>],
-        index: usize,
-        depth: usize,
-    ) -> Option<usize> {
-        let (prefix_start, prefix_end, block_index) = if is_inline_formatting_node(nodes[index]) {
-            let start = index;
-            let mut end = index;
-
-            while end < nodes.len() && is_inline_formatting_node(nodes[end]) {
-                end += 1;
-            }
-
-            if end >= nodes.len()
-                || !self.formatting_nodes_share_source_line(nodes[end - 1], nodes[end])
-            {
-                return None;
-            }
-
-            (start, end, end)
-        } else {
-            (index, index, index)
-        };
-
-        let FormattingNode::Node(block) = nodes[block_index] else {
-            return None;
-        };
-        let Node::ErbBlock {
-            code,
-            output,
-            children,
-            branches,
-            ..
-        } = block.unspanned()
-        else {
-            return None;
-        };
-
-        if self.is_ignored_node(block) {
-            return None;
-        }
-
-        let mut suffix_start = block_index + 1;
-        let mut suffix_end = suffix_start;
-
-        if suffix_start < nodes.len()
-            && self.formatting_nodes_share_source_line(nodes[block_index], nodes[suffix_start])
-        {
-            while suffix_end < nodes.len() && is_inline_formatting_node(nodes[suffix_end]) {
-                suffix_end += 1;
-            }
-        } else {
-            suffix_start = suffix_end;
-        }
-
-        if prefix_start == prefix_end && suffix_start == suffix_end {
-            return None;
-        }
-
-        let prefix = render_inline_formatting_nodes_untrimmed(&nodes[prefix_start..prefix_end]);
-        let suffix = render_inline_formatting_nodes_untrimmed(&nodes[suffix_start..suffix_end]);
-
-        self.write_erb_block(
-            block,
-            ErbBlockParts {
-                code,
-                output: *output,
-                children,
-                branches,
-                range: block.source_range(),
-            },
-            depth,
-            &prefix,
-            &suffix,
-        );
-
-        Some(suffix_end)
-    }
-
-    fn write_erb_block(
-        &mut self,
-        node: &Node,
-        parts: ErbBlockParts<'_>,
-        depth: usize,
-        prefix: &str,
-        suffix: &str,
-    ) {
-        if self.can_keep_erb_block_inline(parts.range) {
-            self.write_indented_line(
-                depth,
-                &format!("{prefix}{}{suffix}", render_preserved_node(node)),
-            );
-            return;
-        }
-
-        let marker = ErbTagMarker::from_output(parts.output);
-        if prefix.is_empty() {
-            self.write_erb_tag(depth, marker, parts.code);
-        } else {
-            self.write_indented_line(
-                depth,
-                &format!("{prefix}{}", format_erb_tag_inline(marker, parts.code)),
-            );
-        }
-
-        self.format_nodes(parts.children, depth + 1);
-        self.format_erb_branches(parts.branches, depth);
-        self.write_indented_line(depth, &format!("<% end %>{suffix}"));
-    }
-
-    fn format_erb_branches(&mut self, branches: &[ErbBranch], depth: usize) {
-        for branch in branches {
-            self.write_erb_tag(depth, ErbTagMarker::Code, &branch.code);
-            self.format_nodes(&branch.children, depth + 1);
         }
     }
 
@@ -444,7 +325,7 @@ impl<'a> Formatter<'a> {
         )
     }
 
-    fn write_erb_tag(&mut self, depth: usize, marker: ErbTagMarker, code: &str) {
+    pub(super) fn write_erb_tag(&mut self, depth: usize, marker: ErbTagMarker, code: &str) {
         let code = code.trim();
         let inline = format_erb_tag_inline(marker, code);
 
@@ -470,7 +351,7 @@ impl<'a> Formatter<'a> {
         self.indent(depth).chars().count() + text.chars().count() <= self.options.line_width
     }
 
-    fn write_indented_line(&mut self, depth: usize, line: &str) {
+    pub(super) fn write_indented_line(&mut self, depth: usize, line: &str) {
         let trimmed = line.trim();
         if trimmed.is_empty() {
             return;
@@ -544,12 +425,12 @@ impl<'a> Formatter<'a> {
         true
     }
 
-    fn is_ignored_node(&self, node: &Node) -> bool {
+    pub(super) fn is_ignored_node(&self, node: &Node) -> bool {
         node.source_range()
             .is_some_and(|range| self.preserved_ranges.contains_key(&range))
     }
 
-    fn formatting_nodes_share_source_line(
+    pub(super) fn formatting_nodes_share_source_line(
         &self,
         left: FormattingNode<'_>,
         right: FormattingNode<'_>,
@@ -637,34 +518,12 @@ impl<'a> Formatter<'a> {
                 .is_some_and(|ch| !is_line_ending_char(ch)),
         }
     }
-
-    fn can_keep_erb_block_inline(&self, range: Option<SourceRange>) -> bool {
-        let Some(source) = self.source else {
-            return false;
-        };
-        let Some(range) = range else {
-            return false;
-        };
-        let Some(raw) = source.get(range.start..range.end) else {
-            return false;
-        };
-
-        !raw.contains(['\n', '\r'])
-    }
 }
 
 #[derive(Default)]
 struct HtmlElementBoundaries {
     open_child_same_line: bool,
     child_close_same_line: bool,
-}
-
-struct ErbBlockParts<'a> {
-    code: &'a str,
-    output: bool,
-    children: &'a [Node],
-    branches: &'a [ErbBranch],
-    range: Option<SourceRange>,
 }
 
 fn is_line_ending_char(ch: char) -> bool {

@@ -1,5 +1,6 @@
 mod engine;
 mod erb;
+mod erb_block;
 mod ignore_directive;
 mod inline;
 mod options;
