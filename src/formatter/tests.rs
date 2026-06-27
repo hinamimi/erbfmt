@@ -698,6 +698,20 @@ fn wraps_long_erb_output_command_calls_with_do_blocks() {
 }
 
 #[test]
+fn wraps_long_link_to_output_command_calls_with_do_blocks() {
+    assert_eq!(
+        format_with_options(
+            r#"<%= link_to "Edit profile", edit_user_path(user), class: "button button--primary", data: { turbo_frame: "_top", controller: "profile-link" } do %><span>Edit</span><% end %>"#,
+            FormatOptions {
+                line_width: 60,
+                ..FormatOptions::default()
+            }
+        ),
+        "<%=\n  link_to(\n    \"Edit profile\",\n    edit_user_path(user),\n    class: \"button button--primary\",\n    data: {\n      turbo_frame: \"_top\",\n      controller: \"profile-link\"\n    }\n  ) do\n%>\n  <span>Edit</span>\n<% end %>\n"
+    );
+}
+
+#[test]
 fn wraps_long_parenthesized_rails_helper_calls() {
     let options = FormatOptions {
         line_width: 60,
