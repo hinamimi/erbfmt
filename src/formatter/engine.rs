@@ -127,11 +127,11 @@ impl<'a> Formatter<'a> {
             Node::HtmlComment(comment) | Node::HtmlDoctype(comment) => {
                 self.write_indented_line(depth, comment);
             }
-            Node::ErbCode(tag) => self.write_erb_tag(depth, tag),
+            Node::ErbCode(tag) => self.write_erb_tag(depth, tag, range),
             Node::ErbComment(comment) => {
                 self.write_indented_line(depth, &format_erb_comment(comment));
             }
-            Node::ErbOutput(tag) => self.write_erb_tag(depth, tag),
+            Node::ErbOutput(tag) => self.write_erb_tag(depth, tag, range),
             Node::ErbBlock {
                 tag,
                 end_tag,
@@ -193,10 +193,17 @@ impl<'a> Formatter<'a> {
         range: Option<SourceRange>,
         depth: usize,
     ) {
-        if is_format_sensitive_html_element(name, open)
-            || self.has_erb_block_inline_child_boundary(children)
-        {
-            self.write_format_sensitive_html_element(open, close, children, depth);
+        let is_format_sensitive = is_format_sensitive_html_element(name, open);
+
+        if is_format_sensitive || self.has_erb_block_inline_child_boundary(children) {
+            self.write_format_sensitive_html_element(
+                open,
+                close,
+                children,
+                range,
+                is_format_sensitive,
+                depth,
+            );
             return;
         }
 
@@ -297,8 +304,28 @@ impl<'a> Formatter<'a> {
         open: &str,
         close: &str,
         children: &[Node],
+        range: Option<SourceRange>,
+        preserve_raw: bool,
         depth: usize,
     ) {
+        if preserve_raw
+            && let Some(raw_children) = self
+                .raw_html_element_children(range, open, close)
+                .map(str::to_string)
+        {
+            let mut rendered = self.render_tag_with_indent(open, depth);
+            rendered.push_str(&raw_children);
+            rendered.push_str(&normalize_close_tag(close).unwrap_or_else(|| close.to_string()));
+
+            self.output.push_str(&rendered);
+
+            if !rendered.ends_with(['\n', '\r']) {
+                self.output.push_str(self.options.line_ending.as_str());
+            }
+
+            return;
+        }
+
         let mut rendered = self.render_tag_with_indent(open, depth);
         rendered.push_str(&render_preserved_nodes(children));
         rendered.push_str(&normalize_close_tag(close).unwrap_or_else(|| close.to_string()));
@@ -376,7 +403,14 @@ impl<'a> Formatter<'a> {
         )
     }
 
-    pub(super) fn write_erb_tag(&mut self, depth: usize, tag: &ErbTag) {
+    pub(super) fn write_erb_tag(&mut self, depth: usize, tag: &ErbTag, range: Option<SourceRange>) {
+        if contains_heredoc_marker(&tag.code)
+            && let Some(raw) = self.raw_source_for_range(range).map(str::to_string)
+        {
+            self.write_indented_raw(&raw, depth);
+            return;
+        }
+
         self.write_erb_tag_with_syntax(depth, tag.syntax, &tag.code);
     }
 
@@ -495,6 +529,41 @@ impl<'a> Formatter<'a> {
         true
     }
 
+    fn raw_html_element_children(
+        &self,
+        range: Option<SourceRange>,
+        open: &str,
+        close: &str,
+    ) -> Option<&str> {
+        let source = self.source?;
+        let range = range?;
+
+        let children_start = range.start + open.len();
+        let children_end = range.end.checked_sub(close.len())?;
+
+        if children_start > children_end || children_end > source.len() {
+            return None;
+        }
+
+        source.get(children_start..children_end)
+    }
+
+    fn raw_source_for_range(&self, range: Option<SourceRange>) -> Option<&str> {
+        let source = self.source?;
+        let range = range?;
+
+        source.get(range.start..range.end)
+    }
+
+    fn write_indented_raw(&mut self, raw: &str, depth: usize) {
+        self.output.push_str(&self.indent(depth));
+        self.output.push_str(raw);
+
+        if !raw.ends_with(['\n', '\r']) {
+            self.output.push_str(self.options.line_ending.as_str());
+        }
+    }
+
     pub(super) fn is_ignored_node(&self, node: &Node) -> bool {
         node.source_range()
             .is_some_and(|range| self.preserved_ranges.contains_key(&range))
@@ -598,4 +667,8 @@ struct HtmlElementBoundaries {
 
 fn is_line_ending_char(ch: char) -> bool {
     matches!(ch, '\n' | '\r')
+}
+
+fn contains_heredoc_marker(code: &str) -> bool {
+    code.contains("<<")
 }

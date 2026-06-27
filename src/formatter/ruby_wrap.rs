@@ -1,7 +1,11 @@
 pub(super) fn fold_command_call(code: &str) -> Option<Vec<String>> {
     let code = code.trim();
 
-    if code.is_empty() || code.contains('#') || code.contains(';') || contains_unquoted_slash(code)
+    if code.is_empty()
+        || code.contains('#')
+        || code.contains(';')
+        || code.contains("<<")
+        || contains_unquoted_slash(code)
     {
         return None;
     }
@@ -10,19 +14,21 @@ pub(super) fn fold_command_call(code: &str) -> Option<Vec<String>> {
     let (callee, arguments) = split_call(call)?;
     let arguments = split_top_level_arguments(arguments)?;
 
-    let mut argument_lines = Vec::new();
-    let mut has_multiline_argument = false;
+    let can_fold_single_argument = arguments.len() >= 2
+        || arguments
+            .iter()
+            .any(|argument| fold_keyword_hash_argument(argument).is_some());
 
+    if !can_fold_single_argument {
+        return None;
+    }
+
+    let mut argument_lines = Vec::new();
     for (index, argument) in arguments.iter().enumerate() {
         let comma = index + 1 < arguments.len();
         let lines = format_argument_lines(argument, comma);
 
-        has_multiline_argument |= lines.len() > 1;
         argument_lines.extend(lines);
-    }
-
-    if arguments.len() < 2 && !has_multiline_argument {
-        return None;
     }
 
     let mut lines = vec![format!("{callee}(")];
@@ -599,6 +605,11 @@ mod tests {
             fold_command_call(r#"number_to_percentage completed / total, precision: 2"#),
             None
         );
+    }
+
+    #[test]
+    fn does_not_fold_heredoc_expressions() {
+        assert_eq!(fold_command_call("message = <<TEXT\nhello\nTEXT"), None);
     }
 
     #[test]

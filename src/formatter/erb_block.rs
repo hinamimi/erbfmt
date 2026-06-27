@@ -116,7 +116,7 @@ impl<'a> Formatter<'a> {
         }
 
         if prefix.is_empty() {
-            self.write_erb_tag(depth, parts.tag);
+            self.write_erb_tag(depth, parts.tag, None);
         } else {
             self.write_indented_line(
                 depth,
@@ -140,7 +140,7 @@ impl<'a> Formatter<'a> {
 
     fn format_erb_branches(&mut self, branches: &[ErbBranch], depth: usize) {
         for branch in branches {
-            self.write_erb_tag(depth, &branch.tag);
+            self.write_erb_tag(depth, &branch.tag, None);
             self.format_nodes(&branch.children, depth + 1);
         }
     }

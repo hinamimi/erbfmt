@@ -442,6 +442,22 @@ fn preserves_script_and_style_content() {
 }
 
 #[test]
+fn preserves_erb_spacing_inside_format_sensitive_subtrees() {
+    assert_eq!(
+        format_source("<pre>  A <%=   value   %> B  </pre>\n"),
+        "<pre>  A <%=   value   %> B  </pre>\n"
+    );
+    assert_eq!(
+        format_source("<script>const value = \"<%=   value   %>\";</script>\n"),
+        "<script>const value = \"<%=   value   %>\";</script>\n"
+    );
+    assert_eq!(
+        format_source("<template><span><%=   value   %></span></template>\n"),
+        "<template><span><%=   value   %></span></template>\n"
+    );
+}
+
+#[test]
 fn indents_erb_block_children() {
     assert_eq!(
         format("<% if user %>\n<p>Hello</p>\n<% end %>\n"),
@@ -679,6 +695,17 @@ fn preserves_long_erb_code_tags_when_arguments_are_not_safely_splittable() {
             }
         ),
         "<%\n  cache [\"profile-card\", user.cache_key_with_version, current_user.cache_key_with_version]\n%>\n"
+    );
+}
+
+#[test]
+fn preserves_heredoc_erb_tags() {
+    let root = "<%\nmessage = <<TEXT\nhello\nTEXT\n%>\n";
+    assert_eq!(format_source(root), root);
+
+    assert_eq!(
+        format_source("<div>\n<%\nmessage = <<TEXT\nhello\nTEXT\n%>\n</div>\n"),
+        "<div>\n  <%\nmessage = <<TEXT\nhello\nTEXT\n%>\n</div>\n"
     );
 }
 
