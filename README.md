@@ -24,14 +24,14 @@ first-party VSCode extension.
 > Review formatting diffs before committing them and pin an exact version in
 > automated environments.
 
-> erbfmt is currently in pre-release development. Version `0.1.3` is available
+> erbfmt is currently in pre-release development. Version `0.1.4` is available
 > through GitHub Releases. Initial releases are not registered with package
 > indexes or extension marketplaces.
 
 ## Install
 
 Download the archive for your platform from the
-[v0.1.3 release](https://github.com/hinamimi/erbfmt/releases/tag/v0.1.3), extract
+[v0.1.4 release](https://github.com/hinamimi/erbfmt/releases/tag/v0.1.4), extract
 it, and place `erbfmt` or `erbfmt.exe` on your `PATH`.
 
 - Linux x64: `x86_64-unknown-linux-gnu`
@@ -42,7 +42,7 @@ it, and place `erbfmt` or `erbfmt.exe` on your `PATH`.
 With a Rust toolchain, install the tagged source directly from GitHub:
 
 ```bash
-cargo install --git https://github.com/hinamimi/erbfmt --tag v0.1.3 --locked
+cargo install --git https://github.com/hinamimi/erbfmt --tag v0.1.4 --locked
 ```
 
 Confirm that the command is available:
@@ -62,18 +62,18 @@ as a path gem:
 
 ```bash
 curl -L \
-  -o erbfmt-0.1.3-x86_64-linux-gnu.gem \
-  https://github.com/hinamimi/erbfmt/releases/download/v0.1.3/erbfmt-0.1.3-x86_64-linux-gnu.gem
+  -o erbfmt-0.1.4-x86_64-linux-gnu.gem \
+  https://github.com/hinamimi/erbfmt/releases/download/v0.1.4/erbfmt-0.1.4-x86_64-linux-gnu.gem
 mkdir -p vendor/gems
-gem unpack erbfmt-0.1.3-x86_64-linux-gnu.gem --target vendor/gems
-gem spec erbfmt-0.1.3-x86_64-linux-gnu.gem --ruby \
-  > vendor/gems/erbfmt-0.1.3-x86_64-linux-gnu/erbfmt.gemspec
+gem unpack erbfmt-0.1.4-x86_64-linux-gnu.gem --target vendor/gems
+gem spec erbfmt-0.1.4-x86_64-linux-gnu.gem --ruby \
+  > vendor/gems/erbfmt-0.1.4-x86_64-linux-gnu/erbfmt.gemspec
 ```
 
 ```ruby
 group :development do
   gem "erbfmt",
-    path: "vendor/gems/erbfmt-0.1.3-x86_64-linux-gnu",
+    path: "vendor/gems/erbfmt-0.1.4-x86_64-linux-gnu",
     require: false
 end
 ```
