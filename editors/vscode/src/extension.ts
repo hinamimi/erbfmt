@@ -4,6 +4,7 @@ import * as fs from "node:fs/promises";
 import * as os from "node:os";
 import * as path from "node:path";
 import * as vscode from "vscode";
+import { parseCommandSetting } from "./command";
 import { toggleErbCommentLine } from "./comment";
 
 const FORMATTER_SELECTOR: vscode.DocumentFilter[] = [
@@ -405,11 +406,18 @@ async function getCommandContext(document: vscode.TextDocument): Promise<Command
   const workspaceFolder = vscode.workspace.getWorkspaceFolder(document.uri);
   let cwd = workspaceFolder?.uri.fsPath ?? path.dirname(document.uri.fsPath);
   const settings = vscode.workspace.getConfiguration("erbfmt", document.uri);
-  let command = settings.get("command", "erbfmt");
+  const commandSetting = settings.get("command", "erbfmt").trim() || "erbfmt";
+  const parsedCommand = parseCommandSetting(commandSetting);
+  let command = parsedCommand.command;
   const configuredArguments = settings.get<unknown>("arguments", []);
   let extraArguments = Array.isArray(configuredArguments)
-    ? configuredArguments.filter((argument): argument is string => typeof argument === "string")
-    : [];
+    ? [
+        ...parsedCommand.arguments,
+        ...configuredArguments.filter(
+          (argument): argument is string => typeof argument === "string",
+        ),
+      ]
+    : parsedCommand.arguments;
   let resolution: CommandResolution = "configured";
   let checkoutRoot: string | undefined;
   let localBinary: string | undefined;
@@ -419,7 +427,7 @@ async function getCommandContext(document: vscode.TextDocument): Promise<Command
     inspectedCommand.globalValue === undefined &&
     inspectedCommand.workspaceValue === undefined &&
     inspectedCommand.workspaceFolderValue === undefined &&
-    inspectedCommand.defaultValue === command;
+    inspectedCommand.defaultValue === commandSetting;
 
   checkoutRoot = await findNearestErbfmtCheckout(cwd);
   if (commandIsDefault && checkoutRoot) {

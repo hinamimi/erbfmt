@@ -105,7 +105,7 @@
         "erbfmt.command": {
           "type": "string",
           "default": "erbfmt",
-          "description": "Executable used to run erbfmt. Use an absolute binary path for pinned local setups; put extra arguments in erbfmt.arguments."
+          "description": "Command used to run erbfmt. This may include leading arguments, such as `bundle exec erbfmt`, or an absolute binary path for pinned local setups."
         },
         "erbfmt.arguments": {
           "type": "array",
@@ -113,7 +113,7 @@
           "items": {
             "type": "string"
           },
-          "description": "Arguments inserted before erbfmt's own formatter arguments. Keep the executable itself in erbfmt.command."
+          "description": "Additional arguments inserted after erbfmt.command and before erbfmt's own formatter arguments."
         },
         "erbfmt.configPath": {
           "type": "string",
@@ -147,7 +147,7 @@
     "format": "biome format --write .",
     "lint": "biome lint .",
     "package": "vsce package --no-dependencies",
-    "test": "npm run check && npm run compile && node test/smoke.test.js && node test/comment.test.js",
+    "test": "npm run check && npm run compile && node test/smoke.test.js && node test/comment.test.js && node test/command.test.js",
     "test:host": "npm run compile && cargo build --manifest-path ../../Cargo.toml && node test/runTest.js",
     "vscode:prepublish": "npm run compile"
   },

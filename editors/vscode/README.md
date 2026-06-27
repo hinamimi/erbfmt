@@ -93,13 +93,13 @@ Projects that install erbfmt as a Ruby gem can run the bundled version:
 
 ```json
 {
-  "erbfmt.command": "bundle",
-  "erbfmt.arguments": ["exec", "erbfmt"]
+  "erbfmt.command": "bundle exec erbfmt"
 }
 ```
 
-The command runs from the active document's directory, allowing Bundler to find
-the project's `Gemfile` in that directory or a parent.
+The extension splits this command into an executable and arguments without using
+a shell, then runs it from the workspace or active document directory. Bundler
+can find the project's `Gemfile` in that directory or a parent.
 
 ## Commands
 
@@ -114,14 +114,15 @@ the project's `Gemfile` in that directory or a parent.
 
 | Setting | Default | Purpose |
 | --- | --- | --- |
-| `erbfmt.command` | `erbfmt` | Executable used to run erbfmt. |
-| `erbfmt.arguments` | `[]` | Arguments inserted before erbfmt's own arguments. |
+| `erbfmt.command` | `erbfmt` | Command used to run erbfmt, such as `bundle exec erbfmt`. |
+| `erbfmt.arguments` | `[]` | Additional arguments inserted after `erbfmt.command`. |
 | `erbfmt.configPath` | empty | Optional path to a specific `erbfmt.json`. |
 | `erbfmt.lint.enabled` | `true` | Publish diagnostics on open and save. |
 | `erbfmt.formatDiagnostics.enabled` | `true` | Warn when the document is not formatted. |
 
-Keep only the executable in `erbfmt.command`. For example, use `bundle` as the
-command and put `exec`, `erbfmt` in `erbfmt.arguments`.
+Use `erbfmt.arguments` for extra flags that should always be passed before the
+file path. For example, `"erbfmt.command": "bundle exec erbfmt"` can still be
+combined with `"erbfmt.arguments": ["--some-flag"]`.
 
 ## Comments
 
@@ -136,9 +137,9 @@ If formatting or diagnostics fail with `ENOENT` or `EACCES`:
 
 1. Confirm `erbfmt --version` works in a terminal.
 2. Run **erbfmt: Show Command** and inspect the executable and working directory.
-3. Set `erbfmt.command` to an executable absolute path when VS Code cannot see
-   the same `PATH` as the terminal.
-4. Put command arguments in `erbfmt.arguments`, not in `erbfmt.command`.
+3. Set `erbfmt.command` to `bundle exec erbfmt` or an executable absolute path
+   when VS Code cannot see the same `PATH` as the terminal.
+4. Run **erbfmt: Show Command** to confirm how `erbfmt.command` was split.
 
 The extension can coexist with Shopify Ruby LSP. It contributes the
 `html-erb` language id and registers formatting for both `html-erb` and `erb`.

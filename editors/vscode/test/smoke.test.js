@@ -5,10 +5,16 @@ const path = require("node:path");
 const extensionDir = path.resolve(__dirname, "..");
 const packageJson = JSON.parse(fs.readFileSync(path.join(extensionDir, "package.json"), "utf8"));
 const extensionSource = fs.readFileSync(path.join(extensionDir, "src", "extension.ts"), "utf8");
+const commandSource = fs.readFileSync(path.join(extensionDir, "src", "command.ts"), "utf8");
 
 assert.strictEqual(packageJson.main, "./out/extension.js");
 assert.strictEqual(packageJson.scripts.compile, "tsc -p .");
 assert.strictEqual(packageJson.icon, "media/icon.png");
+assert(
+  packageJson.contributes.configuration.properties["erbfmt.command"].description.includes(
+    "bundle exec erbfmt",
+  ),
+);
 assert(packageJson.categories.includes("Formatters"));
 assert(packageJson.keywords.includes("html-erb"));
 assert(packageJson.scripts["test:host"].includes("cargo build"));
@@ -53,6 +59,8 @@ assert(extensionSource.includes("createDiagnosticCollection"));
 assert(extensionSource.includes("--lint"));
 assert(extensionSource.includes("formatDiagnostics"));
 assert(extensionSource.includes("File is not formatted. Run Format Document to apply erbfmt."));
+assert(extensionSource.includes("parseCommandSetting"));
+assert(commandSource.includes("splitCommandSetting"));
 assert(extensionSource.includes("fullDocumentRange"));
 assert(extensionSource.includes("childProcess.execFile"));
 assert(extensionSource.includes("createOutputChannel"));

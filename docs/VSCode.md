@@ -39,8 +39,8 @@ The extension:
 
 The extension resolves the command in this order:
 
-1. If `erbfmt.command` is configured, use that executable and pass
-   `erbfmt.arguments` before erbfmt's own arguments.
+1. If `erbfmt.command` is configured, split it into an executable and leading
+   arguments, then append `erbfmt.arguments` before erbfmt's own arguments.
 2. If the active file is inside this checkout and `target/debug/erbfmt` exists,
    use that binary.
 3. If the active file is inside this checkout but `target/debug/erbfmt` does not
@@ -69,6 +69,17 @@ cargo install --path .
 
 The extension searches for `erbfmt.json` from the formatted file upward. Set
 `erbfmt.configPath` to force a specific config file.
+
+`erbfmt.command` may include leading arguments. For Bundler-based projects, use:
+
+```json
+{
+  "erbfmt.command": "bundle exec erbfmt"
+}
+```
+
+The extension uses `child_process.execFile`, not a shell. Quoted command parts
+are split by the extension before execution.
 
 Set `erbfmt.lint.enabled` to `false` to disable lint diagnostics.
 Set `erbfmt.formatDiagnostics.enabled` to `false` to disable warnings for
