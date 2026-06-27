@@ -58,6 +58,7 @@ fn init_creates_default_config() {
     );
     assert_eq!(value["formatter"]["indentWidth"], 2);
     assert_eq!(value["formatter"]["indentHtml"], true);
+    assert_eq!(value["parser"]["allowHtmlOptionalClosingTags"], false);
     assert_eq!(value["files"]["includes"][0], "**/*.html.erb");
     assert_eq!(
         value["linter"]["rules"]["noInvalidHtmlBooleanAttribute"],
@@ -497,6 +498,62 @@ fn config_can_disable_html_indentation() {
     assert_eq!(
         stdout(&output),
         "<% if user %>\n  <ul>\n  <li>Hello</li>\n  </ul>\n<% end %>\n"
+    );
+    assert_eq!(stderr(&output), "");
+}
+
+#[test]
+fn config_allows_html_optional_closing_tags_for_formatting() {
+    let dir = TestDir::new("config_optional_html_close_format");
+    let config = dir.write(
+        "erbfmt.json",
+        r#"{"parser":{"allowHtmlOptionalClosingTags":true}}"#,
+    );
+    let file = dir.write("input.html.erb", "<ul><li>one<li>two</ul>\n");
+
+    let output = run(["--config".as_ref(), config.as_path(), file.as_path()]);
+
+    assert_success(&output);
+    assert_eq!(stdout(&output), "<ul>\n  <li>one\n  <li>two\n</ul>\n");
+    assert_eq!(stderr(&output), "");
+}
+
+#[test]
+fn default_rejects_html_optional_closing_tags() {
+    let dir = TestDir::new("default_optional_html_close_rejected");
+    let file = dir.write("input.html.erb", "<ul><li>one<li>two</ul>\n");
+
+    let output = run([file.as_path()]);
+
+    assert_failure(&output);
+    assert_eq!(stdout(&output), "");
+    assert!(
+        stderr(&output).contains("mismatched HTML close tag `</ul>`, expected `</li>`"),
+        "{}",
+        stderr(&output)
+    );
+}
+
+#[test]
+fn config_allows_html_optional_closing_tags_for_linting() {
+    let dir = TestDir::new("config_optional_html_close_lint");
+    let config = dir.write(
+        "erbfmt.json",
+        r#"{"parser":{"allowHtmlOptionalClosingTags":true}}"#,
+    );
+    let file = dir.write("input.html.erb", "<p>Hello<div>Block</div>\n");
+
+    let output = run([
+        "--config".as_ref(),
+        config.as_path(),
+        "--lint".as_ref(),
+        file.as_path(),
+    ]);
+
+    assert_success(&output);
+    assert_eq!(
+        stdout(&output),
+        format!("{}: no lint issues found.\n", file.display())
     );
     assert_eq!(stderr(&output), "");
 }

@@ -19,6 +19,9 @@ const DEFAULT_CONFIG: &str = r#"{
   "files": {
     "includes": ["**/*.html.erb"]
   },
+  "parser": {
+    "allowHtmlOptionalClosingTags": false
+  },
   "formatter": {
     "enabled": true,
     "indentStyle": "space",
@@ -232,7 +235,7 @@ fn format_content(file: &Path, content: &str, config: &config::Config) -> Result
 
     let tokens = lexer::tokenize_with_spans(content)
         .with_context(|| format!("failed to lex `{}`", file.display()))?;
-    let document = mixed_parser::parse_spanned(&tokens)
+    let document = mixed_parser::parse_spanned_with_options(&tokens, config.parser_options())
         .with_context(|| format!("failed to parse `{}`", file.display()))?;
 
     Ok(formatter::format_document_with_source(

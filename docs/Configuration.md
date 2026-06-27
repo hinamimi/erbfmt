@@ -15,8 +15,8 @@ erbfmt --config path/to/erbfmt.json app/views/users/show.html.erb
 ```
 
 The shape is intentionally close to Biome's `formatter` and `linter`
-configuration sections, with a small erbfmt-specific `formatter.indentHtml`
-option for the existing HTML indentation behavior.
+configuration sections, with a small erbfmt-specific `parser` section and
+`formatter.indentHtml` option for ERB and HTML-specific behavior.
 
 ## Example
 
@@ -24,6 +24,9 @@ option for the existing HTML indentation behavior.
 {
   "files": {
     "includes": ["**/*.html.erb", "!vendor/**"]
+  },
+  "parser": {
+    "allowHtmlOptionalClosingTags": false
   },
   "formatter": {
     "enabled": true,
@@ -63,6 +66,15 @@ option for the existing HTML indentation behavior.
 - Supported wildcards are `*`, `?`, and `**`.
 - When `files.includes` is omitted, erbfmt processes every file explicitly
   passed on the command line.
+
+## Parser
+
+- `parser.allowHtmlOptionalClosingTags`: allow common HTML optional closing
+  tags such as omitted `</li>`, `</p>`, `</td>`, and `</tr>`. The default is
+  `false`; erbfmt normally treats omitted HTML close tags as parse errors so
+  ERB-heavy templates do not get reformatted under an inferred tree. When set
+  to `true`, erbfmt accepts these forms but preserves the omitted closing tags
+  instead of inserting them.
 
 ## Formatter
 

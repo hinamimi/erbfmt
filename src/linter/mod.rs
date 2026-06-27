@@ -33,7 +33,7 @@ pub fn lint_with_options(input: &str, options: LintOptions) -> Vec<Diagnostic> {
         }
     };
 
-    match mixed_parser::parse_spanned(&tokens) {
+    match mixed_parser::parse_spanned_with_options(&tokens, options.parser) {
         Ok(_) => apply_lint_ignore_directives(input, lint_tokens(input, &tokens, options)),
         Err(error) => vec![Diagnostic::new(error.to_string())],
     }

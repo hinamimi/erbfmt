@@ -30,6 +30,7 @@ erbfmt は `*.html.erb` 向けの formatter / linter です。
 - ERB lexer
 - lightweight HTML tokenizer
 - HTML-aware mixed parser
+- `parser.allowHtmlOptionalClosingTags` によるHTML optional closing tagの許容
 - mixed AST-driven formatter
 - ERB block / branch formatting
 - HTML tag attribute wrapping

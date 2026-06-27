@@ -3,6 +3,9 @@
   "files": {
     "includes": ["**/*.html.erb"]
   },
+  "parser": {
+    "allowHtmlOptionalClosingTags": false
+  },
   "formatter": {
     "enabled": true,
     "indentStyle": "space",

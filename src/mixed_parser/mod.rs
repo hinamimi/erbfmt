@@ -11,10 +11,24 @@ pub use ast::{Document, ErbBranch, Node, SourceRange};
 pub use error::{LocatedParseError, ParseError};
 use frame::{Frame, FrameKind};
 
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct ParserOptions {
+    pub allow_html_optional_closing_tags: bool,
+}
+
 #[allow(dead_code)]
 pub fn parse(tokens: &[Token]) -> Result<Document, ParseError> {
+    parse_with_options(tokens, ParserOptions::default())
+}
+
+pub fn parse_with_options(
+    tokens: &[Token],
+    options: ParserOptions,
+) -> Result<Document, ParseError> {
     let mut parser = Parser {
         stack: vec![Frame::root()],
+        options,
+        source_end: None,
     };
 
     for (token_index, token) in tokens.iter().enumerate() {
@@ -24,12 +38,23 @@ pub fn parse(tokens: &[Token]) -> Result<Document, ParseError> {
     parser.finish()
 }
 
+#[allow(dead_code)]
 pub fn parse_spanned(tokens: &[SpannedToken]) -> Result<Document, LocatedParseError> {
+    parse_spanned_with_options(tokens, ParserOptions::default())
+}
+
+pub fn parse_spanned_with_options(
+    tokens: &[SpannedToken],
+    options: ParserOptions,
+) -> Result<Document, LocatedParseError> {
     let mut parser = Parser {
         stack: vec![Frame::root()],
+        options,
+        source_end: None,
     };
 
     for (token_index, spanned) in tokens.iter().enumerate() {
+        parser.source_end = Some(spanned.span.end);
         parser
             .parse_spanned_token(token_index, spanned)
             .map_err(|error| located_parse_error(error, tokens))?;
@@ -73,6 +98,8 @@ fn relative_source_location(
 
 struct Parser {
     stack: Vec<Frame>,
+    options: ParserOptions,
+    source_end: Option<usize>,
 }
 
 impl Parser {
@@ -150,8 +177,11 @@ impl Parser {
         for token in html::tokenize(fragment) {
             match token {
                 HtmlToken::Text(text) => self.push_node(Node::HtmlText(text)),
-                HtmlToken::OpenTag(tag) => self.stack.push(Frame::html(tag, None, None)),
-                HtmlToken::CloseTag(tag) => self.close_html_tag(tag, None, None)?,
+                HtmlToken::OpenTag(tag) => {
+                    self.close_optional_html_tags_before_open(&tag.name, None);
+                    self.stack.push(Frame::html(tag, None, None));
+                }
+                HtmlToken::CloseTag(tag) => self.close_html_tag(tag, None, None, None)?,
                 HtmlToken::SelfClosingTag(tag) => {
                     self.push_node(Node::HtmlSelfClosing {
                         name: tag.name,
@@ -191,8 +221,13 @@ impl Parser {
 
             match spanned.token {
                 HtmlToken::Text(text) => self.push_spanned_node(Node::HtmlText(text), range),
-                HtmlToken::OpenTag(tag) => self.stack.push(Frame::html(tag, location, Some(range))),
-                HtmlToken::CloseTag(tag) => self.close_html_tag(tag, location, Some(range.end))?,
+                HtmlToken::OpenTag(tag) => {
+                    self.close_optional_html_tags_before_open(&tag.name, Some(range.start));
+                    self.stack.push(Frame::html(tag, location, Some(range)));
+                }
+                HtmlToken::CloseTag(tag) => {
+                    self.close_html_tag(tag, location, Some(range.start), Some(range.end))?
+                }
                 HtmlToken::SelfClosingTag(tag) => {
                     self.push_spanned_node(
                         Node::HtmlSelfClosing {
@@ -227,8 +262,11 @@ impl Parser {
         &mut self,
         tag: HtmlTag,
         location: Option<SourceLocation>,
+        close_start: Option<usize>,
         end: Option<usize>,
     ) -> Result<(), ParseError> {
+        self.close_optional_html_tags_before_close(&tag.name, close_start);
+
         let Some(frame) = self.stack.pop() else {
             return Err(ParseError::UnexpectedHtmlCloseTag {
                 name: tag.name,
@@ -415,6 +453,15 @@ impl Parser {
     }
 
     fn finish(mut self) -> Result<Document, ParseError> {
+        if self.options.allow_html_optional_closing_tags {
+            while self
+                .current_html_name()
+                .is_some_and(optional_html_close_at_eof)
+            {
+                self.close_optional_html_tag(self.source_end);
+            }
+        }
+
         if self.stack.len() == 1 {
             let root = self.stack.pop().expect("root frame exists");
             return Ok(Document {
@@ -458,6 +505,184 @@ impl Parser {
             range,
         });
     }
+
+    fn close_optional_html_tags_before_open(&mut self, next_name: &str, end: Option<usize>) {
+        if !self.options.allow_html_optional_closing_tags {
+            return;
+        }
+
+        while self
+            .current_html_name()
+            .is_some_and(|current| optional_html_close_before_open(current, next_name))
+        {
+            self.close_optional_html_tag(end);
+        }
+    }
+
+    fn close_optional_html_tags_before_close(&mut self, close_name: &str, end: Option<usize>) {
+        if !self.options.allow_html_optional_closing_tags {
+            return;
+        }
+
+        while self
+            .current_html_name()
+            .is_some_and(|current| optional_html_close_before_close(current, close_name))
+        {
+            self.close_optional_html_tag(end);
+        }
+    }
+
+    fn current_html_name(&self) -> Option<&str> {
+        let frame = self.stack.last()?;
+
+        match &frame.kind {
+            FrameKind::Html { name, .. } => Some(name),
+            FrameKind::Root | FrameKind::Erb { .. } => None,
+        }
+    }
+
+    fn close_optional_html_tag(&mut self, end: Option<usize>) {
+        let frame = self
+            .stack
+            .pop()
+            .expect("optional HTML close requires an HTML frame");
+
+        let FrameKind::Html {
+            name, raw, range, ..
+        } = frame.kind
+        else {
+            self.stack.push(frame);
+            return;
+        };
+
+        let node = Node::HtmlElement {
+            name,
+            open: raw,
+            close: String::new(),
+            children: frame.children,
+        };
+        self.push_node(wrap_spanned_node(node, range, end));
+    }
+}
+
+pub(crate) fn optional_html_close_before_open(current: &str, next: &str) -> bool {
+    let current = current.to_ascii_lowercase();
+    let next = next.to_ascii_lowercase();
+
+    match current.as_str() {
+        "li" => matches!(next.as_str(), "li"),
+        "dt" | "dd" => matches!(next.as_str(), "dt" | "dd"),
+        "rt" | "rp" => matches!(next.as_str(), "rt" | "rp"),
+        "option" => matches!(next.as_str(), "option" | "optgroup"),
+        "optgroup" => matches!(next.as_str(), "optgroup"),
+        "tr" => matches!(next.as_str(), "tr"),
+        "td" | "th" => matches!(next.as_str(), "td" | "th"),
+        "thead" => matches!(next.as_str(), "tbody" | "tfoot"),
+        "tbody" => matches!(next.as_str(), "tbody" | "tfoot"),
+        "p" => closes_paragraph_before(&next),
+        _ => false,
+    }
+}
+
+pub(crate) fn optional_html_close_before_close(current: &str, closing: &str) -> bool {
+    let current = current.to_ascii_lowercase();
+    let closing = closing.to_ascii_lowercase();
+
+    match current.as_str() {
+        "li" => matches!(closing.as_str(), "ul" | "ol" | "menu"),
+        "dt" | "dd" => matches!(closing.as_str(), "dl"),
+        "rt" | "rp" => matches!(closing.as_str(), "ruby"),
+        "option" => matches!(closing.as_str(), "select" | "datalist" | "optgroup"),
+        "optgroup" => matches!(closing.as_str(), "select"),
+        "tr" => matches!(closing.as_str(), "table" | "thead" | "tbody" | "tfoot"),
+        "td" | "th" => matches!(
+            closing.as_str(),
+            "tr" | "table" | "thead" | "tbody" | "tfoot"
+        ),
+        "thead" | "tbody" | "tfoot" => matches!(closing.as_str(), "table"),
+        "p" => closes_paragraph_before_close(&closing),
+        _ => false,
+    }
+}
+
+fn optional_html_close_at_eof(name: &str) -> bool {
+    matches!(
+        name.to_ascii_lowercase().as_str(),
+        "li" | "p"
+            | "dt"
+            | "dd"
+            | "rt"
+            | "rp"
+            | "option"
+            | "optgroup"
+            | "tr"
+            | "td"
+            | "th"
+            | "thead"
+            | "tbody"
+            | "tfoot"
+    )
+}
+
+fn closes_paragraph_before(next: &str) -> bool {
+    matches!(
+        next,
+        "address"
+            | "article"
+            | "aside"
+            | "blockquote"
+            | "details"
+            | "div"
+            | "dl"
+            | "fieldset"
+            | "figcaption"
+            | "figure"
+            | "footer"
+            | "form"
+            | "h1"
+            | "h2"
+            | "h3"
+            | "h4"
+            | "h5"
+            | "h6"
+            | "header"
+            | "hr"
+            | "main"
+            | "menu"
+            | "nav"
+            | "ol"
+            | "p"
+            | "pre"
+            | "section"
+            | "table"
+            | "ul"
+    )
+}
+
+fn closes_paragraph_before_close(closing: &str) -> bool {
+    matches!(
+        closing,
+        "article"
+            | "aside"
+            | "blockquote"
+            | "body"
+            | "details"
+            | "dialog"
+            | "div"
+            | "fieldset"
+            | "figcaption"
+            | "figure"
+            | "footer"
+            | "form"
+            | "header"
+            | "html"
+            | "li"
+            | "main"
+            | "nav"
+            | "section"
+            | "td"
+            | "th"
+    )
 }
 
 fn wrap_spanned_node(node: Node, start: Option<SourceRange>, end: Option<usize>) -> Node {

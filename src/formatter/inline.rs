@@ -127,9 +127,14 @@ fn is_inline_node(node: &Node) -> bool {
         Node::HtmlElement {
             name,
             open,
+            close,
             children,
             ..
-        } => !is_format_sensitive_html_element(name, open) && can_render_inline(children),
+        } => {
+            !close.is_empty()
+                && !is_format_sensitive_html_element(name, open)
+                && can_render_inline(children)
+        }
         Node::HtmlSelfClosing { .. }
         | Node::HtmlVoid { .. }
         | Node::HtmlComment(_)
@@ -152,10 +157,12 @@ fn is_inline_boundary_html_node(node: &Node) -> bool {
         Node::HtmlElement {
             name,
             open,
+            close,
             children,
             ..
         } => {
-            !is_format_sensitive_html_element(name, open)
+            !close.is_empty()
+                && !is_format_sensitive_html_element(name, open)
                 && is_inline_boundary_html_tag(name)
                 && children.iter().all(is_inline_boundary_html_node)
         }

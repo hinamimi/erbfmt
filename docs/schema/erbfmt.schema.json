@@ -19,6 +19,15 @@
         }
       }
     },
+    "parser": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "allowHtmlOptionalClosingTags": {
+          "type": "boolean"
+        }
+      }
+    },
     "formatter": {
       "type": "object",
       "additionalProperties": false,

@@ -30,6 +30,7 @@
           <p class="sidebar-title">On this page</p>
           <nav aria-label="On this page">
             <a href="#config-file">Config file</a>
+            <a href="#parser">Parser</a>
             <a href="#formatter">Formatter</a>
             <a href="#linter">Linter</a>
             <a href="#rules">Rules</a>
@@ -57,6 +58,9 @@ erbfmt init --force</code></pre>
   "$schema": "https://raw.githubusercontent.com/hinamimi/erbfmt/main/docs/schema/erbfmt.schema.json",
   "files": {
     "includes": ["**/*.html.erb", "!vendor/**"]
+  },
+  "parser": {
+    "allowHtmlOptionalClosingTags": false
   },
   "formatter": {
     "enabled": true,
@@ -88,6 +92,11 @@ erbfmt init --force</code></pre>
         <h2 id="files">Files</h2>
         <dl class="option-list">
           <div class="option"><dt><code>files.includes</code><span class="meta">array of glob patterns</span></dt><dd><p>Filters CLI targets before formatting, checking, or linting. Patterns are evaluated relative to the config file directory when possible. Use <code>!</code> for exclusions, for example <code>["**/*.html.erb", "!vendor/**"]</code>. Supported wildcards are <code>*</code>, <code>?</code>, and <code>**</code>.</p></dd></div>
+        </dl>
+
+        <h2 id="parser">Parser</h2>
+        <dl class="option-list">
+          <div class="option"><dt><code>parser.allowHtmlOptionalClosingTags</code><span class="meta">boolean · default: false</span></dt><dd><p>Allows common HTML optional closing tags such as omitted <code>&lt;/li&gt;</code>, <code>&lt;/p&gt;</code>, <code>&lt;/td&gt;</code>, and <code>&lt;/tr&gt;</code>. By default erbfmt treats omitted close tags as parse errors. When enabled, erbfmt accepts these forms but preserves the omitted closing tags instead of inserting them.</p></dd></div>
         </dl>
 
         <h2 id="formatter">Formatter</h2>

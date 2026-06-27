@@ -100,6 +100,102 @@ fn parses_nested_html_elements() {
 }
 
 #[test]
+fn allows_html_optional_closing_tags_when_configured() {
+    let tokens = tokenize("<ul><li>one<li>two</ul>").unwrap();
+    let document = parse_with_options(
+        &tokens,
+        ParserOptions {
+            allow_html_optional_closing_tags: true,
+        },
+    )
+    .unwrap();
+
+    assert_eq!(
+        document,
+        Document {
+            children: vec![Node::HtmlElement {
+                name: "ul".to_string(),
+                open: "<ul>".to_string(),
+                close: "</ul>".to_string(),
+                children: vec![
+                    Node::HtmlElement {
+                        name: "li".to_string(),
+                        open: "<li>".to_string(),
+                        close: String::new(),
+                        children: vec![Node::HtmlText("one".to_string())]
+                    },
+                    Node::HtmlElement {
+                        name: "li".to_string(),
+                        open: "<li>".to_string(),
+                        close: String::new(),
+                        children: vec![Node::HtmlText("two".to_string())]
+                    }
+                ]
+            }]
+        }
+    );
+}
+
+#[test]
+fn allows_paragraph_optional_close_before_block_elements_when_configured() {
+    let tokens = tokenize("<section><p>Hello<div>Block</div></section>").unwrap();
+    let document = parse_with_options(
+        &tokens,
+        ParserOptions {
+            allow_html_optional_closing_tags: true,
+        },
+    )
+    .unwrap();
+
+    assert_eq!(
+        document,
+        Document {
+            children: vec![Node::HtmlElement {
+                name: "section".to_string(),
+                open: "<section>".to_string(),
+                close: "</section>".to_string(),
+                children: vec![
+                    Node::HtmlElement {
+                        name: "p".to_string(),
+                        open: "<p>".to_string(),
+                        close: String::new(),
+                        children: vec![Node::HtmlText("Hello".to_string())]
+                    },
+                    Node::HtmlElement {
+                        name: "div".to_string(),
+                        open: "<div>".to_string(),
+                        close: "</div>".to_string(),
+                        children: vec![Node::HtmlText("Block".to_string())]
+                    }
+                ]
+            }]
+        }
+    );
+}
+
+#[test]
+fn still_rejects_invalid_close_tags_when_optional_close_is_allowed() {
+    let tokens = tokenize("<p>Hello</span>").unwrap();
+    let error = parse_with_options(
+        &tokens,
+        ParserOptions {
+            allow_html_optional_closing_tags: true,
+        },
+    )
+    .unwrap_err();
+
+    assert_eq!(
+        error,
+        ParseError::MismatchedHtmlCloseTag {
+            expected: "p".to_string(),
+            found: "span".to_string(),
+            raw: "</span>".to_string(),
+            location: None
+        }
+    );
+}
+
+#[test]
 fn preserves_inline_erb_output_inside_html() {
     let tokens = tokenize("<p>Hello, <%= user.name %></p>").unwrap();
     let document = parse(&tokens).unwrap();

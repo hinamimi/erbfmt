@@ -1,8 +1,11 @@
+use crate::mixed_parser::ParserOptions;
+
 use super::DiagnosticSeverity;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct LintOptions {
     pub enabled: bool,
+    pub parser: ParserOptions,
     pub rules: LintRules,
     pub rule_severities: LintRuleSeverities,
 }
@@ -11,6 +14,7 @@ impl Default for LintOptions {
     fn default() -> Self {
         Self {
             enabled: true,
+            parser: ParserOptions::default(),
             rules: LintRules::default(),
             rule_severities: LintRuleSeverities::default(),
         }

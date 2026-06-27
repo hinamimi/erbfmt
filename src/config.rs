@@ -9,6 +9,7 @@ use serde::Deserialize;
 use crate::{
     formatter::{FormatOptions, IndentStyle, LineEnding},
     linter::{DiagnosticSeverity, LintOptions, LintRuleSeverities, LintRules},
+    mixed_parser::ParserOptions,
 };
 
 const CONFIG_FILE: &str = "erbfmt.json";
@@ -16,6 +17,7 @@ const CONFIG_FILE: &str = "erbfmt.json";
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Config {
     pub files: FilesConfig,
+    pub parser: ParserConfig,
     pub formatter: FormatterConfig,
     pub linter: LinterConfig,
 }
@@ -41,6 +43,10 @@ impl Config {
 
     pub fn format_options(&self) -> FormatOptions {
         self.formatter.options
+    }
+
+    pub fn parser_options(&self) -> ParserOptions {
+        self.parser.options
     }
 
     pub fn lint_options(&self) -> LintOptions {
@@ -185,6 +191,11 @@ fn glob_segment_matches_chars(pattern: &[char], text: &[char]) -> bool {
     }
 }
 
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct ParserConfig {
+    pub options: ParserOptions,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct FormatterConfig {
     pub enabled: bool,
@@ -209,6 +220,7 @@ pub struct LinterConfig {
 #[serde(rename_all = "camelCase")]
 struct RawConfig {
     files: Option<RawFilesConfig>,
+    parser: Option<RawParserConfig>,
     formatter: Option<RawFormatterConfig>,
     linter: Option<RawLinterConfig>,
 }
@@ -225,9 +237,15 @@ impl RawConfig {
             config.files = files.into_config();
         }
 
+        if let Some(parser) = self.parser {
+            config.parser = parser.into_config();
+        }
+
         if let Some(linter) = self.linter {
             config.linter = linter.into_config();
         }
+
+        config.linter.options.parser = config.parser.options;
 
         Ok(config)
     }
@@ -245,6 +263,24 @@ impl RawFilesConfig {
             includes: self.includes.unwrap_or_default(),
             base_dir: None,
         }
+    }
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct RawParserConfig {
+    allow_html_optional_closing_tags: Option<bool>,
+}
+
+impl RawParserConfig {
+    fn into_config(self) -> ParserConfig {
+        let mut config = ParserConfig::default();
+
+        if let Some(allow_html_optional_closing_tags) = self.allow_html_optional_closing_tags {
+            config.options.allow_html_optional_closing_tags = allow_html_optional_closing_tags;
+        }
+
+        config
     }
 }
 

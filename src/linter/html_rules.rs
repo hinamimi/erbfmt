@@ -1,6 +1,6 @@
 use crate::{
     html::{self, HtmlToken},
-    lexer,
+    lexer, mixed_parser,
 };
 
 use super::{Diagnostic, LintOptions};
@@ -32,6 +32,7 @@ pub(super) fn lint_html_tokens(
     for spanned in tokens {
         match &spanned.token {
             HtmlToken::OpenTag(tag) => {
+                close_optional_html_lint_frames_before_open(stack, &tag.name, options);
                 lint_html_content_model(
                     input,
                     fragment_start,
@@ -171,7 +172,10 @@ pub(super) fn lint_html_tokens(
                     diagnostics,
                 );
             }
-            HtmlToken::CloseTag(tag) => close_html_lint_frame(stack, &tag.name),
+            HtmlToken::CloseTag(tag) => {
+                close_optional_html_lint_frames_before_close(stack, &tag.name, options);
+                close_html_lint_frame(stack, &tag.name);
+            }
             HtmlToken::Text(text) => {
                 lint_html_text_content_model(
                     input,
@@ -185,6 +189,39 @@ pub(super) fn lint_html_tokens(
             }
             HtmlToken::Comment(_) | HtmlToken::Doctype(_) => {}
         }
+    }
+}
+
+fn close_optional_html_lint_frames_before_open(
+    stack: &mut Vec<HtmlElementLintFrame>,
+    next_name: &str,
+    options: LintOptions,
+) {
+    if !options.parser.allow_html_optional_closing_tags {
+        return;
+    }
+
+    while stack
+        .last()
+        .is_some_and(|frame| mixed_parser::optional_html_close_before_open(&frame.name, next_name))
+    {
+        stack.pop();
+    }
+}
+
+fn close_optional_html_lint_frames_before_close(
+    stack: &mut Vec<HtmlElementLintFrame>,
+    close_name: &str,
+    options: LintOptions,
+) {
+    if !options.parser.allow_html_optional_closing_tags {
+        return;
+    }
+
+    while stack.last().is_some_and(|frame| {
+        mixed_parser::optional_html_close_before_close(&frame.name, close_name)
+    }) {
+        stack.pop();
     }
 }
 
