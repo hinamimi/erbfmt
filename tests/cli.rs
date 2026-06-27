@@ -58,6 +58,7 @@ fn init_creates_default_config() {
     );
     assert_eq!(value["formatter"]["indentWidth"], 2);
     assert_eq!(value["formatter"]["indentHtml"], true);
+    assert_eq!(value["files"]["includes"][0], "**/*.html.erb");
     assert_eq!(
         value["linter"]["rules"]["noInvalidHtmlBooleanAttribute"],
         "error"
@@ -107,9 +108,15 @@ fn init_force_overwrites_existing_config() {
 #[test]
 fn lint_can_target_file_named_init() {
     let dir = TestDir::new("lint_file_named_init");
+    let config = dir.write("erbfmt.json", "{}\n");
     let file = dir.write("init", FORMATTED);
 
-    let output = run(["--lint".as_ref(), file.as_path()]);
+    let output = run([
+        "--lint".as_ref(),
+        "--config".as_ref(),
+        config.as_path(),
+        file.as_path(),
+    ]);
 
     assert_success(&output);
     assert_eq!(
@@ -504,6 +511,79 @@ fn config_can_disable_formatter() {
 
     assert_success(&output);
     assert_eq!(stdout(&output), UNFORMATTED);
+    assert_eq!(stderr(&output), "");
+}
+
+#[test]
+fn config_files_includes_filters_lint_targets() {
+    let dir = TestDir::new("config_files_includes_filters_lint_targets");
+    let config = dir.write(
+        "erbfmt.json",
+        r#"{"files":{"includes":["app/views/**/*.html.erb"]}}"#,
+    );
+    let included = dir.write("app/views/show.html.erb", FORMATTED);
+    let excluded = dir.write("app/views/generated.txt", "<% if user %>\n");
+
+    let output = run([
+        "--lint".as_ref(),
+        "--config".as_ref(),
+        config.as_path(),
+        included.as_path(),
+        excluded.as_path(),
+    ]);
+
+    assert_success(&output);
+    assert_eq!(
+        stdout(&output),
+        format!("{}: no lint issues found.\n", included.display())
+    );
+    assert_eq!(stderr(&output), "");
+}
+
+#[test]
+fn config_files_includes_excludes_lint_targets() {
+    let dir = TestDir::new("config_files_includes_excludes_lint_targets");
+    let config = dir.write(
+        "erbfmt.json",
+        r#"{"files":{"includes":["**/*.html.erb","!vendor/**"]}}"#,
+    );
+    let included = dir.write("app/views/show.html.erb", FORMATTED);
+    let excluded = dir.write("vendor/bad.html.erb", "<% if user %>\n");
+
+    let output = run([
+        "--lint".as_ref(),
+        "--config".as_ref(),
+        config.as_path(),
+        included.as_path(),
+        excluded.as_path(),
+    ]);
+
+    assert_success(&output);
+    assert_eq!(
+        stdout(&output),
+        format!("{}: no lint issues found.\n", included.display())
+    );
+    assert_eq!(stderr(&output), "");
+}
+
+#[test]
+fn config_files_includes_skips_single_excluded_target() {
+    let dir = TestDir::new("config_files_includes_skips_single_excluded_target");
+    let config = dir.write(
+        "erbfmt.json",
+        r#"{"files":{"includes":["app/views/**/*.html.erb"]}}"#,
+    );
+    let excluded = dir.write("tmp/generated.html.erb", "<% if user %>\n");
+
+    let output = run([
+        "--lint".as_ref(),
+        "--config".as_ref(),
+        config.as_path(),
+        excluded.as_path(),
+    ]);
+
+    assert_success(&output);
+    assert_eq!(stdout(&output), "");
     assert_eq!(stderr(&output), "");
 }
 
@@ -963,6 +1043,9 @@ impl TestDir {
 
     fn write(&self, name: &str, content: &str) -> PathBuf {
         let file = self.path.join(name);
+        if let Some(parent) = file.parent() {
+            fs::create_dir_all(parent).unwrap();
+        }
         fs::write(&file, content).unwrap();
         file
     }

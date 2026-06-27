@@ -7,6 +7,18 @@
     "$schema": {
       "type": "string"
     },
+    "files": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "includes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
     "formatter": {
       "type": "object",
       "additionalProperties": false,

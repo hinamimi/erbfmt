@@ -22,6 +22,9 @@ option for the existing HTML indentation behavior.
 
 ```json
 {
+  "files": {
+    "includes": ["**/*.html.erb", "!vendor/**"]
+  },
   "formatter": {
     "enabled": true,
     "indentStyle": "space",
@@ -49,6 +52,17 @@ option for the existing HTML indentation behavior.
   }
 }
 ```
+
+## Files
+
+- `files.includes`: file include and exclude patterns used before formatting,
+  checking, or linting CLI targets. Patterns are evaluated relative to the
+  config file directory when possible.
+- Use `!` to exclude a pattern after including broader targets, for example
+  `["**/*.html.erb", "!vendor/**"]`.
+- Supported wildcards are `*`, `?`, and `**`.
+- When `files.includes` is omitted, erbfmt processes every file explicitly
+  passed on the command line.
 
 ## Formatter
 

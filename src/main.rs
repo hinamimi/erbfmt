@@ -16,6 +16,9 @@ use std::process::ExitCode;
 const CONFIG_FILE: &str = "erbfmt.json";
 const DEFAULT_CONFIG: &str = r#"{
   "$schema": "https://raw.githubusercontent.com/hinamimi/erbfmt/main/docs/schema/erbfmt.schema.json",
+  "files": {
+    "includes": ["**/*.html.erb"]
+  },
   "formatter": {
     "enabled": true,
     "indentStyle": "space",
@@ -99,6 +102,10 @@ fn main() -> Result<ExitCode> {
 
     let mut failed = false;
     for file in &args.files {
+        if !config.includes_file(file) {
+            continue;
+        }
+
         if run_file(&args, &config, file)? == FileStatus::Failed {
             failed = true;
         }

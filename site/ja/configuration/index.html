@@ -53,8 +53,11 @@ erbfmt init --force</code></pre>
 }</code></pre>
 
         <h3>全項目の例</h3>
-        <pre><code class="language-json">{
+<pre><code class="language-json">{
   "$schema": "https://raw.githubusercontent.com/hinamimi/erbfmt/main/docs/schema/erbfmt.schema.json",
+  "files": {
+    "includes": ["**/*.html.erb", "!vendor/**"]
+  },
   "formatter": {
     "enabled": true,
     "indentStyle": "space",
@@ -81,6 +84,11 @@ erbfmt init --force</code></pre>
     }
   }
 }</code></pre>
+
+        <h2 id="files">Files</h2>
+        <dl class="option-list">
+          <div class="option"><dt><code>files.includes</code><span class="meta">glob patternのarray</span></dt><dd><p>format、check、lintの前にCLI targetを絞り込みます。可能な場合、patternはconfig fileのdirectoryからの相対pathとして評価します。除外には <code>!</code> を使います。例: <code>["**/*.html.erb", "!vendor/**"]</code>。対応wildcardは <code>*</code>、<code>?</code>、<code>**</code>です。</p></dd></div>
+        </dl>
 
         <h2 id="formatter">Formatter</h2>
         <dl class="option-list">
