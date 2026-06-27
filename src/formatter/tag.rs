@@ -159,7 +159,13 @@ fn split_attributes(input: &str) -> Vec<String> {
             let Some(relative_end) = input[cursor + "<%".len()..].find("%>") else {
                 break;
             };
-            cursor += "<%".len() + relative_end + "%>".len();
+            let erb_end = cursor + "<%".len() + relative_end + "%>".len();
+
+            if quote.is_none() && start.is_none() {
+                attributes.push(input[cursor..erb_end].to_string());
+            }
+
+            cursor = erb_end;
             continue;
         }
 

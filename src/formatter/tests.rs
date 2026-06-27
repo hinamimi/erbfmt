@@ -71,6 +71,28 @@ fn normalizes_html_tag_spacing_when_expanding() {
 }
 
 #[test]
+fn preserves_standalone_erb_attributes_in_html_tags() {
+    assert_eq!(
+        format(r#"<details <%= "open" if expanded? %> class=""></details>"#),
+        "<details <%= \"open\" if expanded? %> class=\"\"></details>\n"
+    );
+}
+
+#[test]
+fn wraps_standalone_erb_attributes_in_long_html_tags() {
+    assert_eq!(
+        format_with_options(
+            r#"<details <%= "open" unless request.user_agent&.match?(/Mobile|Android|iPhone|iPad/) %> class=""></details>"#,
+            FormatOptions {
+                line_width: 60,
+                ..FormatOptions::default()
+            }
+        ),
+        "<details\n  <%= \"open\" unless request.user_agent&.match?(/Mobile|Android|iPhone|iPad/) %>\n  class=\"\"\n>\n</details>\n"
+    );
+}
+
+#[test]
 fn preserves_unquoted_attribute_trailing_slash_values() {
     assert_eq!(
         format("<img src=/assets/logo/>\n"),
