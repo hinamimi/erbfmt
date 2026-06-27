@@ -464,6 +464,20 @@ fn wraps_long_html_opening_tags_by_attribute() {
 }
 
 #[test]
+fn wraps_long_inline_html_elements_by_attribute() {
+    assert_eq!(
+        format_with_options(
+            r#"<div class="a-long-long-class-name" style="<%= long_logic %>"></div>"#,
+            FormatOptions {
+                line_width: 48,
+                ..FormatOptions::default()
+            }
+        ),
+        "<div\n  class=\"a-long-long-class-name\"\n  style=\"<%= long_logic %>\"\n>\n</div>\n"
+    );
+}
+
+#[test]
 fn wraps_long_void_tags_by_attribute() {
     assert_eq!(
         format_with_options(

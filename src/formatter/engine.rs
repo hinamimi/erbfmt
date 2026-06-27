@@ -198,12 +198,18 @@ impl<'a> Formatter<'a> {
             return;
         }
 
-        if can_render_inline(children) && self.can_keep_html_element_inline(open, depth) {
+        if can_render_inline(children) {
             let content = render_inline_nodes_untrimmed(children);
-            self.write_indented_line(depth, &format!("{open}{content}{close}"));
-        } else {
-            self.write_html_element_multiline(open, close, children, range, depth);
+            let inline = format!("{open}{content}{close}");
+            let inline_width_target = if children.is_empty() { &inline } else { open };
+
+            if self.can_keep_html_element_inline(inline_width_target, depth) {
+                self.write_indented_line(depth, &inline);
+                return;
+            }
         }
+
+        self.write_html_element_multiline(open, close, children, range, depth);
     }
 
     fn write_html_element_multiline(
@@ -285,8 +291,8 @@ impl<'a> Formatter<'a> {
         self.write_indented_line(depth, &inline);
     }
 
-    fn can_keep_html_element_inline(&self, open: &str, depth: usize) -> bool {
-        let trimmed = open.trim();
+    fn can_keep_html_element_inline(&self, inline: &str, depth: usize) -> bool {
+        let trimmed = inline.trim();
 
         !trimmed.contains('\n') && self.fits_on_line(depth, trimmed)
     }
