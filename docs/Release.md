@@ -180,7 +180,7 @@ Keep these files in the release verification surface:
 
 ## Versioning
 
-The repository is currently set to `0.1.2` for the next prerelease.
+The repository is currently set to `0.1.3` for the next prerelease.
 Earlier milestone work used the fixed development version `0.0.0-dev`, and the
 first public prerelease used `0.1.0`.
 
@@ -219,10 +219,10 @@ rerun may update assets only while the release remains a draft.
 For the next release:
 
 ```bash
-ruby scripts/version.rb set 0.1.2
-ruby scripts/version.rb verify 0.1.2
+ruby scripts/version.rb set 0.1.3
+ruby scripts/version.rb verify 0.1.3
 # Run the release verification commands above, then commit.
-git tag -a v0.1.2 -m "erbfmt 0.1.2"
+git tag -a v0.1.3 -m "erbfmt 0.1.3"
 git push origin main
-git push origin v0.1.2
+git push origin v0.1.3
 ```

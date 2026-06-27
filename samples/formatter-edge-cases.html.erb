@@ -19,6 +19,11 @@
         class: "button button--primary"
       )
     %>
+    <button
+      class="button <%= 'button--hidden' if hidden? %>"
+      id=<%= button_id %>
+      type="button"
+    >Save</button>
   <% else %>
     <!-- empty state -->
     <p>Please sign in.</p>
