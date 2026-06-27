@@ -1,7 +1,8 @@
 pub(super) fn fold_command_call(code: &str) -> Option<Vec<String>> {
     let code = code.trim();
 
-    if code.is_empty() || code.contains('#') || code.contains(';') {
+    if code.is_empty() || code.contains('#') || code.contains(';') || contains_unquoted_slash(code)
+    {
         return None;
     }
 
@@ -49,6 +50,22 @@ fn format_argument_lines(argument: &str, comma: bool) -> Vec<String> {
     }
 
     lines
+}
+
+fn contains_unquoted_slash(value: &str) -> bool {
+    let mut state = RubyScanState::default();
+
+    for ch in value.chars() {
+        if state.string.is_none() && ch == '/' {
+            return true;
+        }
+
+        if !state.consume(ch) {
+            return true;
+        }
+    }
+
+    false
 }
 
 fn fold_keyword_hash_argument(argument: &str) -> Option<Vec<String>> {
@@ -564,6 +581,22 @@ mod tests {
     fn does_not_fold_single_argument_calls() {
         assert_eq!(
             fold_command_call(r#"cache ["profile-card", user.cache_key_with_version]"#),
+            None
+        );
+    }
+
+    #[test]
+    fn does_not_fold_regex_literal_arguments() {
+        assert_eq!(
+            fold_command_call(r#"helper /a,b/, class: "button button--primary""#),
+            None
+        );
+    }
+
+    #[test]
+    fn does_not_fold_unquoted_slash_expressions() {
+        assert_eq!(
+            fold_command_call(r#"number_to_percentage completed / total, precision: 2"#),
             None
         );
     }
