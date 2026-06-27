@@ -500,6 +500,16 @@ fn wraps_long_html_opening_tags_by_attribute() {
 }
 
 #[test]
+fn wraps_erb_attribute_tags_at_line_width_boundary() {
+    let input = r#"<button class="test <%= 'd-none' if test? %>" id=<%= button_id %> type="button">Save</button>
+"#;
+    let expected = "<button\n  class=\"test <%= 'd-none' if test? %>\"\n  id=<%= button_id %>\n  type=\"button\"\n>Save</button>\n";
+
+    assert_eq!(format_source(input), expected);
+    assert_eq!(format_source(expected), expected);
+}
+
+#[test]
 fn wraps_long_inline_html_elements_by_attribute() {
     assert_eq!(
         format_with_options(

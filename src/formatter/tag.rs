@@ -94,7 +94,10 @@ pub(super) fn render_tag(raw: &str, suffix: &str, context: TagRenderContext<'_>)
     };
     let inline = tag.inline();
     let is_multiline = trimmed.contains('\n');
-    if !is_multiline && fits_on_line(context.indent, &inline, context.line_width) {
+    if !is_multiline
+        && fits_on_line(context.indent, &inline, context.line_width)
+        && !should_expand_erb_attribute_tag(&tag, context.indent, &inline, context.line_width)
+    {
         return Some(format!("{}{inline}{suffix}", context.indent));
     }
 
@@ -118,6 +121,31 @@ pub(super) fn render_tag(raw: &str, suffix: &str, context: TagRenderContext<'_>)
 
 fn fits_on_line(indent: &str, text: &str, line_width: usize) -> bool {
     indent.chars().count() + text.chars().count() <= line_width
+}
+
+fn should_expand_erb_attribute_tag(
+    tag: &ParsedTag,
+    indent: &str,
+    inline: &str,
+    line_width: usize,
+) -> bool {
+    tag.attributes.len() > 1
+        && tag
+            .attributes
+            .iter()
+            .any(|attribute| attribute.contains("<%"))
+        && indent.chars().count() + inline.chars().count() >= line_width
+}
+
+pub(super) fn should_expand_tag_with_erb_attributes(
+    raw: &str,
+    indent: &str,
+    line_width: usize,
+) -> bool {
+    ParsedTag::parse(raw.trim()).is_some_and(|tag| {
+        let inline = tag.inline();
+        should_expand_erb_attribute_tag(&tag, indent, &inline, line_width)
+    })
 }
 
 fn split_attributes(input: &str) -> Vec<String> {

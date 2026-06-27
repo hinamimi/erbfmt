@@ -15,7 +15,10 @@ use super::inline::{
 };
 use super::options::{FormatOptions, IndentStyle};
 use super::preserve::{is_format_sensitive_html_element, render_preserved_nodes};
-use super::tag::{TagRenderContext, normalize_close_tag, normalize_tag, render_tag};
+use super::tag::{
+    TagRenderContext, normalize_close_tag, normalize_tag, render_tag,
+    should_expand_tag_with_erb_attributes,
+};
 
 #[allow(dead_code)]
 pub fn format_document(document: &Document) -> String {
@@ -223,7 +226,13 @@ impl<'a> Formatter<'a> {
                 open.as_str()
             };
 
-            if self.can_keep_html_element_inline(inline_width_target, depth) {
+            if self.can_keep_html_element_inline(inline_width_target, depth)
+                && !should_expand_tag_with_erb_attributes(
+                    open.as_str(),
+                    &self.indent(depth),
+                    self.options.line_width,
+                )
+            {
                 self.write_indented_line(depth, &inline);
                 return;
             }
