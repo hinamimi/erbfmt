@@ -38,12 +38,14 @@ There is no Ruby formatter API and no Ruby implementation of ERB parsing.
 Platform-specific gems provide the intended user experience:
 
 ```bash
-bundle add erbfmt --group development
-bundle exec erbfmt --version
+gem install --local ./erbfmt-0.1.2-x86_64-linux-gnu.gem
+erbfmt --version
 ```
 
-Users do not need a Rust toolchain, and gem installation does not need network
-access beyond the normal RubyGems download.
+Users do not need a Rust toolchain. Once the matching `.gem` file has been
+downloaded from GitHub Releases, installation can be local and offline. If
+erbfmt is later published to RubyGems.org, the Gemfile workflow can become the
+normal `bundle add erbfmt --group development` flow.
 
 A source-build fallback would require Rust and duplicate the concerns already
 handled by the release-binary workflow. A generic gem with install-time download
@@ -157,23 +159,36 @@ passes installation and execution tests from the tagged commit.
 ### Installing from a Gemfile
 
 The initial GitHub-only distribution does not provide a RubyGems package index.
-Bundler therefore cannot resolve erbfmt from a normal `source` entry alone.
-Download the platform-specific gem from the matching GitHub Release into the
-Rails project's `vendor/cache` directory. For glibc Linux x64:
+Bundler therefore cannot resolve erbfmt from a normal `source` entry alone. The
+most reliable Gemfile setup is to unpack the platform-specific release gem into
+the project and reference it as a path gem.
+
+For glibc Linux x64, first download the matching GitHub Release asset:
 
 ```bash
-mkdir -p vendor/cache
 curl -L \
-  -o vendor/cache/erbfmt-0.1.2-x86_64-linux-gnu.gem \
+  -o erbfmt-0.1.2-x86_64-linux-gnu.gem \
   https://github.com/hinamimi/erbfmt/releases/download/v0.1.2/erbfmt-0.1.2-x86_64-linux-gnu.gem
 ```
 
-Rails projects add the CLI at an exact version without auto-requiring Ruby
-code:
+Then unpack it into `vendor/gems` and write the gemspec into the unpacked
+directory. `gem unpack` extracts the gem files, but it does not create a
+Bundler-readable `.gemspec` file by itself.
+
+```bash
+mkdir -p vendor/gems
+gem unpack erbfmt-0.1.2-x86_64-linux-gnu.gem --target vendor/gems
+gem spec erbfmt-0.1.2-x86_64-linux-gnu.gem --ruby \
+  > vendor/gems/erbfmt-0.1.2-x86_64-linux-gnu/erbfmt.gemspec
+```
+
+Add the unpacked gem as a path dependency without auto-requiring Ruby code:
 
 ```ruby
 group :development do
-  gem "erbfmt", "0.1.2", require: false
+  gem "erbfmt",
+    path: "vendor/gems/erbfmt-0.1.2-x86_64-linux-gnu",
+    require: false
 end
 ```
 
@@ -184,14 +199,13 @@ bundle install
 bundle exec erbfmt app/views/users/show.html.erb
 ```
 
-Bundler uses the package in `vendor/cache` for erbfmt and may still use the
-configured gem source for other dependencies. Use `bundle install --local`
-when every dependency is already installed or cached and the installation must
-not contact a registry.
+Commit the unpacked `vendor/gems/erbfmt-...` directory and `Gemfile.lock` when
+the project should be installable by other developers without a separate erbfmt
+download step. You may also commit the downloaded `.gem` under `vendor/cache`
+as the original release artifact, but the Gemfile path entry reads the unpacked
+directory.
 
-For a shared project, commit the downloaded gem and `Gemfile.lock` so other
-developers do not need a separate erbfmt download step. The package must match
-the local RubyGems platform:
+The package must match the local RubyGems platform:
 
 | Development platform | Release gem |
 | --- | --- |
@@ -200,9 +214,30 @@ the local RubyGems platform:
 | macOS Apple Silicon | `erbfmt-0.1.2-arm64-darwin.gem` |
 | Windows RubyInstaller UCRT x64 | `erbfmt-0.1.2-x64-mingw-ucrt.gem` |
 
-Projects used on multiple platforms should keep every required variant in
-`vendor/cache` and include those platforms in `Gemfile.lock`. Unsupported
-platforms, including Alpine/musl and Linux arm64, do not currently have a gem.
+Projects used on multiple platforms should unpack every required variant under
+`vendor/gems` and choose the path that matches the current platform in the
+Gemfile. Unsupported platforms, including Alpine/musl and Linux arm64, do not
+currently have a gem.
+
+```ruby
+erbfmt_platform = Gem::Platform.local.to_s
+
+group :development do
+  gem "erbfmt",
+    path: "vendor/gems/erbfmt-0.1.2-#{erbfmt_platform}",
+    require: false
+end
+```
+
+If your local RubyGems platform string differs from the release asset name,
+map it explicitly in the Gemfile.
+
+One-off local installation does not need a Gemfile:
+
+```bash
+gem install --local ./erbfmt-0.1.2-x86_64-linux-gnu.gem
+erbfmt --version
+```
 
 Do not use a Git source as a substitute:
 

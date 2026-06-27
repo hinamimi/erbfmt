@@ -14,21 +14,27 @@ erbfmt --version
 
 ## Installing from a Gemfile
 
-Since the gem is not on RubyGems.org, place the matching release asset in the
-project's `vendor/cache` directory:
+Since the gem is not on RubyGems.org, Bundler cannot resolve it from a normal
+`source` entry. Download the matching release asset, unpack it into
+`vendor/gems`, and write the gemspec that Bundler needs for a path dependency:
 
 ```bash
-mkdir -p vendor/cache
 curl -L \
-  -o vendor/cache/erbfmt-0.1.2-x86_64-linux-gnu.gem \
+  -o erbfmt-0.1.2-x86_64-linux-gnu.gem \
   https://github.com/hinamimi/erbfmt/releases/download/v0.1.2/erbfmt-0.1.2-x86_64-linux-gnu.gem
+mkdir -p vendor/gems
+gem unpack erbfmt-0.1.2-x86_64-linux-gnu.gem --target vendor/gems
+gem spec erbfmt-0.1.2-x86_64-linux-gnu.gem --ruby \
+  > vendor/gems/erbfmt-0.1.2-x86_64-linux-gnu/erbfmt.gemspec
 ```
 
-Add the exact version to the project Gemfile:
+Add the unpacked gem to the project Gemfile:
 
 ```ruby
 group :development do
-  gem "erbfmt", "0.1.2", require: false
+  gem "erbfmt",
+    path: "vendor/gems/erbfmt-0.1.2-x86_64-linux-gnu",
+    require: false
 end
 ```
 
@@ -39,10 +45,12 @@ bundle install
 bundle exec erbfmt --version
 ```
 
-Commit the platform gem in `vendor/cache` when the project should be
-installable by other team members without a separate download step. See
+Commit the unpacked `vendor/gems/erbfmt-...` directory and `Gemfile.lock` when
+the project should be installable by other team members without a separate
+download step. You can also commit the downloaded `.gem` under `vendor/cache`
+as the original release artifact. See
 [RubyGem.md](../../docs/RubyGem.md#installing-from-a-gemfile) for supported
-platforms and multi-platform guidance.
+platforms, multi-platform guidance, and why `gem spec --ruby` is needed.
 
 The wrapper packages one Rust binary and does not implement formatting or
 linting in Ruby.
