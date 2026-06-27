@@ -124,6 +124,11 @@
           "type": "boolean",
           "default": true,
           "description": "Enable erbfmt diagnostics by running erbfmt --lint on open and save."
+        },
+        "erbfmt.formatDiagnostics.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Warn when the active ERB document differs from erbfmt's formatted output."
         }
       }
     },

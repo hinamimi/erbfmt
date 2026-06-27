@@ -25,6 +25,7 @@ editorで同じ結果を得られます。
 - `*.html.erb` 向けのHTML/ERB syntax highlighting
 - `html-erb` と `erb` language idのdocument formatting
 - documentを開いたときと保存したときのerbfmt lint diagnostics
+- erbfmtの出力と差がある行をwarnするformat diagnostics
 - ERBを安全に扱う `Ctrl+/` / `Cmd+/` comment toggle
 - active fileを起点にした `erbfmt.json` の自動検出
 - CLI、追加arguments、config pathの明示的な設定
@@ -79,8 +80,9 @@ erbfmt init
 extensionはactive documentからfilesystem rootへ向かって `erbfmt.json`を検索します。
 workspaceでconfig fileを明示する必要がある場合のみ `erbfmt.configPath`を使います。
 
-lint diagnosticsはdefaultで有効で、ERB documentを開いたときと保存したときに更新されます。
-手動実行には **erbfmt: Lint Document** を使います。
+diagnosticsはdefaultで有効で、ERB documentを開いたときと保存したときに更新されます。
+lint diagnosticsは `erbfmt --lint` から生成し、format diagnosticsはerbfmtの出力と差が
+ある行をwarningとして表示します。手動実行には **erbfmt: Lint Document** を使います。
 
 ## Bundlerで使う
 
@@ -113,6 +115,7 @@ commandはactive documentのdirectoryから実行されるため、そのdirecto
 | `erbfmt.arguments` | `[]` | erbfmt固有のargumentsより前に追加します。 |
 | `erbfmt.configPath` | empty | 特定の `erbfmt.json`を指定します。 |
 | `erbfmt.lint.enabled` | `true` | open/save時にdiagnosticsを表示します。 |
+| `erbfmt.formatDiagnostics.enabled` | `true` | documentが未formatの場合にwarningを表示します。 |
 
 `erbfmt.command`にはexecutableだけを設定します。たとえばcommandを `bundle`、
 `erbfmt.arguments`を `exec`, `erbfmt`とします。

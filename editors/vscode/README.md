@@ -25,6 +25,7 @@ in the CLI, so command-line, CI, and editor results stay consistent.
 - HTML and ERB syntax highlighting for `*.html.erb` files.
 - Document formatting for the `html-erb` and `erb` language ids.
 - erbfmt lint diagnostics when a document is opened or saved.
+- Format diagnostics that warn when a document differs from erbfmt output.
 - ERB-safe `Ctrl+/` / `Cmd+/` comment toggling.
 - Automatic `erbfmt.json` discovery from the active file's directory.
 - Explicit CLI, arguments, and configuration path settings.
@@ -81,8 +82,10 @@ The extension searches for `erbfmt.json` from the active document toward the
 filesystem root. Use `erbfmt.configPath` only when a workspace needs an
 explicit configuration file.
 
-Lint diagnostics are enabled by default and update when an ERB document is
-opened or saved. Use **erbfmt: Lint Document** to run them manually.
+Diagnostics are enabled by default and update when an ERB document is opened or
+saved. Lint diagnostics come from `erbfmt --lint`; format diagnostics warn on
+lines that differ from erbfmt output. Use **erbfmt: Lint Document** to refresh
+them manually.
 
 ## Using Bundler
 
@@ -115,6 +118,7 @@ the project's `Gemfile` in that directory or a parent.
 | `erbfmt.arguments` | `[]` | Arguments inserted before erbfmt's own arguments. |
 | `erbfmt.configPath` | empty | Optional path to a specific `erbfmt.json`. |
 | `erbfmt.lint.enabled` | `true` | Publish diagnostics on open and save. |
+| `erbfmt.formatDiagnostics.enabled` | `true` | Warn when the document is not formatted. |
 
 Keep only the executable in `erbfmt.command`. For example, use `bundle` as the
 command and put `exec`, `erbfmt` in `erbfmt.arguments`.

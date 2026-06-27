@@ -43,6 +43,7 @@ assert(packageJson.contributes.configuration.properties["erbfmt.command"]);
 assert(packageJson.contributes.configuration.properties["erbfmt.arguments"]);
 assert(packageJson.contributes.configuration.properties["erbfmt.configPath"]);
 assert(packageJson.contributes.configuration.properties["erbfmt.lint.enabled"]);
+assert(packageJson.contributes.configuration.properties["erbfmt.formatDiagnostics.enabled"]);
 assert.strictEqual(
   packageJson.contributes.configurationDefaults["[html-erb]"]["editor.defaultFormatter"],
   "erbfmt.erbfmt-vscode",
@@ -50,6 +51,8 @@ assert.strictEqual(
 assert(extensionSource.includes("registerDocumentFormattingEditProvider"));
 assert(extensionSource.includes("createDiagnosticCollection"));
 assert(extensionSource.includes("--lint"));
+assert(extensionSource.includes("formatDiagnostics"));
+assert(extensionSource.includes("File is not formatted. Run Format Document to apply erbfmt."));
 assert(extensionSource.includes("fullDocumentRange"));
 assert(extensionSource.includes("childProcess.execFile"));
 assert(extensionSource.includes("createOutputChannel"));

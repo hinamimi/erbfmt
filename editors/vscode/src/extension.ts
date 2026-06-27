@@ -76,7 +76,7 @@ export function activate(context: vscode.ExtensionContext): void {
         return;
       }
 
-      await lintDocument(editor.document, diagnostics, createNullToken());
+      await refreshDiagnostics(editor.document, diagnostics, createNullToken());
     }),
     vscode.commands.registerCommand("erbfmt.showCommand", async () => {
       const editor = vscode.window.activeTextEditor;
@@ -129,10 +129,10 @@ export function activate(context: vscode.ExtensionContext): void {
       await toggleEditorComment(editor);
     }),
     vscode.workspace.onDidOpenTextDocument((document) => {
-      void lintDocument(document, diagnostics, createNullToken());
+      void refreshDiagnostics(document, diagnostics, createNullToken());
     }),
     vscode.workspace.onDidSaveTextDocument((document) => {
-      void lintDocument(document, diagnostics, createNullToken());
+      void refreshDiagnostics(document, diagnostics, createNullToken());
     }),
     vscode.workspace.onDidCloseTextDocument((document) => {
       diagnostics.delete(document.uri);
@@ -140,7 +140,7 @@ export function activate(context: vscode.ExtensionContext): void {
   );
 
   for (const document of vscode.workspace.textDocuments) {
-    void lintDocument(document, diagnostics, createNullToken());
+    void refreshDiagnostics(document, diagnostics, createNullToken());
   }
 }
 
@@ -230,7 +230,7 @@ async function formatDocument(
   }
 }
 
-async function lintDocument(
+async function refreshDiagnostics(
   document: vscode.TextDocument,
   diagnostics: vscode.DiagnosticCollection,
   token: vscode.CancellationToken,
@@ -241,11 +241,37 @@ async function lintDocument(
   }
 
   const settings = vscode.workspace.getConfiguration("erbfmt", document.uri);
-  if (!settings.get("lint.enabled", true)) {
+  const lintEnabled = settings.get("lint.enabled", true);
+  const formatDiagnosticsEnabled = settings.get("formatDiagnostics.enabled", true);
+
+  if (!lintEnabled && !formatDiagnosticsEnabled) {
     diagnostics.delete(document.uri);
     return;
   }
 
+  const nextDiagnostics: vscode.Diagnostic[] = [];
+
+  if (lintEnabled) {
+    nextDiagnostics.push(...(await lintDocument(document, token)));
+  }
+
+  if (formatDiagnosticsEnabled) {
+    nextDiagnostics.push(
+      ...(await collectFormatDiagnostics(document, token, { reportExecutionErrors: !lintEnabled })),
+    );
+  }
+
+  if (nextDiagnostics.length > 0) {
+    diagnostics.set(document.uri, nextDiagnostics);
+  } else {
+    diagnostics.delete(document.uri);
+  }
+}
+
+async function lintDocument(
+  document: vscode.TextDocument,
+  token: vscode.CancellationToken,
+): Promise<vscode.Diagnostic[]> {
   const context = await getCommandContext(document);
   const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "erbfmt-vscode-"));
   const tempFile = path.join(tempDir, path.basename(document.uri.fsPath));
@@ -257,30 +283,83 @@ async function lintDocument(
     const parsedDiagnostics = parseDiagnostics(document, tempFile, result.stderr);
 
     if (parsedDiagnostics.length > 0) {
-      diagnostics.set(document.uri, parsedDiagnostics);
-      return;
+      return parsedDiagnostics;
     }
 
     if (result.exitCode === 0) {
-      diagnostics.delete(document.uri);
-      return;
+      return [];
     }
 
-    diagnostics.set(document.uri, [
-      new vscode.Diagnostic(
+    return [
+      createDiagnostic(
         firstCharacterRange(document),
         formatFailureMessage(context, args, result),
         vscode.DiagnosticSeverity.Error,
       ),
-    ]);
+    ];
   } catch (error) {
-    diagnostics.set(document.uri, [
-      new vscode.Diagnostic(
+    return [
+      createDiagnostic(
         firstCharacterRange(document),
         errorMessage(error),
         vscode.DiagnosticSeverity.Error,
       ),
-    ]);
+    ];
+  } finally {
+    await fs.rm(tempDir, { recursive: true, force: true });
+  }
+}
+
+type FormatDiagnosticsOptions = {
+  reportExecutionErrors: boolean;
+};
+
+async function collectFormatDiagnostics(
+  document: vscode.TextDocument,
+  token: vscode.CancellationToken,
+  options: FormatDiagnosticsOptions,
+): Promise<vscode.Diagnostic[]> {
+  if (token.isCancellationRequested) {
+    return [];
+  }
+
+  const context = await getCommandContext(document);
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "erbfmt-vscode-"));
+  const tempFile = path.join(tempDir, path.basename(document.uri.fsPath));
+
+  try {
+    await fs.writeFile(tempFile, document.getText(), "utf8");
+
+    const args = await buildErbfmtArgs(context, document, [tempFile]);
+    const result = await execFile(context.command, args, { cwd: context.cwd }, token);
+
+    if (result.exitCode !== 0) {
+      if (!options.reportExecutionErrors) {
+        return [];
+      }
+
+      return [
+        createDiagnostic(
+          firstCharacterRange(document),
+          formatFailureMessage(context, args, result),
+          vscode.DiagnosticSeverity.Error,
+        ),
+      ];
+    }
+
+    return formatDiagnostics(document, result.stdout);
+  } catch (error) {
+    if (!options.reportExecutionErrors) {
+      return [];
+    }
+
+    return [
+      createDiagnostic(
+        firstCharacterRange(document),
+        errorMessage(error),
+        vscode.DiagnosticSeverity.Error,
+      ),
+    ];
   } finally {
     await fs.rm(tempDir, { recursive: true, force: true });
   }
@@ -496,16 +575,128 @@ function parseDiagnostics(
 
     const message = line.startsWith(`${filePath}: `) ? line.slice(filePath.length + 2) : line;
     const parsed = parseDiagnosticMessage(message);
-    const diagnostic = new vscode.Diagnostic(
+    const diagnostic = createDiagnostic(
       rangeFromMessage(document, parsed.message),
       parsed.message,
       parsed.severity,
     );
-    diagnostic.source = "erbfmt";
     diagnostics.push(diagnostic);
   }
 
   return diagnostics;
+}
+
+function formatDiagnostics(document: vscode.TextDocument, formatted: string): vscode.Diagnostic[] {
+  const current = document.getText();
+  if (current === formatted) {
+    return [];
+  }
+
+  return changedLineRanges(current, formatted)
+    .map((range) =>
+      createDiagnostic(
+        documentLineRange(document, range.start, range.end),
+        "File is not formatted. Run Format Document to apply erbfmt.",
+        vscode.DiagnosticSeverity.Warning,
+      ),
+    )
+    .slice(0, 100);
+}
+
+type LineRange = {
+  start: number;
+  end: number;
+};
+
+function changedLineRanges(current: string, formatted: string): LineRange[] {
+  const currentLines = current.split(/\r?\n/);
+  const formattedLines = formatted.split(/\r?\n/);
+  const ranges: LineRange[] = [];
+  let currentIndex = 0;
+  let formattedIndex = 0;
+
+  while (currentIndex < currentLines.length || formattedIndex < formattedLines.length) {
+    if (currentLines[currentIndex] === formattedLines[formattedIndex]) {
+      currentIndex += 1;
+      formattedIndex += 1;
+      continue;
+    }
+
+    const currentStart = currentIndex;
+    const formattedStart = formattedIndex;
+    const resync = findLineResync(currentLines, formattedLines, currentStart, formattedStart);
+
+    currentIndex = resync.current;
+    formattedIndex = resync.formatted;
+
+    const start = Math.max(0, Math.min(currentStart, currentLines.length - 1));
+    const end = Math.max(start, Math.min(currentIndex - 1, currentLines.length - 1));
+    ranges.push({ start, end });
+  }
+
+  return mergeAdjacentLineRanges(ranges);
+}
+
+type LineResync = {
+  current: number;
+  formatted: number;
+};
+
+function findLineResync(
+  currentLines: string[],
+  formattedLines: string[],
+  currentStart: number,
+  formattedStart: number,
+): LineResync {
+  const lookahead = 20;
+  let best: LineResync | undefined;
+  let bestDistance = Number.POSITIVE_INFINITY;
+
+  for (
+    let current = currentStart;
+    current < Math.min(currentLines.length, currentStart + lookahead);
+    current += 1
+  ) {
+    for (
+      let formatted = formattedStart;
+      formatted < Math.min(formattedLines.length, formattedStart + lookahead);
+      formatted += 1
+    ) {
+      if (currentLines[current] !== formattedLines[formatted]) {
+        continue;
+      }
+
+      const distance = current - currentStart + (formatted - formattedStart);
+      if (distance < bestDistance) {
+        best = { current, formatted };
+        bestDistance = distance;
+      }
+    }
+  }
+
+  if (best) {
+    return best;
+  }
+
+  return {
+    current: Math.min(currentStart + 1, currentLines.length),
+    formatted: Math.min(formattedStart + 1, formattedLines.length),
+  };
+}
+
+function mergeAdjacentLineRanges(ranges: LineRange[]): LineRange[] {
+  const merged: LineRange[] = [];
+
+  for (const range of ranges) {
+    const previous = merged.at(-1);
+    if (previous && range.start <= previous.end + 1) {
+      previous.end = Math.max(previous.end, range.end);
+    } else {
+      merged.push({ ...range });
+    }
+  }
+
+  return merged;
 }
 
 type ParsedDiagnosticMessage = {
@@ -541,6 +732,22 @@ function rangeFromMessage(document: vscode.TextDocument, message: string): vscod
   return new vscode.Range(line, column, line, endColumn);
 }
 
+function documentLineRange(
+  document: vscode.TextDocument,
+  start: number,
+  end: number,
+): vscode.Range {
+  if (document.lineCount === 0) {
+    return new vscode.Range(0, 0, 0, 0);
+  }
+
+  const startLine = Math.max(0, Math.min(start, document.lineCount - 1));
+  const endLine = Math.max(startLine, Math.min(end, document.lineCount - 1));
+  const endCharacter = document.lineAt(endLine).text.length;
+
+  return new vscode.Range(startLine, 0, endLine, Math.max(1, endCharacter));
+}
+
 function firstCharacterRange(document: vscode.TextDocument): vscode.Range {
   if (document.lineCount === 0) {
     return new vscode.Range(0, 0, 0, 0);
@@ -548,6 +755,17 @@ function firstCharacterRange(document: vscode.TextDocument): vscode.Range {
 
   const firstLineLength = document.lineAt(0).text.length;
   return new vscode.Range(0, 0, 0, Math.min(1, firstLineLength));
+}
+
+function createDiagnostic(
+  range: vscode.Range,
+  message: string,
+  severity: vscode.DiagnosticSeverity,
+): vscode.Diagnostic {
+  const diagnostic = new vscode.Diagnostic(range, message, severity);
+  diagnostic.source = "erbfmt";
+
+  return diagnostic;
 }
 
 function fullDocumentRange(document: vscode.TextDocument): vscode.Range {
