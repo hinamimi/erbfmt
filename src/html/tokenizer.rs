@@ -1,6 +1,6 @@
 use super::{
     HtmlTag, HtmlToken, SpannedHtmlToken,
-    tag::{find_tag_end, is_doctype, is_void_tag, tag_name},
+    tag::{find_tag_end, is_doctype, is_self_closing_tag_body, is_void_tag, tag_name},
     token::spanned_html_token,
 };
 
@@ -113,7 +113,7 @@ pub fn tokenize_with_spans(input: &str) -> Vec<SpannedHtmlToken> {
                 raw: raw.to_string(),
             };
 
-            if body.ends_with('/') {
+            if is_self_closing_tag_body(body) {
                 tokens.push(spanned_html_token(
                     start,
                     end,

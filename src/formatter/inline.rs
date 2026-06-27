@@ -239,12 +239,6 @@ fn is_custom_html_element_name(name: &str) -> bool {
     name.contains('-')
 }
 
-pub(super) fn render_inline_formatting_nodes(nodes: &[FormattingNode<'_>]) -> String {
-    render_inline_formatting_nodes_untrimmed(nodes)
-        .trim()
-        .to_string()
-}
-
 pub(super) fn render_inline_formatting_nodes_untrimmed(nodes: &[FormattingNode<'_>]) -> String {
     nodes
         .iter()

@@ -74,6 +74,39 @@ fn tokenizes_self_closing_and_void_tags() {
 }
 
 #[test]
+fn treats_unquoted_attribute_trailing_slash_as_attribute_value() {
+    let tokens = tokenize("<div data-url=/assets/logo/>Logo</div>");
+
+    assert_eq!(
+        tokens,
+        vec![
+            HtmlToken::OpenTag(HtmlTag {
+                name: "div".to_string(),
+                raw: "<div data-url=/assets/logo/>".to_string()
+            }),
+            HtmlToken::Text("Logo".to_string()),
+            HtmlToken::CloseTag(HtmlTag {
+                name: "div".to_string(),
+                raw: "</div>".to_string()
+            })
+        ]
+    );
+}
+
+#[test]
+fn treats_quoted_attribute_trailing_slash_as_self_closing_marker() {
+    let tokens = tokenize(r#"<custom name="field"/>"#);
+
+    assert_eq!(
+        tokens,
+        vec![HtmlToken::SelfClosingTag(HtmlTag {
+            name: "custom".to_string(),
+            raw: r#"<custom name="field"/>"#.to_string()
+        })]
+    );
+}
+
+#[test]
 fn tokenizes_with_relative_spans() {
     let tokens = tokenize_with_spans("Hi <center>Legacy</center>");
 

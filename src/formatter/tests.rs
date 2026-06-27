@@ -71,6 +71,26 @@ fn normalizes_html_tag_spacing_when_expanding() {
 }
 
 #[test]
+fn preserves_unquoted_attribute_trailing_slash_values() {
+    assert_eq!(
+        format("<img src=/assets/logo/>\n"),
+        "<img src=/assets/logo/>\n"
+    );
+    assert_eq!(
+        format("<div data-url=/assets/logo/>Logo</div>\n"),
+        "<div data-url=/assets/logo/>Logo</div>\n"
+    );
+}
+
+#[test]
+fn normalizes_quoted_attribute_self_closing_tags() {
+    assert_eq!(
+        format(r#"<custom-input name="profile[display_name]"/>"#),
+        "<custom-input name=\"profile[display_name]\" />\n"
+    );
+}
+
+#[test]
 fn preserves_single_intentional_blank_lines() {
     assert_eq!(
         format("<section>\n<h1>Title</h1>\n\n<p>Body</p>\n</section>\n"),
@@ -150,6 +170,13 @@ fn preserves_whitespace_boundaries_around_inline_html() {
     let input = "<p>Hello <strong>world</strong>!</p>\n<span> padded </span>\n<i></i>\ntext\n";
 
     assert_eq!(format(input), input);
+}
+
+#[test]
+fn preserves_outer_whitespace_around_root_inline_html_fragments() {
+    let input = " Hello <strong>world</strong> \n";
+
+    assert_eq!(format_source(input), " Hello <strong>world</strong>\n");
 }
 
 #[test]

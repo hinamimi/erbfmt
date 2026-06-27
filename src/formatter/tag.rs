@@ -17,7 +17,7 @@ impl ParsedTag {
             return None;
         }
 
-        let self_closing = body.ends_with('/');
+        let self_closing = is_self_closing_tag_body(body);
         let body = if self_closing {
             body.strip_suffix('/')?.trim_end()
         } else {
@@ -192,6 +192,29 @@ fn split_attributes(input: &str) -> Vec<String> {
     }
 
     attributes
+}
+
+fn is_self_closing_tag_body(body: &str) -> bool {
+    let body = body.trim_end();
+
+    if !body.ends_with('/') {
+        return false;
+    }
+
+    let before_slash = body[..body.len() - '/'.len_utf8()].trim_end();
+
+    if before_slash.is_empty() {
+        return false;
+    }
+
+    if !before_slash.chars().any(char::is_whitespace) {
+        return true;
+    }
+
+    before_slash
+        .chars()
+        .next_back()
+        .is_some_and(|ch| ch.is_whitespace() || matches!(ch, '"' | '\''))
 }
 
 pub(super) fn normalize_tag(raw: &str) -> Option<String> {

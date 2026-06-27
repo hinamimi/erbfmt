@@ -9,9 +9,8 @@ use super::erb_block::ErbBlockParts;
 use super::ignore_directive::formatter_ignore_ranges;
 use super::inline::{
     FormattingNode, can_render_inline, formatting_node_source_range, is_inline_formatting_node,
-    leading_inline_boundary_nodes, render_inline_formatting_nodes,
-    render_inline_formatting_nodes_untrimmed, render_inline_nodes_untrimmed,
-    split_formatting_nodes, trailing_inline_boundary_nodes,
+    leading_inline_boundary_nodes, render_inline_formatting_nodes_untrimmed,
+    render_inline_nodes_untrimmed, split_formatting_nodes, trailing_inline_boundary_nodes,
 };
 use super::options::{FormatOptions, IndentStyle};
 use super::preserve::{is_format_sensitive_html_element, render_preserved_nodes};
@@ -312,13 +311,13 @@ impl<'a> Formatter<'a> {
     }
 
     fn write_inline_formatting_nodes(&mut self, nodes: &[FormattingNode<'_>], depth: usize) {
-        let inline = render_inline_formatting_nodes(nodes);
+        let inline = render_inline_formatting_nodes_untrimmed(nodes);
 
-        if inline.is_empty() {
+        if inline.trim().is_empty() {
             return;
         }
 
-        self.write_indented_line(depth, &inline);
+        self.write_indented_inline_line(depth, &inline);
     }
 
     fn can_keep_html_element_inline(&self, inline: &str, depth: usize) -> bool {
@@ -420,6 +419,16 @@ impl<'a> Formatter<'a> {
 
         self.output.push_str(&self.indent(depth));
         self.output.push_str(trimmed);
+        self.output.push_str(self.options.line_ending.as_str());
+    }
+
+    fn write_indented_inline_line(&mut self, depth: usize, line: &str) {
+        if line.trim().is_empty() {
+            return;
+        }
+
+        self.output.push_str(&self.indent(depth));
+        self.output.push_str(line);
         self.output.push_str(self.options.line_ending.as_str());
     }
 
