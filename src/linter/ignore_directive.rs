@@ -76,6 +76,8 @@ fn diagnostic_rule_id(message: &str) -> Option<&'static str> {
         Some("noInvalidHtmlBooleanAttribute")
     } else if message.starts_with("invalid HTML nesting") {
         Some("noInvalidHtmlNesting")
+    } else if message.starts_with("HTML attribute value must use double quotes") {
+        Some("noNonDoubleQuotedHtmlAttributeValue")
     } else if message.starts_with("self-closing HTML tag") {
         Some("noSelfClosingHtmlTag")
     } else if message.starts_with("unsupported ERB block starter") {

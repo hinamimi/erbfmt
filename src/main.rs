@@ -36,6 +36,7 @@ const DEFAULT_CONFIG: &str = r#"{
       "noDuplicateHtmlAttribute": "error",
       "noInvalidHtmlBooleanAttribute": "error",
       "noInvalidHtmlNesting": "error",
+      "noNonDoubleQuotedHtmlAttributeValue": "error",
       "noSelfClosingHtmlTag": "error",
       "unsupportedErbBlockStarter": "error"
     }

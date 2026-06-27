@@ -42,6 +42,7 @@ The rule name is the same camelCase name used in `erbfmt.json`, such as:
 - `noDuplicateHtmlAttribute`
 - `noInvalidHtmlBooleanAttribute`
 - `noInvalidHtmlNesting`
+- `noNonDoubleQuotedHtmlAttributeValue`
 - `noSelfClosingHtmlTag`
 - `unsupportedErbBlockStarter`
 

@@ -65,6 +65,14 @@ pub(super) fn lint_html_tokens(
                     options,
                     diagnostics,
                 );
+                lint_non_double_quoted_html_attribute_values(
+                    input,
+                    fragment_start,
+                    spanned.span.start,
+                    tag,
+                    options,
+                    diagnostics,
+                );
                 stack.push(HtmlElementLintFrame {
                     name: tag.name.clone(),
                 });
@@ -96,6 +104,14 @@ pub(super) fn lint_html_tokens(
                     diagnostics,
                 );
                 lint_invalid_html_boolean_attributes(
+                    input,
+                    fragment_start,
+                    spanned.span.start,
+                    tag,
+                    options,
+                    diagnostics,
+                );
+                lint_non_double_quoted_html_attribute_values(
                     input,
                     fragment_start,
                     spanned.span.start,
@@ -139,6 +155,14 @@ pub(super) fn lint_html_tokens(
                     diagnostics,
                 );
                 lint_invalid_html_boolean_attributes(
+                    input,
+                    fragment_start,
+                    spanned.span.start,
+                    tag,
+                    options,
+                    diagnostics,
+                );
+                lint_non_double_quoted_html_attribute_values(
                     input,
                     fragment_start,
                     spanned.span.start,
@@ -397,11 +421,13 @@ struct HtmlAttribute {
     name: String,
     offset: usize,
     value: Option<HtmlAttributeValue>,
+    raw: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct HtmlAttributeValue {
     raw: String,
+    quote: Option<char>,
 }
 
 fn lint_duplicate_html_attributes(
@@ -480,6 +506,40 @@ fn lint_invalid_html_boolean_attributes(
     }
 }
 
+fn lint_non_double_quoted_html_attribute_values(
+    input: &str,
+    fragment_start: usize,
+    html_token_start: usize,
+    tag: &html::HtmlTag,
+    options: LintOptions,
+    diagnostics: &mut Vec<Diagnostic>,
+) {
+    if !options.rules.no_non_double_quoted_html_attribute_value {
+        return;
+    }
+
+    for attribute in html_attributes(tag) {
+        let Some(value) = attribute.value else {
+            continue;
+        };
+
+        if value.quote == Some('"') {
+            continue;
+        }
+
+        diagnostics.push(Diagnostic::located_with_severity(
+            format!(
+                "HTML attribute value must use double quotes `{}`",
+                attribute.raw
+            ),
+            lexer::source_location(input, fragment_start + html_token_start + attribute.offset),
+            options
+                .rule_severities
+                .no_non_double_quoted_html_attribute_value,
+        ));
+    }
+}
+
 fn html_attributes(tag: &html::HtmlTag) -> Vec<HtmlAttribute> {
     let Some(mut cursor) = tag.raw.find(&tag.name).map(|index| index + tag.name.len()) else {
         return Vec::new();
@@ -509,6 +569,7 @@ fn html_attributes(tag: &html::HtmlTag) -> Vec<HtmlAttribute> {
             name: raw[name_start..name_end].to_ascii_lowercase(),
             offset: name_start,
             value: None,
+            raw: raw[name_start..name_end].to_string(),
         };
 
         cursor = skip_html_attribute_spacing(raw, name_end);
@@ -519,6 +580,7 @@ fn html_attributes(tag: &html::HtmlTag) -> Vec<HtmlAttribute> {
             cursor = next_cursor;
         }
 
+        attribute.raw = raw[name_start..cursor].to_string();
         attributes.push(attribute);
     }
 
@@ -589,6 +651,7 @@ fn read_html_attribute_value(raw: &str, cursor: usize) -> (usize, Option<HtmlAtt
                     cursor,
                     Some(HtmlAttributeValue {
                         raw: raw[value_start..value_end].to_string(),
+                        quote: Some(first),
                     }),
                 );
             }
@@ -598,6 +661,7 @@ fn read_html_attribute_value(raw: &str, cursor: usize) -> (usize, Option<HtmlAtt
             cursor,
             Some(HtmlAttributeValue {
                 raw: raw[value_start..cursor].to_string(),
+                quote: Some(first),
             }),
         );
     }
@@ -605,6 +669,14 @@ fn read_html_attribute_value(raw: &str, cursor: usize) -> (usize, Option<HtmlAtt
     let value_start = cursor;
 
     while cursor < raw.len() {
+        if raw[cursor..].starts_with("<%") {
+            let Some(relative_end) = raw[cursor + "<%".len()..].find("%>") else {
+                break;
+            };
+            cursor += "<%".len() + relative_end + "%>".len();
+            continue;
+        }
+
         let ch = raw[cursor..]
             .chars()
             .next()
@@ -624,6 +696,7 @@ fn read_html_attribute_value(raw: &str, cursor: usize) -> (usize, Option<HtmlAtt
             cursor,
             Some(HtmlAttributeValue {
                 raw: raw[value_start..cursor].to_string(),
+                quote: None,
             }),
         )
     }

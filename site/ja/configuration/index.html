@@ -75,6 +75,7 @@ erbfmt init --force</code></pre>
       "noDuplicateHtmlAttribute": "error",
       "noInvalidHtmlBooleanAttribute": "error",
       "noInvalidHtmlNesting": "error",
+      "noNonDoubleQuotedHtmlAttributeValue": "error",
       "noSelfClosingHtmlTag": "error",
       "unsupportedErbBlockStarter": "error"
     }
@@ -108,6 +109,7 @@ erbfmt init --force</code></pre>
           <div class="option"><dt><code>noDuplicateHtmlAttribute</code><span class="meta">off | warn | error</span></dt><dd><p><span class="rule-name">重複attributeを禁止します。</span> ひとつのHTML opening tagで同じattribute名を複数回指定した場合に報告します。</p></dd></div>
           <div class="option"><dt><code>noInvalidHtmlBooleanAttribute</code><span class="meta">off | warn | error</span></dt><dd><p><span class="rule-name">boolean attributeの値を検証します。</span> HTML boolean attributeは値を省略するかattribute自身の名前を使い、任意のstring valueは指定しません。</p></dd></div>
           <div class="option"><dt><code>noInvalidHtmlNesting</code><span class="meta">off | warn | error</span></dt><dd><p><span class="rule-name">一般的なHTML content modelを検証します。</span> list child、table構造、paragraph内のblock-level elementを確認します。</p></dd></div>
+          <div class="option"><dt><code>noNonDoubleQuotedHtmlAttributeValue</code><span class="meta">off | warn | error</span></dt><dd><p><span class="rule-name">HTML attribute valueにdouble quoteを要求します。</span> <code>class=&lt;%= foo %&gt;</code> や <code>class='card'</code> のような未quoted/single-quoted valueを報告します。値なしboolean attributeは許可します。</p></dd></div>
           <div class="option"><dt><code>noSelfClosingHtmlTag</code><span class="meta">off | warn | error</span></dt><dd><p><span class="rule-name">XML形式のself-closing HTML構文を禁止します。</span> HTML5で通常のopening/closing pair、またはslashなしのvoid elementを使う場所の <code>/&gt;</code>を報告します。</p></dd></div>
           <div class="option"><dt><code>unsupportedErbBlockStarter</code><span class="meta">off | warn | error</span></dt><dd><p><span class="rule-name">未対応のblock starterを検出します。</span> ERB blockに見えるものの、formatterの対応範囲外にあるRuby control-flow formを報告します。</p></dd></div>
         </dl>

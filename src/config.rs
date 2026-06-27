@@ -178,6 +178,7 @@ struct RawLintRules {
     no_duplicate_html_attribute: Option<RuleSetting>,
     no_invalid_html_boolean_attribute: Option<RuleSetting>,
     no_invalid_html_nesting: Option<RuleSetting>,
+    no_non_double_quoted_html_attribute_value: Option<RuleSetting>,
     no_self_closing_html_tag: Option<RuleSetting>,
     unsupported_erb_block_starter: Option<RuleSetting>,
 }
@@ -207,6 +208,10 @@ impl RawLintRules {
                     recommended,
                 ),
                 no_invalid_html_nesting: rule_enabled(self.no_invalid_html_nesting, recommended),
+                no_non_double_quoted_html_attribute_value: rule_enabled(
+                    self.no_non_double_quoted_html_attribute_value,
+                    recommended,
+                ),
                 no_self_closing_html_tag: rule_enabled(self.no_self_closing_html_tag, recommended),
                 unsupported_erb_block_starter: rule_enabled(
                     self.unsupported_erb_block_starter,
@@ -223,6 +228,9 @@ impl RawLintRules {
                     self.no_invalid_html_boolean_attribute,
                 ),
                 no_invalid_html_nesting: rule_severity(self.no_invalid_html_nesting),
+                no_non_double_quoted_html_attribute_value: rule_severity(
+                    self.no_non_double_quoted_html_attribute_value,
+                ),
                 no_self_closing_html_tag: rule_severity(self.no_self_closing_html_tag),
                 unsupported_erb_block_starter: rule_severity(self.unsupported_erb_block_starter),
             },

@@ -42,6 +42,7 @@ option for the existing HTML indentation behavior.
       "noDuplicateHtmlAttribute": "error",
       "noInvalidHtmlBooleanAttribute": "error",
       "noInvalidHtmlNesting": "error",
+      "noNonDoubleQuotedHtmlAttributeValue": "error",
       "noSelfClosingHtmlTag": "error",
       "unsupportedErbBlockStarter": "error"
     }
@@ -85,6 +86,8 @@ option for the existing HTML indentation behavior.
 - `linter.rules.noDuplicateHtmlAttribute`: `error`, `warn`, or `off`.
 - `linter.rules.noInvalidHtmlBooleanAttribute`: `error`, `warn`, or `off`.
 - `linter.rules.noInvalidHtmlNesting`: `error`, `warn`, or `off`.
+- `linter.rules.noNonDoubleQuotedHtmlAttributeValue`: `error`, `warn`, or
+  `off`.
 - `linter.rules.noSelfClosingHtmlTag`: `error`, `warn`, or `off`.
 - `linter.rules.unsupportedErbBlockStarter`: `error`, `warn`, or `off`.
 

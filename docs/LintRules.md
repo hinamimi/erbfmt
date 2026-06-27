@@ -209,6 +209,49 @@ config:
 }
 ```
 
+### `noNonDoubleQuotedHtmlAttributeValue`
+
+HTML attribute value がdouble quoteで囲まれていないケースを検出します。
+
+対象例:
+
+```erb
+<div class=<%= foo %>></div>
+<div class=card></div>
+<div class='card'></div>
+```
+
+message:
+
+```text
+HTML attribute value must use double quotes `class=<%= foo %>`
+HTML attribute value must use double quotes `class=card`
+HTML attribute value must use double quotes `class='card'`
+```
+
+range:
+
+- 対象attribute名の開始位置
+
+方針:
+
+- 値を持つHTML attributeはdouble quoteで囲むことを推奨します。
+- 値なしのboolean attribute、たとえば `disabled` や `hidden` は許可します。
+- ERB outputを値にする場合も、`class="<%= foo %>"` のようにHTML側でdouble
+  quoteを明示することを推奨します。
+
+config:
+
+```json
+{
+  "linter": {
+    "rules": {
+      "noNonDoubleQuotedHtmlAttributeValue": "error"
+    }
+  }
+}
+```
+
 ### `noInvalidHtmlNesting`
 
 HTML content model に反する代表的な親子関係を検出します。

@@ -71,6 +71,9 @@
             "noInvalidHtmlNesting": {
               "enum": ["off", "warn", "error"]
             },
+            "noNonDoubleQuotedHtmlAttributeValue": {
+              "enum": ["off", "warn", "error"]
+            },
             "noSelfClosingHtmlTag": {
               "enum": ["off", "warn", "error"]
             },

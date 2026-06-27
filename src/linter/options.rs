@@ -26,6 +26,7 @@ pub struct LintRules {
     pub no_duplicate_html_attribute: bool,
     pub no_invalid_html_boolean_attribute: bool,
     pub no_invalid_html_nesting: bool,
+    pub no_non_double_quoted_html_attribute_value: bool,
     pub no_self_closing_html_tag: bool,
     pub unsupported_erb_block_starter: bool,
 }
@@ -40,6 +41,7 @@ impl Default for LintRules {
             no_duplicate_html_attribute: true,
             no_invalid_html_boolean_attribute: true,
             no_invalid_html_nesting: true,
+            no_non_double_quoted_html_attribute_value: true,
             no_self_closing_html_tag: true,
             unsupported_erb_block_starter: true,
         }
@@ -55,6 +57,7 @@ pub struct LintRuleSeverities {
     pub no_duplicate_html_attribute: DiagnosticSeverity,
     pub no_invalid_html_boolean_attribute: DiagnosticSeverity,
     pub no_invalid_html_nesting: DiagnosticSeverity,
+    pub no_non_double_quoted_html_attribute_value: DiagnosticSeverity,
     pub no_self_closing_html_tag: DiagnosticSeverity,
     pub unsupported_erb_block_starter: DiagnosticSeverity,
 }
@@ -69,6 +72,7 @@ impl Default for LintRuleSeverities {
             no_duplicate_html_attribute: DiagnosticSeverity::Error,
             no_invalid_html_boolean_attribute: DiagnosticSeverity::Error,
             no_invalid_html_nesting: DiagnosticSeverity::Error,
+            no_non_double_quoted_html_attribute_value: DiagnosticSeverity::Error,
             no_self_closing_html_tag: DiagnosticSeverity::Error,
             unsupported_erb_block_starter: DiagnosticSeverity::Error,
         }

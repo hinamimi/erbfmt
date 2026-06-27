@@ -75,6 +75,7 @@ erbfmt init --force</code></pre>
       "noDuplicateHtmlAttribute": "error",
       "noInvalidHtmlBooleanAttribute": "error",
       "noInvalidHtmlNesting": "error",
+      "noNonDoubleQuotedHtmlAttributeValue": "error",
       "noSelfClosingHtmlTag": "error",
       "unsupportedErbBlockStarter": "error"
     }
@@ -108,6 +109,7 @@ erbfmt init --force</code></pre>
           <div class="option"><dt><code>noDuplicateHtmlAttribute</code><span class="meta">off | warn | error</span></dt><dd><p><span class="rule-name">Disallows duplicate attributes.</span> Reports an HTML opening tag that declares the same attribute name more than once.</p></dd></div>
           <div class="option"><dt><code>noInvalidHtmlBooleanAttribute</code><span class="meta">off | warn | error</span></dt><dd><p><span class="rule-name">Validates boolean attribute values.</span> Boolean HTML attributes should be omitted or use their own name rather than arbitrary string values.</p></dd></div>
           <div class="option"><dt><code>noInvalidHtmlNesting</code><span class="meta">off | warn | error</span></dt><dd><p><span class="rule-name">Validates common HTML content models.</span> Checks list children, table structure, and block-level elements nested inside paragraphs.</p></dd></div>
+          <div class="option"><dt><code>noNonDoubleQuotedHtmlAttributeValue</code><span class="meta">off | warn | error</span></dt><dd><p><span class="rule-name">Requires double-quoted HTML attribute values.</span> Reports unquoted and single-quoted values such as <code>class=&lt;%= foo %&gt;</code> or <code>class='card'</code>; boolean attributes without values are allowed.</p></dd></div>
           <div class="option"><dt><code>noSelfClosingHtmlTag</code><span class="meta">off | warn | error</span></dt><dd><p><span class="rule-name">Disallows XML-style self-closing HTML syntax.</span> Reports <code>/&gt;</code> syntax where HTML5 expects a normal opening/closing pair or a void element without the slash.</p></dd></div>
           <div class="option"><dt><code>unsupportedErbBlockStarter</code><span class="meta">off | warn | error</span></dt><dd><p><span class="rule-name">Reports unsupported block starters.</span> Identifies Ruby control-flow forms that look like ERB blocks but are outside the formatter's supported block set.</p></dd></div>
         </dl>

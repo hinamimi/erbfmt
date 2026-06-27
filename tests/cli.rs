@@ -62,6 +62,10 @@ fn init_creates_default_config() {
         value["linter"]["rules"]["noInvalidHtmlBooleanAttribute"],
         "error"
     );
+    assert_eq!(
+        value["linter"]["rules"]["noNonDoubleQuotedHtmlAttributeValue"],
+        "error"
+    );
 }
 
 #[test]
@@ -677,6 +681,30 @@ fn config_can_disable_invalid_html_boolean_attribute_rule() {
         "input.html.erb",
         r#"<button disabled="false" checked="checked">Save</button>"#,
     );
+
+    let output = run([
+        "--lint".as_ref(),
+        "--config".as_ref(),
+        config.as_path(),
+        file.as_path(),
+    ]);
+
+    assert_success(&output);
+    assert_eq!(
+        stdout(&output),
+        format!("{}: no lint issues found.\n", file.display())
+    );
+    assert_eq!(stderr(&output), "");
+}
+
+#[test]
+fn config_can_disable_non_double_quoted_html_attribute_value_rule() {
+    let dir = TestDir::new("config_non_double_quoted_html_attribute_value_disabled");
+    let config = dir.write(
+        "erbfmt.json",
+        r#"{"linter":{"rules":{"noNonDoubleQuotedHtmlAttributeValue":"off"}}}"#,
+    );
+    let file = dir.write("input.html.erb", r#"<div class=<%= foo %>></div>"#);
 
     let output = run([
         "--lint".as_ref(),

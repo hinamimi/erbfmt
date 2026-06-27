@@ -212,6 +212,35 @@ fn does_not_report_html_boolean_attribute_values_when_tag_contains_erb() {
 }
 
 #[test]
+fn reports_non_double_quoted_html_attribute_values() {
+    let diagnostics = lint("<div class=<%= foo %> data-name=foo title='Profile' hidden></div>");
+
+    assert_eq!(
+        diagnostics,
+        vec![
+            Diagnostic::located(
+                "HTML attribute value must use double quotes `class=<%= foo %>`",
+                SourceLocation { line: 1, column: 6 }
+            ),
+            Diagnostic::located(
+                "HTML attribute value must use double quotes `data-name=foo`",
+                SourceLocation {
+                    line: 1,
+                    column: 23
+                }
+            ),
+            Diagnostic::located(
+                "HTML attribute value must use double quotes `title='Profile'`",
+                SourceLocation {
+                    line: 1,
+                    column: 37
+                }
+            )
+        ]
+    );
+}
+
+#[test]
 fn reports_invalid_list_children() {
     let diagnostics = lint(
         "<ul>\n  <div>Bad</div>\n  <% items.each do |item| %>\n    <li><%= item.name %></li>\n  <% end %>\n</ul>\n<ol>\n  Text\n</ol>\n",
