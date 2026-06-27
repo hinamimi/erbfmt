@@ -1,3 +1,9 @@
+<%
+message = <<TEXT
+hello
+TEXT
+%>
+
 <article
   class="edge-card"
   data-controller="edge-preview"
@@ -24,6 +30,22 @@
       id=<%= button_id %>
       type="button"
     >Save</button>
+    <details <%= "open" unless request.user_agent&.match?(/Mobile|Android|iPhone|iPad/) %> class="edge-details">
+      <summary>Filters</summary>
+    </details>
+    <ul>
+      <li class=""><%= link_to "home", root_path, class: "" %></li>
+    </ul>
+    <pre>  A <%=   value   %> B  </pre>
+    <script>const value = "<%=   value   %>";</script>
+    <template><span><%=   value   %></span></template>
+    <%
+      # Keep this block raw enough that comments and control flow do not collapse.
+      value = params[:value]
+      if value.present?
+        track(value)
+      end
+    %>
   <% else %>
     <!-- empty state -->
     <p>Please sign in.</p>

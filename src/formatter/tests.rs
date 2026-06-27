@@ -1016,7 +1016,7 @@ fn snapshots_formatter_audit_fixture() {
 fn snapshots_formatter_edge_cases_fixture() {
     insta::assert_snapshot!(
         "formatter_edge_cases_fixture",
-        format(formatter_edge_cases_fixture())
+        format_source(formatter_edge_cases_fixture())
     );
 }
 
@@ -1045,7 +1045,7 @@ fn formatted_formatter_audit_fixture_is_idempotent() {
 
 #[test]
 fn formatted_formatter_edge_cases_fixture_is_idempotent() {
-    assert_format_is_idempotent(formatter_edge_cases_fixture());
+    assert_format_source_is_idempotent(formatter_edge_cases_fixture());
 }
 
 #[test]
@@ -1056,6 +1056,13 @@ fn formatted_real_template_audit_fixture_is_idempotent() {
 fn assert_format_is_idempotent(input: &str) {
     let once = format(input);
     let twice = format(&once);
+
+    assert_eq!(twice, once);
+}
+
+fn assert_format_source_is_idempotent(input: &str) {
+    let once = format_source(input);
+    let twice = format_source(&once);
 
     assert_eq!(twice, once);
 }

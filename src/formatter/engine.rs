@@ -595,10 +595,13 @@ impl<'a> Formatter<'a> {
             let previous_is_inline = index
                 .checked_sub(1)
                 .and_then(|previous| children.get(previous))
-                .is_some_and(|previous| self.nodes_share_source_line(previous, child));
-            let next_is_inline = children
-                .get(index + 1)
-                .is_some_and(|next| self.nodes_share_source_line(child, next));
+                .is_some_and(|previous| {
+                    has_inline_boundary_content(previous)
+                        && self.nodes_share_source_line(previous, child)
+                });
+            let next_is_inline = children.get(index + 1).is_some_and(|next| {
+                has_inline_boundary_content(next) && self.nodes_share_source_line(child, next)
+            });
 
             previous_is_inline || next_is_inline
         })
@@ -670,6 +673,13 @@ struct HtmlElementBoundaries {
 impl HtmlElementBoundaries {
     fn preserve_inline_children(&self) -> bool {
         self.open_child_same_line && self.child_close_same_line
+    }
+}
+
+fn has_inline_boundary_content(node: &Node) -> bool {
+    match node.unspanned() {
+        Node::HtmlText(text) => !text.trim().is_empty(),
+        _ => true,
     }
 }
 
