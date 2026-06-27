@@ -8,7 +8,6 @@ Ruby gems and editor extensions are thin wrappers around the Rust binary rather
 than separate formatter engines. An npm wrapper remains deferred.
 
 See [Distribution.md](Distribution.md) for the binary distribution strategy.
-See [FirstRelease.md](FirstRelease.md) for the first public release plan.
 See [RubyGem.md](RubyGem.md) for the platform-specific gem wrapper design.
 
 ## Local Install
@@ -70,7 +69,7 @@ manifest.
 
 ## Binary Artifacts
 
-The first release binary platform matrix is:
+The release binary platform matrix is:
 
 - `x86_64-unknown-linux-gnu`
 - `x86_64-apple-darwin`

@@ -150,9 +150,9 @@ Cargo and the VSCode extension used `0.0.0-dev`. The current release version
 `lib/erbfmt/version.rb` is the gem version source. The release verification task
 must compare its normalized value with `Cargo.toml` and `erbfmt --version`.
 
-The first public release includes the gem as described in
-[FirstRelease.md](FirstRelease.md). Attach it only after every platform variant
-passes installation and execution tests from the tagged commit.
+Release gems are produced by the workflow described in [Release.md](Release.md).
+Attach them only after every platform variant passes installation and execution
+tests from the tagged commit.
 
 ## Bundler And Ruby LSP
 

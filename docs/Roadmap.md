@@ -313,7 +313,7 @@ Status: Done
 
 結果:
 
-- [FirstRelease.md](FirstRelease.md) を追加した。
+- 初回release手順をrelease docsへ整理した。
 - 最初の公開version候補を `0.1.0` に決めた。
 - 初回公開物は GitHub Release のRust CLI binary archivesと `.sha256` に絞った。
 - crates.io、npm package、Ruby gem、VSCode Marketplace publishing は初回release範囲外にした。
@@ -1127,7 +1127,7 @@ Status: Done
 
 やること:
 
-- [FirstRelease.md](FirstRelease.md) の手順と現在のworkflow、artifact、READMEを照合する。
+- release docsの手順と現在のworkflow、artifact、READMEを照合する。
 - 公開対象をstandalone binary、checksum、未公開gem artifactのどこまでにするか最終確認する。
 - repository metadata、license、version source、known limitationsを確認する。
 - release notesに必要な利用方法、対応platform、制約を整理する。

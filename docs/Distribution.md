@@ -107,23 +107,29 @@ avoided until package size and platform strategy are clear.
 
 ### Registry Policy
 
-Initial releases use GitHub Release assets only. Standalone binaries, checksums,
-platform-specific gems, and the VSIX are downloaded from the same release.
+Current pre-1.0 releases use GitHub Release assets only. Standalone binaries,
+checksums, platform-specific gems, and the VSIX are downloaded from the same
+release.
 
-Do not publish initial releases to RubyGems.org, crates.io, npm, GitHub Packages,
-the VSCode Marketplace, or Open VSX. Registry publication can be reconsidered
-after the release process and artifact formats have remained stable for a while.
+Do not publish current pre-1.0 releases to RubyGems.org, crates.io, npm,
+GitHub Packages, the VSCode Marketplace, or Open VSX. Registry publication can
+be reconsidered after the release process and artifact formats have remained
+stable for a while.
 
 ## Release Version
 
-The repository is currently set to `0.1.0` for first-release preparation. The
-earlier `0.0.0-dev` version must not be used for public binaries.
+Public release versions are updated from the repository root:
 
-Before publishing binaries:
+```bash
+ruby scripts/version.rb set <version>
+ruby scripts/version.rb verify <version>
+```
 
-- verify all version sources with `ruby scripts/version.rb verify 0.1.0`,
+Before publishing artifacts:
+
 - confirm the canonical repository URL,
-- build release binaries from the same Git revision,
-- verify `erbfmt --version` against the release version.
+- build binaries, gems, and the VSIX from the same Git revision,
+- verify `erbfmt --version` against the release version,
+- keep registry publication decisions separate from GitHub Release uploads.
 
-See [FirstRelease.md](FirstRelease.md) for the concrete first-release plan.
+See [Release.md](Release.md) for the concrete release procedure.

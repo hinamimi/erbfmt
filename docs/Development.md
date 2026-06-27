@@ -117,7 +117,6 @@ binary resolution details.
 ## Release Work
 
 - [Release.md](Release.md): release verification and version tooling
-- [FirstRelease.md](FirstRelease.md): first public release procedure
 - [Distribution.md](Distribution.md): binary distribution strategy
 - [RubyGem.md](RubyGem.md): platform-specific Ruby wrapper
 - [Roadmap.md](Roadmap.md): completed and upcoming milestones
