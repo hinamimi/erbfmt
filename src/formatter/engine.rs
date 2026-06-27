@@ -15,7 +15,7 @@ use super::inline::{
 };
 use super::options::{FormatOptions, IndentStyle};
 use super::preserve::{is_format_sensitive_html_element, render_preserved_nodes};
-use super::tag::{TagRenderContext, render_tag};
+use super::tag::{TagRenderContext, normalize_tag, render_tag};
 
 #[allow(dead_code)]
 pub fn format_document(document: &Document) -> String {
@@ -198,10 +198,15 @@ impl<'a> Formatter<'a> {
             return;
         }
 
-        if can_render_inline(children) {
+        if !open.contains('\n') && can_render_inline(children) {
             let content = render_inline_nodes_untrimmed(children);
+            let open = normalize_tag(open).unwrap_or_else(|| open.to_string());
             let inline = format!("{open}{content}{close}");
-            let inline_width_target = if children.is_empty() { &inline } else { open };
+            let inline_width_target = if children.is_empty() {
+                inline.as_str()
+            } else {
+                open.as_str()
+            };
 
             if self.can_keep_html_element_inline(inline_width_target, depth) {
                 self.write_indented_line(depth, &inline);

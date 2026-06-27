@@ -43,11 +43,30 @@ impl ParsedTag {
     }
 
     pub(super) fn inline(&self) -> String {
+        let attributes = self.normalized_attributes();
+
+        if !attributes.is_empty() {
+            let attributes = attributes.join(" ");
+
+            return if self.self_closing {
+                format!("<{} {attributes} />", self.name)
+            } else {
+                format!("<{} {attributes}>", self.name)
+            };
+        }
+
         if self.self_closing {
             format!("<{} />", self.name)
         } else {
             format!("<{}>", self.name)
         }
+    }
+
+    fn normalized_attributes(&self) -> Vec<String> {
+        self.attributes
+            .iter()
+            .map(|attribute| normalize_attribute_quotes(attribute))
+            .collect()
     }
 }
 
@@ -65,14 +84,19 @@ pub(super) fn render_tag(raw: &str, suffix: &str, context: TagRenderContext<'_>)
         return None;
     }
 
-    let is_multiline = trimmed.contains('\n');
-    if !is_multiline && fits_on_line(context.indent, trimmed, context.line_width) {
-        return Some(format!("{}{trimmed}{suffix}", context.indent));
-    }
-
     let Some(tag) = ParsedTag::parse(trimmed) else {
+        let is_multiline = trimmed.contains('\n');
+        if !is_multiline && fits_on_line(context.indent, trimmed, context.line_width) {
+            return Some(format!("{}{trimmed}{suffix}", context.indent));
+        }
+
         return Some(format!("{}{trimmed}{suffix}", context.indent));
     };
+    let inline = tag.inline();
+    let is_multiline = trimmed.contains('\n');
+    if !is_multiline && fits_on_line(context.indent, &inline, context.line_width) {
+        return Some(format!("{}{inline}{suffix}", context.indent));
+    }
 
     if tag.attributes.is_empty() {
         return Some(format!("{}{}{}", context.indent, tag.inline(), suffix));
@@ -80,9 +104,9 @@ pub(super) fn render_tag(raw: &str, suffix: &str, context: TagRenderContext<'_>)
 
     let mut rendered = format!("{}<{}{}", context.indent, tag.name, context.line_ending);
 
-    for attribute in &tag.attributes {
+    for attribute in tag.normalized_attributes() {
         rendered.push_str(context.child_indent);
-        rendered.push_str(attribute);
+        rendered.push_str(&attribute);
         rendered.push_str(context.line_ending);
     }
 
@@ -140,6 +164,28 @@ fn split_attributes(input: &str) -> Vec<String> {
     }
 
     attributes
+}
+
+pub(super) fn normalize_tag(raw: &str) -> Option<String> {
+    ParsedTag::parse(raw.trim()).map(|tag| tag.inline())
+}
+
+fn normalize_attribute_quotes(attribute: &str) -> String {
+    let Some((name, value)) = attribute.split_once('=') else {
+        return attribute.to_string();
+    };
+    let value = value.trim();
+
+    if !value.starts_with('\'') || !value.ends_with('\'') {
+        return attribute.to_string();
+    }
+
+    let inner = &value['\''.len_utf8()..value.len() - '\''.len_utf8()];
+    if inner.contains('"') {
+        return attribute.to_string();
+    }
+
+    format!("{}=\"{}\"", name.trim(), inner)
 }
 
 pub(super) fn attribute_name(attribute: &str) -> &str {

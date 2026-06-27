@@ -478,6 +478,36 @@ fn wraps_long_inline_html_elements_by_attribute() {
 }
 
 #[test]
+fn normalizes_safe_single_quoted_html_attributes_to_double_quotes() {
+    assert_eq!(
+        format("<div class='card' data-user-id='<%= user.id %>'></div>\n"),
+        "<div class=\"card\" data-user-id=\"<%= user.id %>\"></div>\n"
+    );
+}
+
+#[test]
+fn preserves_single_quoted_html_attributes_when_double_quotes_are_inside_value() {
+    assert_eq!(
+        format(r#"<div data-json='{"key":"value"}' title='<%= t("profile.title") %>'></div>"#),
+        "<div data-json='{\"key\":\"value\"}' title='<%= t(\"profile.title\") %>'></div>\n"
+    );
+}
+
+#[test]
+fn normalizes_single_quoted_html_attributes_when_wrapping_tags() {
+    assert_eq!(
+        format_with_options(
+            r#"<div class='a-long-long-class-name' style='<%= long_logic %>'></div>"#,
+            FormatOptions {
+                line_width: 48,
+                ..FormatOptions::default()
+            }
+        ),
+        "<div\n  class=\"a-long-long-class-name\"\n  style=\"<%= long_logic %>\"\n>\n</div>\n"
+    );
+}
+
+#[test]
 fn wraps_long_void_tags_by_attribute() {
     assert_eq!(
         format_with_options(
