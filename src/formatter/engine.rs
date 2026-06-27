@@ -208,6 +208,7 @@ impl<'a> Formatter<'a> {
         }
 
         if !open.contains('\n') && can_render_inline(children) {
+            let source_boundaries = self.html_element_boundaries(range, open, close);
             let content = render_inline_nodes_untrimmed(children);
             let open = normalize_tag(open).unwrap_or_else(|| open.to_string());
             let close = normalize_close_tag(close).unwrap_or_else(|| close.to_string());
@@ -215,6 +216,7 @@ impl<'a> Formatter<'a> {
 
             if !self.can_keep_html_element_inline(&inline, depth)
                 && self.can_expand_single_foldable_erb_child(children)
+                && !source_boundaries.preserve_inline_children()
             {
                 self.write_html_element_multiline(
                     open.as_str(),
@@ -663,6 +665,12 @@ impl<'a> Formatter<'a> {
 struct HtmlElementBoundaries {
     open_child_same_line: bool,
     child_close_same_line: bool,
+}
+
+impl HtmlElementBoundaries {
+    fn preserve_inline_children(&self) -> bool {
+        self.open_child_same_line && self.child_close_same_line
+    }
 }
 
 fn is_line_ending_char(ch: char) -> bool {

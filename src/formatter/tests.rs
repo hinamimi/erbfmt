@@ -93,6 +93,41 @@ fn wraps_standalone_erb_attributes_in_long_html_tags() {
 }
 
 #[test]
+fn preserves_inline_link_to_inside_list_items() {
+    let input = r#"<li class=""><%= link_to "home", root_path, class: "" %></li>"#;
+    let expected = "<li class=\"\"><%= link_to \"home\", root_path, class: \"\" %></li>\n";
+
+    assert_eq!(format(input), expected);
+    assert_eq!(
+        format_source_with_options(
+            &format!("{input}\n"),
+            FormatOptions {
+                line_width: 30,
+                ..FormatOptions::default()
+            }
+        ),
+        expected
+    );
+}
+
+#[test]
+fn preserves_multiline_erb_code_tags_with_comments() {
+    let input = "<%\n  # comments\n  x = test\n  if condition\n    call\n  end\n%>\n";
+
+    assert_eq!(format_source(input), input);
+    assert_eq!(
+        format_source_with_options(
+            input,
+            FormatOptions {
+                line_width: 30,
+                ..FormatOptions::default()
+            }
+        ),
+        input
+    );
+}
+
+#[test]
 fn preserves_unquoted_attribute_trailing_slash_values() {
     assert_eq!(
         format("<img src=/assets/logo/>\n"),
@@ -853,16 +888,14 @@ fn normalizes_multiline_erb_output_opening_marker_inside_html() {
 }
 
 #[test]
-fn wraps_single_foldable_erb_output_child_with_multiline_markers() {
+fn preserves_inline_single_foldable_erb_output_child_at_line_width() {
     let options = FormatOptions {
         line_width: 40,
         ..FormatOptions::default()
     };
     let input = "<p><%= render(partial: \"foo\", locals: { key: \"value\" }) %></p>\n";
-    let expected = "<p>\n  <%=\n    render(\n      partial: \"foo\",\n      locals: { key: \"value\" }\n    )\n  %>\n</p>\n";
 
-    assert_eq!(format_source_with_options(input, options), expected);
-    assert_eq!(format_source_with_options(expected, options), expected);
+    assert_eq!(format_source_with_options(input, options), input);
 }
 
 #[test]
