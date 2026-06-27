@@ -9,16 +9,23 @@ pub(super) fn fold_command_call(code: &str) -> Option<Vec<String>> {
     let (callee, arguments) = split_call(call)?;
     let arguments = split_top_level_arguments(arguments)?;
 
-    if arguments.len() < 2 {
+    let mut argument_lines = Vec::new();
+    let mut has_multiline_argument = false;
+
+    for (index, argument) in arguments.iter().enumerate() {
+        let comma = index + 1 < arguments.len();
+        let lines = format_argument_lines(argument, comma);
+
+        has_multiline_argument |= lines.len() > 1;
+        argument_lines.extend(lines);
+    }
+
+    if arguments.len() < 2 && !has_multiline_argument {
         return None;
     }
 
     let mut lines = vec![format!("{callee}(")];
-
-    for (index, argument) in arguments.iter().enumerate() {
-        let comma = index + 1 < arguments.len();
-        lines.extend(format_argument_lines(argument, comma));
-    }
+    lines.extend(argument_lines);
 
     match block_suffix {
         Some(suffix) => lines.push(format!(") {suffix}")),
@@ -29,7 +36,8 @@ pub(super) fn fold_command_call(code: &str) -> Option<Vec<String>> {
 }
 
 fn format_argument_lines(argument: &str, comma: bool) -> Vec<String> {
-    let mut lines = normalize_multiline_argument(argument);
+    let mut lines = fold_keyword_hash_argument(argument)
+        .unwrap_or_else(|| normalize_multiline_argument(argument));
     let last_index = lines.len().saturating_sub(1);
 
     for (index, line) in lines.iter_mut().enumerate() {
@@ -41,6 +49,85 @@ fn format_argument_lines(argument: &str, comma: bool) -> Vec<String> {
     }
 
     lines
+}
+
+fn fold_keyword_hash_argument(argument: &str) -> Option<Vec<String>> {
+    if argument.contains('\n') {
+        return None;
+    }
+
+    let (keyword, hash) = split_keyword_hash_argument(argument)?;
+    let entries = split_top_level_arguments(&hash[1..hash.len() - 1])?;
+
+    if entries.len() < 2 {
+        return None;
+    }
+
+    let mut lines = vec![format!("{keyword}: {{")];
+
+    for (index, entry) in entries.iter().enumerate() {
+        let mut line = format!("  {entry}");
+
+        if index + 1 < entries.len() {
+            line.push(',');
+        }
+
+        lines.push(line);
+    }
+
+    lines.push("}".to_string());
+    Some(lines)
+}
+
+fn split_keyword_hash_argument(argument: &str) -> Option<(&str, &str)> {
+    let mut state = RubyScanState::default();
+
+    for (index, ch) in argument.char_indices() {
+        if state.is_top_level() && ch == ':' {
+            let keyword = argument[..index].trim();
+            let hash = argument[index + ch.len_utf8()..].trim();
+
+            return (is_keyword_argument_name(keyword) && is_single_hash_literal(hash))
+                .then_some((keyword, hash));
+        }
+
+        if !state.consume(ch) {
+            return None;
+        }
+    }
+
+    None
+}
+
+fn is_keyword_argument_name(value: &str) -> bool {
+    let Some(first) = value.chars().next() else {
+        return false;
+    };
+
+    matches!(first, 'a'..='z' | 'A'..='Z' | '_')
+        && value
+            .chars()
+            .all(|ch| matches!(ch, 'a'..='z' | 'A'..='Z' | '0'..='9' | '_'))
+}
+
+fn is_single_hash_literal(value: &str) -> bool {
+    if !value.starts_with('{') || !value.ends_with('}') {
+        return false;
+    }
+
+    let mut state = RubyScanState::default();
+
+    for (offset, ch) in value.char_indices() {
+        if offset > 0 && state.is_top_level() {
+            return false;
+        }
+
+        if !state.consume(ch) {
+            return false;
+        }
+    }
+
+    state.is_balanced()
 }
 
 fn normalize_multiline_argument(argument: &str) -> Vec<String> {
@@ -398,6 +485,43 @@ mod tests {
     }
 
     #[test]
+    fn folds_keyword_hash_arguments() {
+        assert_eq!(
+            fold_command_call(
+                r#"render partial: "profile", locals: { current_user: current_user, account: account, selected_status: selected_status }"#
+            ),
+            Some(vec![
+                "render(".to_string(),
+                r#"  partial: "profile","#.to_string(),
+                "  locals: {".to_string(),
+                "    current_user: current_user,".to_string(),
+                "    account: account,".to_string(),
+                "    selected_status: selected_status".to_string(),
+                "  }".to_string(),
+                ")".to_string(),
+            ])
+        );
+    }
+
+    #[test]
+    fn folds_single_keyword_hash_argument() {
+        assert_eq!(
+            fold_command_call(
+                r#"render locals: { current_user: current_user, account: account, selected_status: selected_status }"#
+            ),
+            Some(vec![
+                "render(".to_string(),
+                "  locals: {".to_string(),
+                "    current_user: current_user,".to_string(),
+                "    account: account,".to_string(),
+                "    selected_status: selected_status".to_string(),
+                "  }".to_string(),
+                ")".to_string(),
+            ])
+        );
+    }
+
+    #[test]
     fn folds_existing_multiline_parenthesized_call_arguments() {
         assert_eq!(
             fold_command_call(
@@ -442,6 +566,11 @@ mod tests {
             fold_command_call(r#"cache ["profile-card", user.cache_key_with_version]"#),
             None
         );
+    }
+
+    #[test]
+    fn does_not_fold_single_entry_keyword_hash_arguments() {
+        assert_eq!(fold_command_call(r#"render locals: { user: user }"#), None);
     }
 
     #[test]

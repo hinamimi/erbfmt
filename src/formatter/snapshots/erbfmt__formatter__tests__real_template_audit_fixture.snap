@@ -53,7 +53,10 @@ expression: format(real_template_audit_fixture())
                 <%=
                   render(
                     partial: "customers/name",
-                    locals: { customer: order.customer, account: current_account }
+                    locals: {
+                      customer: order.customer,
+                      account: current_account
+                    }
                   )
                 %>
                 <span class="muted"><%= order.customer.email %></span>
@@ -79,7 +82,11 @@ expression: format(real_template_audit_fixture())
     <%=
       render(
         partial: "orders/summary",
-        locals: { orders: orders, selected_status: selected_status, current_user: current_user }
+        locals: {
+          orders: orders,
+          selected_status: selected_status,
+          current_user: current_user
+        }
       )
     %>
   </footer>

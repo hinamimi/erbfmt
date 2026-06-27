@@ -614,6 +614,34 @@ fn wraps_long_erb_output_command_calls() {
 }
 
 #[test]
+fn wraps_long_erb_output_keyword_hash_arguments() {
+    assert_eq!(
+        format_with_options(
+            r#"<%= render partial: "profile", locals: { current_user: current_user, account: account, selected_status: selected_status } %>"#,
+            FormatOptions {
+                line_width: 60,
+                ..FormatOptions::default()
+            }
+        ),
+        "<%=\n  render(\n    partial: \"profile\",\n    locals: {\n      current_user: current_user,\n      account: account,\n      selected_status: selected_status\n    }\n  )\n%>\n"
+    );
+}
+
+#[test]
+fn wraps_long_erb_output_single_keyword_hash_argument() {
+    assert_eq!(
+        format_with_options(
+            r#"<%= render locals: { current_user: current_user, account: account, selected_status: selected_status } %>"#,
+            FormatOptions {
+                line_width: 60,
+                ..FormatOptions::default()
+            }
+        ),
+        "<%=\n  render(\n    locals: {\n      current_user: current_user,\n      account: account,\n      selected_status: selected_status\n    }\n  )\n%>\n"
+    );
+}
+
+#[test]
 fn preserves_long_erb_code_tags_when_arguments_are_not_safely_splittable() {
     assert_eq!(
         format_with_options(
