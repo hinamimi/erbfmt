@@ -4,6 +4,7 @@ use crate::mixed_parser::{Node, SourceRange};
 
 use super::erb::{format_erb_comment, format_erb_tag_inline};
 use super::preserve::is_format_sensitive_html_element;
+use super::tag::{normalize_close_tag, normalize_tag};
 
 #[derive(Clone, Copy)]
 pub(super) enum FormattingNode<'a> {
@@ -259,7 +260,12 @@ fn render_inline_node(node: &Node) -> String {
             close,
             children,
             ..
-        } => format!("{open}{}{close}", render_inline_nodes_untrimmed(children)),
+        } => {
+            let open = normalize_tag(open).unwrap_or_else(|| open.to_string());
+            let close = normalize_close_tag(close).unwrap_or_else(|| close.to_string());
+
+            format!("{open}{}{close}", render_inline_nodes_untrimmed(children))
+        }
         Node::HtmlSelfClosing { raw, .. } | Node::HtmlVoid { raw, .. } => raw.clone(),
         Node::HtmlComment(comment) => comment.clone(),
         Node::ErbCode(tag) => format_erb_tag_inline(tag.syntax, tag.code.trim()),

@@ -15,7 +15,7 @@ use super::inline::{
 };
 use super::options::{FormatOptions, IndentStyle};
 use super::preserve::{is_format_sensitive_html_element, render_preserved_nodes};
-use super::tag::{TagRenderContext, normalize_tag, render_tag};
+use super::tag::{TagRenderContext, normalize_close_tag, normalize_tag, render_tag};
 
 #[allow(dead_code)]
 pub fn format_document(document: &Document) -> String {
@@ -201,6 +201,7 @@ impl<'a> Formatter<'a> {
         if !open.contains('\n') && can_render_inline(children) {
             let content = render_inline_nodes_untrimmed(children);
             let open = normalize_tag(open).unwrap_or_else(|| open.to_string());
+            let close = normalize_close_tag(close).unwrap_or_else(|| close.to_string());
             let inline = format!("{open}{content}{close}");
             let inline_width_target = if children.is_empty() {
                 inline.as_str()
@@ -226,6 +227,7 @@ impl<'a> Formatter<'a> {
         depth: usize,
     ) {
         let boundaries = self.html_element_boundaries(range, open, close);
+        let close = normalize_close_tag(close).unwrap_or_else(|| close.to_string());
         let children = split_formatting_nodes(children, &self.preserved_ranges);
         let prefix_count = if boundaries.open_child_same_line {
             leading_inline_boundary_nodes(&children)
@@ -248,7 +250,7 @@ impl<'a> Formatter<'a> {
             self.write_tag_with_suffix(open, depth, &suffix);
 
             if !boundaries.child_close_same_line {
-                self.write_indented_line(depth, close);
+                self.write_indented_line(depth, &close);
             }
 
             return;
@@ -264,7 +266,7 @@ impl<'a> Formatter<'a> {
             let suffix = render_inline_formatting_nodes_untrimmed(&children[suffix_start..]);
             self.write_indented_line(self.html_child_depth(depth), &format!("{suffix}{close}"));
         } else {
-            self.write_indented_line(depth, close);
+            self.write_indented_line(depth, &close);
         }
     }
 
@@ -277,7 +279,7 @@ impl<'a> Formatter<'a> {
     ) {
         let mut rendered = self.render_tag_with_indent(open, depth);
         rendered.push_str(&render_preserved_nodes(children));
-        rendered.push_str(close);
+        rendered.push_str(&normalize_close_tag(close).unwrap_or_else(|| close.to_string()));
 
         self.output.push_str(&rendered);
 

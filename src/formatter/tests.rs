@@ -51,6 +51,26 @@ fn formats_plain_html_lines() {
 }
 
 #[test]
+fn normalizes_html_tag_spacing() {
+    assert_eq!(
+        format(r#"<div  class="test" >test</div >"#),
+        "<div class=\"test\">test</div>\n"
+    );
+    assert_eq!(
+        format(r#"<p><span  class="test" >test</span ></p>"#),
+        "<p><span class=\"test\">test</span></p>\n"
+    );
+}
+
+#[test]
+fn normalizes_html_tag_spacing_when_expanding() {
+    assert_eq!(
+        format("<div  class=\"test\" >\n<p>test</p>\n</div >"),
+        "<div class=\"test\">\n  <p>test</p>\n</div>\n"
+    );
+}
+
+#[test]
 fn preserves_single_intentional_blank_lines() {
     assert_eq!(
         format("<section>\n<h1>Title</h1>\n\n<p>Body</p>\n</section>\n"),

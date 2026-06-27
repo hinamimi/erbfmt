@@ -170,6 +170,20 @@ pub(super) fn normalize_tag(raw: &str) -> Option<String> {
     ParsedTag::parse(raw.trim()).map(|tag| tag.inline())
 }
 
+pub(super) fn normalize_close_tag(raw: &str) -> Option<String> {
+    let name = raw.trim().strip_prefix("</")?.strip_suffix('>')?.trim();
+
+    if name.is_empty()
+        || name
+            .chars()
+            .any(|ch| ch.is_whitespace() || matches!(ch, '<' | '>' | '/' | '"' | '\''))
+    {
+        return None;
+    }
+
+    Some(format!("</{name}>"))
+}
+
 fn normalize_attribute_quotes(attribute: &str) -> String {
     let Some((name, value)) = attribute.split_once('=') else {
         return attribute.to_string();
