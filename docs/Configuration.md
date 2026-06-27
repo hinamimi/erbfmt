@@ -1,6 +1,8 @@
 # Configuration
 
 erbfmt reads `erbfmt.json` from the current directory or a parent directory.
+The file is parsed as JSONC, so line comments, block comments, and trailing
+commas are allowed.
 Create a default config file in the current directory:
 
 ```bash

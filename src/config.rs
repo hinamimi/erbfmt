@@ -30,6 +30,7 @@ impl Config {
 
         let content = fs::read_to_string(&path)
             .with_context(|| format!("failed to read config `{}`", path.display()))?;
+        let content = strip_jsonc(&content);
         let raw: RawConfig = serde_json::from_str(&content)
             .with_context(|| format!("failed to parse config `{}`", path.display()))?;
 
@@ -56,6 +57,132 @@ impl Config {
     pub fn includes_file(&self, path: &Path) -> bool {
         self.files.includes(path)
     }
+}
+
+fn strip_jsonc(input: &str) -> String {
+    let without_comments = strip_jsonc_comments(input);
+
+    strip_jsonc_trailing_commas(&without_comments)
+}
+
+fn strip_jsonc_comments(input: &str) -> String {
+    let mut output = String::with_capacity(input.len());
+    let mut chars = input.chars().peekable();
+    let mut in_string = false;
+    let mut escaped = false;
+
+    while let Some(ch) = chars.next() {
+        if in_string {
+            output.push(ch);
+
+            if escaped {
+                escaped = false;
+            } else if ch == '\\' {
+                escaped = true;
+            } else if ch == '"' {
+                in_string = false;
+            }
+
+            continue;
+        }
+
+        if ch == '"' {
+            in_string = true;
+            output.push(ch);
+            continue;
+        }
+
+        if ch == '/' {
+            match chars.peek().copied() {
+                Some('/') => {
+                    chars.next();
+                    for comment_ch in chars.by_ref() {
+                        if matches!(comment_ch, '\n' | '\r') {
+                            output.push(comment_ch);
+                            break;
+                        }
+                    }
+                    continue;
+                }
+                Some('*') => {
+                    chars.next();
+                    let mut previous = None;
+                    for comment_ch in chars.by_ref() {
+                        if matches!(comment_ch, '\n' | '\r') {
+                            output.push(comment_ch);
+                        }
+
+                        if previous == Some('*') && comment_ch == '/' {
+                            break;
+                        }
+
+                        previous = Some(comment_ch);
+                    }
+                    continue;
+                }
+                _ => {}
+            }
+        }
+
+        output.push(ch);
+    }
+
+    output
+}
+
+fn strip_jsonc_trailing_commas(input: &str) -> String {
+    let mut output = String::with_capacity(input.len());
+    let mut chars = input.chars().peekable();
+    let mut in_string = false;
+    let mut escaped = false;
+
+    while let Some(ch) = chars.next() {
+        if in_string {
+            output.push(ch);
+
+            if escaped {
+                escaped = false;
+            } else if ch == '\\' {
+                escaped = true;
+            } else if ch == '"' {
+                in_string = false;
+            }
+
+            continue;
+        }
+
+        if ch == '"' {
+            in_string = true;
+            output.push(ch);
+            continue;
+        }
+
+        if ch == ',' && next_non_whitespace_is_closing(&mut chars) {
+            continue;
+        }
+
+        output.push(ch);
+    }
+
+    output
+}
+
+fn next_non_whitespace_is_closing<I>(chars: &mut std::iter::Peekable<I>) -> bool
+where
+    I: Iterator<Item = char> + Clone,
+{
+    let mut lookahead = chars.clone();
+
+    while let Some(ch) = lookahead.peek().copied() {
+        if ch.is_whitespace() {
+            lookahead.next();
+            continue;
+        }
+
+        return matches!(ch, '}' | ']');
+    }
+
+    false
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]

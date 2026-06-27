@@ -446,6 +446,39 @@ fn config_controls_formatter_line_width() {
 }
 
 #[test]
+fn config_accepts_jsonc_comments_and_trailing_commas() {
+    let dir = TestDir::new("config_jsonc");
+    let config = dir.write(
+        "erbfmt.json",
+        r#"{
+  // erbfmt accepts JSONC-style line comments.
+  "$schema": "https://raw.githubusercontent.com/hinamimi/erbfmt/main/docs/schema/erbfmt.schema.json",
+  "formatter": {
+    "lineWidth": 48, /* block comments are accepted too */
+  },
+  "files": {
+    "includes": [
+      "**/*.html.erb",
+    ],
+  },
+}"#,
+    );
+    let file = dir.write(
+        "input.html.erb",
+        r#"<div class="a-long-long-class-name" style="<%= long_logic %>"></div>"#,
+    );
+
+    let output = run(["--config".as_ref(), config.as_path(), file.as_path()]);
+
+    assert_success(&output);
+    assert_eq!(
+        stdout(&output),
+        "<div\n  class=\"a-long-long-class-name\"\n  style=\"<%= long_logic %>\"\n>\n</div>\n"
+    );
+    assert_eq!(stderr(&output), "");
+}
+
+#[test]
 fn config_controls_erb_tag_line_width() {
     let dir = TestDir::new("config_erb_line_width");
     let config = dir.write("erbfmt.json", r#"{"formatter":{"lineWidth":60}}"#);
