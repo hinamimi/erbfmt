@@ -34,11 +34,11 @@ in the CLI, so command-line, CI, and editor results stay consistent.
 ## Requirements
 
 Download and install the CLI from the
-[v0.1.2 GitHub Release](https://github.com/hinamimi/erbfmt/releases/tag/v0.1.2).
+[v0.1.3 GitHub Release](https://github.com/hinamimi/erbfmt/releases/tag/v0.1.3).
 With a Rust toolchain, it can also be installed from the tagged source:
 
 ```bash
-cargo install --git https://github.com/hinamimi/erbfmt --tag v0.1.2 --locked
+cargo install --git https://github.com/hinamimi/erbfmt --tag v0.1.3 --locked
 erbfmt --version
 ```
 
@@ -48,11 +48,11 @@ extension can use any installation that exposes an executable `erbfmt` command.
 ## Install the Extension
 
 The extension is not published to the VS Code Marketplace. Download
-[`erbfmt-vscode-0.1.2.vsix`](https://github.com/hinamimi/erbfmt/releases/download/v0.1.2/erbfmt-vscode-0.1.2.vsix)
+[`erbfmt-vscode-0.1.3.vsix`](https://github.com/hinamimi/erbfmt/releases/download/v0.1.3/erbfmt-vscode-0.1.3.vsix)
 and install it locally:
 
 ```bash
-code --install-extension erbfmt-vscode-0.1.2.vsix
+code --install-extension erbfmt-vscode-0.1.3.vsix
 ```
 
 Open a `*.html.erb` file and run **Format Document**. If VS Code asks for a

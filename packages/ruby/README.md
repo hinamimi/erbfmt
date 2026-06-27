@@ -3,12 +3,12 @@
 This gem is a thin launcher for the platform-specific erbfmt Rust binary.
 
 Initial releases are distributed as platform-specific `.gem` files attached to
-the [erbfmt GitHub Release](https://github.com/hinamimi/erbfmt/releases/tag/v0.1.2)
+the [erbfmt GitHub Release](https://github.com/hinamimi/erbfmt/releases/tag/v0.1.3)
 rather than through RubyGems.org. Download the file matching the local platform
 and install it directly. For example, on glibc Linux x64:
 
 ```bash
-gem install --local ./erbfmt-0.1.2-x86_64-linux-gnu.gem
+gem install --local ./erbfmt-0.1.3-x86_64-linux-gnu.gem
 erbfmt --version
 ```
 
@@ -20,12 +20,12 @@ Since the gem is not on RubyGems.org, Bundler cannot resolve it from a normal
 
 ```bash
 curl -L \
-  -o erbfmt-0.1.2-x86_64-linux-gnu.gem \
-  https://github.com/hinamimi/erbfmt/releases/download/v0.1.2/erbfmt-0.1.2-x86_64-linux-gnu.gem
+  -o erbfmt-0.1.3-x86_64-linux-gnu.gem \
+  https://github.com/hinamimi/erbfmt/releases/download/v0.1.3/erbfmt-0.1.3-x86_64-linux-gnu.gem
 mkdir -p vendor/gems
-gem unpack erbfmt-0.1.2-x86_64-linux-gnu.gem --target vendor/gems
-gem spec erbfmt-0.1.2-x86_64-linux-gnu.gem --ruby \
-  > vendor/gems/erbfmt-0.1.2-x86_64-linux-gnu/erbfmt.gemspec
+gem unpack erbfmt-0.1.3-x86_64-linux-gnu.gem --target vendor/gems
+gem spec erbfmt-0.1.3-x86_64-linux-gnu.gem --ruby \
+  > vendor/gems/erbfmt-0.1.3-x86_64-linux-gnu/erbfmt.gemspec
 ```
 
 Add the unpacked gem to the project Gemfile:
@@ -33,7 +33,7 @@ Add the unpacked gem to the project Gemfile:
 ```ruby
 group :development do
   gem "erbfmt",
-    path: "vendor/gems/erbfmt-0.1.2-x86_64-linux-gnu",
+    path: "vendor/gems/erbfmt-0.1.3-x86_64-linux-gnu",
     require: false
 end
 ```
@@ -71,8 +71,8 @@ The shared version check covers Cargo, this gem, the VSCode extension, and
 their lockfiles. Release versions are updated from the repository root:
 
 ```bash
-ruby scripts/version.rb set 0.1.2
-ruby scripts/version.rb verify 0.1.2
+ruby scripts/version.rb set 0.1.3
+ruby scripts/version.rb verify 0.1.3
 ```
 
 Build, install, and execute a local platform-specific gem in isolation:
