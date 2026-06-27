@@ -1,4 +1,4 @@
-use crate::lexer::{ErbBlockKind, ErbBranchKind};
+use crate::lexer::{ErbBlockKind, ErbBranchKind, ErbTag};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Document {
@@ -30,13 +30,14 @@ pub enum Node {
     },
     HtmlComment(String),
     HtmlDoctype(String),
-    ErbCode(String),
-    ErbComment(String),
-    ErbOutput(String),
+    ErbCode(ErbTag),
+    ErbComment(ErbTag),
+    ErbOutput(ErbTag),
     ErbBlock {
         kind: ErbBlockKind,
-        code: String,
+        tag: ErbTag,
         output: bool,
+        end_tag: ErbTag,
         children: Vec<Node>,
         branches: Vec<ErbBranch>,
     },
@@ -65,6 +66,6 @@ impl Node {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ErbBranch {
     pub kind: ErbBranchKind,
-    pub code: String,
+    pub tag: ErbTag,
     pub children: Vec<Node>,
 }

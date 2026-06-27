@@ -65,47 +65,47 @@ fn lint_tokens(
                     mark_current_block_meaningful(&mut erb_stack);
                 }
             }
-            lexer::Token::ErbCode(code) => {
+            lexer::Token::ErbCode(tag) => {
                 lint_empty_erb_code_tag(
                     ErbCodeTagKind::Code,
-                    code,
+                    &tag.code,
                     spanned.span.location,
                     options,
                     &mut diagnostics,
                 );
-                lint_erb_code(code, spanned.span.location, options, &mut diagnostics);
-                if !code.trim().is_empty() {
+                lint_erb_code(&tag.code, spanned.span.location, options, &mut diagnostics);
+                if !tag.code.trim().is_empty() {
                     mark_current_block_meaningful(&mut erb_stack);
                 }
             }
             lexer::Token::ErbComment(_) => {}
-            lexer::Token::ErbOutput(code) => {
+            lexer::Token::ErbOutput(tag) => {
                 lint_empty_erb_code_tag(
                     ErbCodeTagKind::Output,
-                    code,
+                    &tag.code,
                     spanned.span.location,
                     options,
                     &mut diagnostics,
                 );
-                if !code.trim().is_empty() {
+                if !tag.code.trim().is_empty() {
                     mark_current_block_meaningful(&mut erb_stack);
                 }
             }
-            lexer::Token::ErbBlockStart { code, output, .. } => {
+            lexer::Token::ErbBlockStart { tag, output, .. } => {
                 mark_current_block_meaningful(&mut erb_stack);
                 erb_stack.push(ErbBlockLintFrame {
-                    code: code.clone(),
+                    code: tag.code.clone(),
                     output: *output,
                     location: spanned.span.location,
                     has_meaningful_content: false,
                     active_branch: None,
                 });
             }
-            lexer::Token::ErbBranch { code, .. } => {
+            lexer::Token::ErbBranch { tag, .. } => {
                 if let Some(frame) = erb_stack.last_mut() {
                     finish_active_branch(frame, options, &mut diagnostics);
                     frame.active_branch = Some(ErbBranchLintFrame {
-                        code: code.clone(),
+                        code: tag.code.clone(),
                         location: spanned.span.location,
                         has_meaningful_content: false,
                     });

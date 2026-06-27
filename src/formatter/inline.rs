@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use crate::mixed_parser::{Node, SourceRange};
 
-use super::erb::{ErbTagMarker, format_erb_comment, format_erb_tag_inline};
+use super::erb::{format_erb_comment, format_erb_tag_inline};
 use super::preserve::is_format_sensitive_html_element;
 
 #[derive(Clone, Copy)]
@@ -133,7 +133,7 @@ fn is_inline_node(node: &Node) -> bool {
         | Node::HtmlVoid { .. }
         | Node::HtmlComment(_)
         | Node::ErbComment(_) => true,
-        Node::ErbCode(code) | Node::ErbOutput(code) => is_single_line_erb_code(code),
+        Node::ErbCode(tag) | Node::ErbOutput(tag) => is_single_line_erb_code(&tag.code),
         Node::HtmlDoctype(_) | Node::Spanned { .. } | Node::ErbBlock { .. } => false,
     }
 }
@@ -162,7 +162,7 @@ fn is_inline_boundary_html_node(node: &Node) -> bool {
             is_inline_boundary_html_tag(name)
         }
         Node::HtmlComment(_) | Node::ErbComment(_) => true,
-        Node::ErbCode(code) | Node::ErbOutput(code) => is_single_line_erb_code(code),
+        Node::ErbCode(tag) | Node::ErbOutput(tag) => is_single_line_erb_code(&tag.code),
         Node::HtmlDoctype(_) | Node::Spanned { .. } | Node::ErbBlock { .. } => false,
     }
 }
@@ -262,9 +262,9 @@ fn render_inline_node(node: &Node) -> String {
         } => format!("{open}{}{close}", render_inline_nodes_untrimmed(children)),
         Node::HtmlSelfClosing { raw, .. } | Node::HtmlVoid { raw, .. } => raw.clone(),
         Node::HtmlComment(comment) => comment.clone(),
-        Node::ErbCode(code) => format_erb_tag_inline(ErbTagMarker::Code, code.trim()),
+        Node::ErbCode(tag) => format_erb_tag_inline(tag.syntax, tag.code.trim()),
         Node::ErbComment(comment) => format_erb_comment(comment),
-        Node::ErbOutput(code) => format_erb_tag_inline(ErbTagMarker::Output, code.trim()),
+        Node::ErbOutput(tag) => format_erb_tag_inline(tag.syntax, tag.code.trim()),
         Node::HtmlDoctype(_) | Node::Spanned { .. } | Node::ErbBlock { .. } => {
             unreachable!("node cannot render inline")
         }

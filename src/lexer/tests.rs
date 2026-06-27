@@ -1,5 +1,21 @@
 use super::*;
 
+fn erb_tag(code: &str, open: ErbTagOpen, close: ErbTagClose) -> ErbTag {
+    ErbTag::new(code.to_string(), ErbTagSyntax { open, close })
+}
+
+fn code_tag(code: &str) -> ErbTag {
+    erb_tag(code, ErbTagOpen::Code, ErbTagClose::Normal)
+}
+
+fn output_tag(code: &str) -> ErbTag {
+    erb_tag(code, ErbTagOpen::Output, ErbTagClose::Normal)
+}
+
+fn comment_tag(code: &str) -> ErbTag {
+    erb_tag(code, ErbTagOpen::Comment, ErbTagClose::Normal)
+}
+
 #[test]
 fn tokenize_html() {
     let tokens = tokenize("<div>Hello</div>").unwrap();
@@ -11,14 +27,14 @@ fn tokenize_html() {
 fn tokenizes_empty_erb_code_tag() {
     let tokens = tokenize("<% %>").unwrap();
 
-    assert_eq!(tokens, vec![Token::ErbCode(String::new())]);
+    assert_eq!(tokens, vec![Token::ErbCode(code_tag(""))]);
 }
 
 #[test]
 fn tokenizes_erb_output_tag() {
     let tokens = tokenize("<%= user.name %>").unwrap();
 
-    assert_eq!(tokens, vec![Token::ErbOutput("user.name".to_string())]);
+    assert_eq!(tokens, vec![Token::ErbOutput(output_tag("user.name"))]);
 }
 
 #[test]
@@ -27,9 +43,9 @@ fn tokenizes_erb_comment_tag() {
 
     assert_eq!(
         tokens,
-        vec![Token::ErbComment(
-            "erbfmt-ignore format: generated".to_string()
-        )]
+        vec![Token::ErbComment(comment_tag(
+            "erbfmt-ignore format: generated"
+        ))]
     );
 }
 
@@ -41,7 +57,7 @@ fn tokenizes_html_fragments_around_erb() {
         tokens,
         vec![
             Token::Html("<p>Hello ".to_string()),
-            Token::ErbOutput("user.name".to_string()),
+            Token::ErbOutput(output_tag("user.name")),
             Token::Html("</p>".to_string())
         ]
     );
@@ -60,7 +76,7 @@ fn keeps_erb_output_inside_html_tag_attributes_as_html() {
             Token::Html(
                 r#"<a href="/users/<%= user.id %>" aria-label="<%= user.name %>">"#.to_string()
             ),
-            Token::ErbOutput("user.name".to_string()),
+            Token::ErbOutput(output_tag("user.name")),
             Token::Html("</a>".to_string())
         ]
     );
@@ -74,7 +90,7 @@ fn tokenizes_erb_after_non_tag_less_than_sign() {
         tokens,
         vec![
             Token::Html("2 < 3 ".to_string()),
-            Token::ErbOutput("result".to_string())
+            Token::ErbOutput(output_tag("result"))
         ]
     );
 }
@@ -97,7 +113,7 @@ fn tokenizes_supported_erb_control_tags() {
             tokenize(input).unwrap(),
             vec![Token::ErbBlockStart {
                 kind,
-                code: code.to_string(),
+                tag: code_tag(code),
                 output: false
             }]
         );
@@ -108,7 +124,7 @@ fn tokenizes_supported_erb_control_tags() {
 fn tokenizes_erb_block_end_tag() {
     let tokens = tokenize("<% end %>").unwrap();
 
-    assert_eq!(tokens, vec![Token::ErbBlockEnd("end".to_string())]);
+    assert_eq!(tokens, vec![Token::ErbBlockEnd(code_tag("end"))]);
 }
 
 #[test]
@@ -134,7 +150,7 @@ fn tokenizes_erb_branch_tags() {
             tokenize(input).unwrap(),
             vec![Token::ErbBranch {
                 kind,
-                code: code.to_string()
+                tag: code_tag(code)
             }]
         );
     }
@@ -148,7 +164,7 @@ fn tokenizes_begin_control_tag() {
         tokens,
         vec![Token::ErbBlockStart {
             kind: ErbBlockKind::Begin,
-            code: "begin".to_string(),
+            tag: code_tag("begin"),
             output: false
         }]
     );
@@ -162,7 +178,7 @@ fn tokenizes_do_block_expression() {
         tokens,
         vec![Token::ErbBlockStart {
             kind: ErbBlockKind::Do,
-            code: "users.each do |user|".to_string(),
+            tag: code_tag("users.each do |user|"),
             output: false
         }]
     );
@@ -176,7 +192,7 @@ fn tokenizes_erb_output_do_block_expression() {
         tokens,
         vec![Token::ErbBlockStart {
             kind: ErbBlockKind::Do,
-            code: "form_with model: user do |form|".to_string(),
+            tag: output_tag("form_with model: user do |form|"),
             output: true
         }]
     );
@@ -193,27 +209,47 @@ fn reports_unterminated_erb_tag() {
 }
 
 #[test]
-fn rejects_unsupported_erb_markers_without_rewriting_them() {
-    let cases = [
-        (
-            "<%- if user %>",
-            "unsupported ERB marker `<%-` at line 1, column 1",
-        ),
-        (
-            "<%%= literal %>",
-            "unsupported ERB marker `<%%` at line 1, column 1",
-        ),
-        (
-            "<%== raw_html %>",
-            "unsupported ERB marker `<%==` at line 1, column 1",
-        ),
-        (
-            "<%= user -%>",
-            "unsupported ERB marker `-%>` at line 1, column 10",
-        ),
-    ];
+fn tokenizes_supported_erb_marker_variants() {
+    assert_eq!(
+        tokenize("<%- if user -%>").unwrap(),
+        vec![Token::ErbBlockStart {
+            kind: ErbBlockKind::If,
+            tag: erb_tag("if user", ErbTagOpen::TrimCode, ErbTagClose::Trim),
+            output: false
+        }]
+    );
+    assert_eq!(
+        tokenize("<%== raw_html %>").unwrap(),
+        vec![Token::ErbOutput(erb_tag(
+            "raw_html",
+            ErbTagOpen::RawOutput,
+            ErbTagClose::Normal
+        ))]
+    );
+    assert_eq!(
+        tokenize("<% foo -%>").unwrap(),
+        vec![Token::ErbCode(erb_tag(
+            "foo",
+            ErbTagOpen::Code,
+            ErbTagClose::Trim
+        ))]
+    );
+    assert_eq!(
+        tokenize("<% -%>").unwrap(),
+        vec![Token::ErbCode(erb_tag(
+            "",
+            ErbTagOpen::Code,
+            ErbTagClose::Trim
+        ))]
+    );
+}
 
-    for (input, expected) in cases {
-        assert_eq!(tokenize(input).unwrap_err().to_string(), expected);
-    }
+#[test]
+fn rejects_literal_erb_marker_without_rewriting_it() {
+    let error = tokenize("<%%= literal %>").unwrap_err();
+
+    assert_eq!(
+        error.to_string(),
+        "unsupported ERB marker `<%%` at line 1, column 1"
+    );
 }

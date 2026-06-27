@@ -1,15 +1,18 @@
-use crate::mixed_parser::{ErbBranch, Node, SourceRange};
+use crate::{
+    lexer::ErbTag,
+    mixed_parser::{ErbBranch, Node, SourceRange},
+};
 
 use super::engine::Formatter;
-use super::erb::{ErbTagMarker, format_erb_tag_inline};
+use super::erb::format_erb_tag_inline;
 use super::inline::{
     FormattingNode, is_inline_formatting_node, render_inline_formatting_nodes_untrimmed,
 };
 use super::preserve::render_preserved_node;
 
 pub(super) struct ErbBlockParts<'a> {
-    pub(super) code: &'a str,
-    pub(super) output: bool,
+    pub(super) tag: &'a ErbTag,
+    pub(super) end_tag: &'a ErbTag,
     pub(super) children: &'a [Node],
     pub(super) branches: &'a [ErbBranch],
     pub(super) range: Option<SourceRange>,
@@ -45,8 +48,8 @@ impl<'a> Formatter<'a> {
             return None;
         };
         let Node::ErbBlock {
-            code,
-            output,
+            tag,
+            end_tag,
             children,
             branches,
             ..
@@ -82,8 +85,8 @@ impl<'a> Formatter<'a> {
         self.write_erb_block(
             block,
             ErbBlockParts {
-                code,
-                output: *output,
+                tag,
+                end_tag,
                 children,
                 branches,
                 range: block.source_range(),
@@ -112,24 +115,32 @@ impl<'a> Formatter<'a> {
             return;
         }
 
-        let marker = ErbTagMarker::from_output(parts.output);
         if prefix.is_empty() {
-            self.write_erb_tag(depth, marker, parts.code);
+            self.write_erb_tag(depth, parts.tag);
         } else {
             self.write_indented_line(
                 depth,
-                &format!("{prefix}{}", format_erb_tag_inline(marker, parts.code)),
+                &format!(
+                    "{prefix}{}",
+                    format_erb_tag_inline(parts.tag.syntax, &parts.tag.code)
+                ),
             );
         }
 
         self.format_nodes(parts.children, depth + 1);
         self.format_erb_branches(parts.branches, depth);
-        self.write_indented_line(depth, &format!("<% end %>{suffix}"));
+        self.write_indented_line(
+            depth,
+            &format!(
+                "{}{suffix}",
+                format_erb_tag_inline(parts.end_tag.syntax, &parts.end_tag.code)
+            ),
+        );
     }
 
     fn format_erb_branches(&mut self, branches: &[ErbBranch], depth: usize) {
         for branch in branches {
-            self.write_erb_tag(depth, ErbTagMarker::Code, &branch.code);
+            self.write_erb_tag(depth, &branch.tag);
             self.format_nodes(&branch.children, depth + 1);
         }
     }

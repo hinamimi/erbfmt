@@ -1,39 +1,30 @@
 use super::ruby_wrap;
+use crate::lexer::{ErbTag, ErbTagOpen, ErbTagSyntax};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum ErbTagMarker {
-    Code,
-    Output,
-}
-
-impl ErbTagMarker {
-    pub(super) fn from_output(output: bool) -> Self {
-        if output { Self::Output } else { Self::Code }
-    }
-
-    pub(super) fn as_str(self) -> &'static str {
-        match self {
-            Self::Code => "<%",
-            Self::Output => "<%=",
-        }
-    }
-}
-
-pub(super) fn format_erb_tag_inline(marker: ErbTagMarker, code: &str) -> String {
+pub(super) fn format_erb_tag_inline(syntax: ErbTagSyntax, code: &str) -> String {
     if code.is_empty() {
-        return format!("{} %>", marker.as_str());
+        return format!("{} {}", syntax.open.as_str(), syntax.close.as_str());
     }
 
-    format!("{} {} %>", marker.as_str(), code.trim())
+    format!(
+        "{} {} {}",
+        syntax.open.as_str(),
+        code.trim(),
+        syntax.close.as_str()
+    )
 }
 
-pub(super) fn format_erb_comment(comment: &str) -> String {
-    let comment = comment.trim();
+pub(super) fn format_erb_comment(tag: &ErbTag) -> String {
+    let comment = tag.code.trim();
+    let syntax = ErbTagSyntax {
+        open: ErbTagOpen::Comment,
+        close: tag.syntax.close,
+    };
 
     if comment.is_empty() {
-        "<%# %>".to_string()
+        format_erb_tag_inline(syntax, "")
     } else {
-        format!("<%# {comment} %>")
+        format_erb_tag_inline(syntax, comment)
     }
 }
 

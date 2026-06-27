@@ -148,9 +148,24 @@ fn write_formats_file_in_place() {
 }
 
 #[test]
-fn write_rejects_unsupported_erb_markers_without_changing_the_file() {
-    let dir = TestDir::new("unsupported_erb_marker");
+fn write_preserves_supported_erb_markers() {
+    let dir = TestDir::new("supported_erb_markers");
     let input = "<%- if visible? -%>\n<span>Visible</span>\n<%- end -%>\n";
+    let file = dir.write("input.html.erb", input);
+
+    let output = run(["--write".as_ref(), file.as_path()]);
+
+    assert_success(&output);
+    assert_eq!(
+        fs::read_to_string(file).unwrap(),
+        "<%- if visible? -%>\n  <span>Visible</span>\n<%- end -%>\n"
+    );
+}
+
+#[test]
+fn write_rejects_literal_erb_marker_without_changing_the_file() {
+    let dir = TestDir::new("literal_erb_marker");
+    let input = "<%%= literal %>\n";
     let file = dir.write("input.html.erb", input);
 
     let output = run(["--write".as_ref(), file.as_path()]);
@@ -158,7 +173,7 @@ fn write_rejects_unsupported_erb_markers_without_changing_the_file() {
     assert_failure(&output);
     assert_eq!(stdout(&output), "");
     assert!(
-        stderr(&output).contains("unsupported ERB marker `<%-` at line 1, column 1"),
+        stderr(&output).contains("unsupported ERB marker `<%%` at line 1, column 1"),
         "{}",
         stderr(&output)
     );

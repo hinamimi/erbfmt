@@ -183,6 +183,22 @@ fn preserves_erb_comment_markers() {
 }
 
 #[test]
+fn preserves_supported_erb_marker_variants() {
+    assert_eq!(
+        format_source("<p><%== raw_html %></p>\n"),
+        "<p><%== raw_html %></p>\n"
+    );
+    assert_eq!(
+        format_source("<% foo -%>\n<p>Next</p>\n"),
+        "<% foo -%>\n<p>Next</p>\n"
+    );
+    assert_eq!(
+        format_source("<%- if visible? -%>\n<span>Visible</span>\n<%- end -%>\n"),
+        "<%- if visible? -%>\n  <span>Visible</span>\n<%- end -%>\n"
+    );
+}
+
+#[test]
 fn preserves_adjacent_erb_outputs_on_one_line() {
     assert_eq!(
         format("<%= form.radio_button :status, :draft %><%= form.label :status_draft %>\n"),

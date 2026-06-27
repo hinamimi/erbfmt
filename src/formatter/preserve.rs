@@ -1,6 +1,6 @@
 use crate::mixed_parser::Node;
 
-use super::erb::{ErbTagMarker, format_erb_comment, format_erb_tag_inline};
+use super::erb::{format_erb_comment, format_erb_tag_inline};
 use super::tag::{ParsedTag, attribute_name, attribute_value};
 
 fn render_preserved_html_element(open: &str, close: &str, children: &[Node]) -> String {
@@ -22,25 +22,25 @@ pub(super) fn render_preserved_node(node: &Node) -> String {
         } => render_preserved_html_element(open, close, children),
         Node::HtmlSelfClosing { raw, .. } | Node::HtmlVoid { raw, .. } => raw.clone(),
         Node::HtmlComment(comment) | Node::HtmlDoctype(comment) => comment.clone(),
-        Node::ErbCode(code) => format_erb_tag_inline(ErbTagMarker::Code, code.trim()),
+        Node::ErbCode(tag) => format_erb_tag_inline(tag.syntax, tag.code.trim()),
         Node::ErbComment(comment) => format_erb_comment(comment),
-        Node::ErbOutput(code) => format_erb_tag_inline(ErbTagMarker::Output, code.trim()),
+        Node::ErbOutput(tag) => format_erb_tag_inline(tag.syntax, tag.code.trim()),
         Node::ErbBlock {
-            code,
-            output,
+            tag,
+            end_tag,
             children,
             branches,
             ..
         } => {
-            let mut rendered = format_erb_tag_inline(ErbTagMarker::from_output(*output), code);
+            let mut rendered = format_erb_tag_inline(tag.syntax, &tag.code);
             rendered.push_str(&render_preserved_nodes(children));
 
             for branch in branches {
-                rendered.push_str(&format_erb_tag_inline(ErbTagMarker::Code, &branch.code));
+                rendered.push_str(&format_erb_tag_inline(branch.tag.syntax, &branch.tag.code));
                 rendered.push_str(&render_preserved_nodes(&branch.children));
             }
 
-            rendered.push_str("<% end %>");
+            rendered.push_str(&format_erb_tag_inline(end_tag.syntax, &end_tag.code));
             rendered
         }
         Node::Spanned { .. } => unreachable!("unspanned node cannot remain wrapped"),

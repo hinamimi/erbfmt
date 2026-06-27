@@ -1,5 +1,31 @@
 use super::*;
-use crate::lexer::{ErbBlockKind, tokenize, tokenize_with_spans};
+use crate::lexer::{
+    ErbBlockKind, ErbTag, ErbTagClose, ErbTagOpen, ErbTagSyntax, tokenize, tokenize_with_spans,
+};
+
+fn tag(code: &str) -> ErbTag {
+    ErbTag::new(
+        code.to_string(),
+        ErbTagSyntax {
+            open: ErbTagOpen::Code,
+            close: ErbTagClose::Normal,
+        },
+    )
+}
+
+fn output_tag(code: &str) -> ErbTag {
+    ErbTag::new(
+        code.to_string(),
+        ErbTagSyntax {
+            open: ErbTagOpen::Output,
+            close: ErbTagClose::Normal,
+        },
+    )
+}
+
+fn end_tag() -> ErbTag {
+    tag("end")
+}
 
 #[test]
 fn keeps_absolute_ranges_for_spanned_html_subtrees() {
@@ -43,7 +69,7 @@ fn keeps_absolute_ranges_for_spanned_erb_blocks_and_comments() {
         comment.source_range(),
         Some(SourceRange { start: 0, end: 11 })
     );
-    assert!(matches!(comment.unspanned(), Node::ErbComment(comment) if comment == "note"));
+    assert!(matches!(comment.unspanned(), Node::ErbComment(comment) if comment.code == "note"));
     assert_eq!(
         block.source_range(),
         Some(SourceRange { start: 12, end: 48 })
@@ -87,7 +113,7 @@ fn preserves_inline_erb_output_inside_html() {
                 close: "</p>".to_string(),
                 children: vec![
                     Node::HtmlText("Hello, ".to_string()),
-                    Node::ErbOutput("user.name".to_string())
+                    Node::ErbOutput(output_tag("user.name"))
                 ]
             }]
         }
@@ -106,7 +132,7 @@ fn preserves_erb_output_inside_html_attributes() {
                 name: "a".to_string(),
                 open: r#"<a href="/users/<%= user.id %>">"#.to_string(),
                 close: "</a>".to_string(),
-                children: vec![Node::ErbOutput("user.name".to_string())]
+                children: vec![Node::ErbOutput(output_tag("user.name"))]
             }]
         }
     );
@@ -122,8 +148,9 @@ fn keeps_erb_blocks_with_html_children() {
         Document {
             children: vec![Node::ErbBlock {
                 kind: ErbBlockKind::If,
-                code: "if user".to_string(),
+                tag: tag("if user"),
                 output: false,
+                end_tag: end_tag(),
                 children: vec![Node::HtmlElement {
                     name: "ul".to_string(),
                     open: "<ul>".to_string(),
@@ -154,8 +181,9 @@ fn keeps_erb_branches_with_children() {
         Document {
             children: vec![Node::ErbBlock {
                 kind: ErbBlockKind::If,
-                code: "if admin?".to_string(),
+                tag: tag("if admin?"),
                 output: false,
+                end_tag: end_tag(),
                 children: vec![Node::HtmlElement {
                     name: "p".to_string(),
                     open: "<p>".to_string(),
@@ -165,7 +193,7 @@ fn keeps_erb_branches_with_children() {
                 branches: vec![
                     ErbBranch {
                         kind: ErbBranchKind::Elsif,
-                        code: "elsif user?".to_string(),
+                        tag: tag("elsif user?"),
                         children: vec![Node::HtmlElement {
                             name: "p".to_string(),
                             open: "<p>".to_string(),
@@ -175,7 +203,7 @@ fn keeps_erb_branches_with_children() {
                     },
                     ErbBranch {
                         kind: ErbBranchKind::Else,
-                        code: "else".to_string(),
+                        tag: tag("else"),
                         children: vec![Node::HtmlElement {
                             name: "p".to_string(),
                             open: "<p>".to_string(),
@@ -202,13 +230,14 @@ fn keeps_case_when_branches() {
         Document {
             children: vec![Node::ErbBlock {
                 kind: ErbBlockKind::Case,
-                code: "case role".to_string(),
+                tag: tag("case role"),
                 output: false,
+                end_tag: end_tag(),
                 children: vec![],
                 branches: vec![
                     ErbBranch {
                         kind: ErbBranchKind::When,
-                        code: "when \"admin\"".to_string(),
+                        tag: tag("when \"admin\""),
                         children: vec![Node::HtmlElement {
                             name: "p".to_string(),
                             open: "<p>".to_string(),
@@ -218,7 +247,7 @@ fn keeps_case_when_branches() {
                     },
                     ErbBranch {
                         kind: ErbBranchKind::When,
-                        code: "when \"user\"".to_string(),
+                        tag: tag("when \"user\""),
                         children: vec![Node::HtmlElement {
                             name: "p".to_string(),
                             open: "<p>".to_string(),
@@ -242,8 +271,9 @@ fn keeps_output_erb_do_blocks() {
         Document {
             children: vec![Node::ErbBlock {
                 kind: ErbBlockKind::Do,
-                code: "form_with model: user do |form|".to_string(),
+                tag: output_tag("form_with model: user do |form|"),
                 output: true,
+                end_tag: end_tag(),
                 children: vec![Node::HtmlElement {
                     name: "p".to_string(),
                     open: "<p>".to_string(),
@@ -269,8 +299,9 @@ fn keeps_begin_rescue_ensure_branches() {
         Document {
             children: vec![Node::ErbBlock {
                 kind: ErbBlockKind::Begin,
-                code: "begin".to_string(),
+                tag: tag("begin"),
                 output: false,
+                end_tag: end_tag(),
                 children: vec![Node::HtmlElement {
                     name: "p".to_string(),
                     open: "<p>".to_string(),
@@ -280,7 +311,7 @@ fn keeps_begin_rescue_ensure_branches() {
                 branches: vec![
                     ErbBranch {
                         kind: ErbBranchKind::Rescue,
-                        code: "rescue => error".to_string(),
+                        tag: tag("rescue => error"),
                         children: vec![Node::HtmlElement {
                             name: "p".to_string(),
                             open: "<p>".to_string(),
@@ -290,7 +321,7 @@ fn keeps_begin_rescue_ensure_branches() {
                     },
                     ErbBranch {
                         kind: ErbBranchKind::Ensure,
-                        code: "ensure".to_string(),
+                        tag: tag("ensure"),
                         children: vec![Node::HtmlElement {
                             name: "p".to_string(),
                             open: "<p>".to_string(),

@@ -2,9 +2,9 @@ use std::collections::HashMap;
 
 use crate::mixed_parser::{Document, Node, SourceRange};
 
-use super::erb::{
-    ErbTagMarker, format_erb_comment, format_erb_tag_inline, formatted_erb_code_lines,
-};
+use crate::lexer::{ErbTag, ErbTagSyntax};
+
+use super::erb::{format_erb_comment, format_erb_tag_inline, formatted_erb_code_lines};
 use super::erb_block::ErbBlockParts;
 use super::ignore_directive::formatter_ignore_ranges;
 use super::inline::{
@@ -125,14 +125,14 @@ impl<'a> Formatter<'a> {
             Node::HtmlComment(comment) | Node::HtmlDoctype(comment) => {
                 self.write_indented_line(depth, comment);
             }
-            Node::ErbCode(code) => self.write_erb_tag(depth, ErbTagMarker::Code, code),
+            Node::ErbCode(tag) => self.write_erb_tag(depth, tag),
             Node::ErbComment(comment) => {
                 self.write_indented_line(depth, &format_erb_comment(comment));
             }
-            Node::ErbOutput(code) => self.write_erb_tag(depth, ErbTagMarker::Output, code),
+            Node::ErbOutput(tag) => self.write_erb_tag(depth, tag),
             Node::ErbBlock {
-                code,
-                output,
+                tag,
+                end_tag,
                 children,
                 branches,
                 ..
@@ -140,8 +140,8 @@ impl<'a> Formatter<'a> {
                 self.write_erb_block(
                     node,
                     ErbBlockParts {
-                        code,
-                        output: *output,
+                        tag,
+                        end_tag,
                         children,
                         branches,
                         range,
@@ -336,22 +336,31 @@ impl<'a> Formatter<'a> {
         )
     }
 
-    pub(super) fn write_erb_tag(&mut self, depth: usize, marker: ErbTagMarker, code: &str) {
+    pub(super) fn write_erb_tag(&mut self, depth: usize, tag: &ErbTag) {
+        self.write_erb_tag_with_syntax(depth, tag.syntax, &tag.code);
+    }
+
+    pub(super) fn write_erb_tag_with_syntax(
+        &mut self,
+        depth: usize,
+        syntax: ErbTagSyntax,
+        code: &str,
+    ) {
         let code = code.trim();
-        let inline = format_erb_tag_inline(marker, code);
+        let inline = format_erb_tag_inline(syntax, code);
 
         if !code.contains('\n') && self.fits_on_line(depth, &inline) {
             self.write_indented_line(depth, &inline);
             return;
         }
 
-        self.write_indented_line(depth, marker.as_str());
+        self.write_indented_line(depth, syntax.open.as_str());
 
         for line in formatted_erb_code_lines(code) {
             self.write_indented_code_line(depth + 1, &line);
         }
 
-        self.write_indented_line(depth, "%>");
+        self.write_indented_line(depth, syntax.close.as_str());
     }
 
     fn html_child_depth(&self, depth: usize) -> usize {

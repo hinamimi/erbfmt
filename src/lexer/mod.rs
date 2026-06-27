@@ -12,7 +12,9 @@ pub use error::LexError;
 use html_context::is_inside_html_tag;
 use location::spanned_token;
 pub use location::{SourceLocation, SpannedToken, source_location};
-pub use token::{ErbBlockKind, ErbBranchKind, Token};
+pub use token::{
+    ErbBlockKind, ErbBranchKind, ErbTag, ErbTagClose, ErbTagOpen, ErbTagSyntax, Token,
+};
 
 #[cfg(test)]
 pub fn tokenize(input: &str) -> Result<Vec<Token>, LexError> {
@@ -45,42 +47,64 @@ pub fn tokenize_with_spans(input: &str) -> Result<Vec<SpannedToken>, LexError> {
         }
 
         let tag_content_start = start + "<%".len();
-        let opening = &input[tag_content_start..];
 
-        for marker in ["<%-", "<%%", "<%=="] {
-            if opening.starts_with(&marker["<%".len()..]) {
-                return Err(LexError::unsupported_erb_marker(input, start, marker));
-            }
+        if input[tag_content_start..].starts_with('%') {
+            return Err(LexError::unsupported_erb_marker(input, start, "<%%"));
         }
 
-        let (is_output, is_comment, code_start) = if input[tag_content_start..].starts_with('=') {
-            (true, false, tag_content_start + "=".len())
-        } else if input[tag_content_start..].starts_with('#') {
-            (false, true, tag_content_start + "#".len())
-        } else {
-            (false, false, tag_content_start)
-        };
+        let (open, is_output, is_comment, code_start) =
+            if input[tag_content_start..].starts_with("==") {
+                (
+                    ErbTagOpen::RawOutput,
+                    true,
+                    false,
+                    tag_content_start + "==".len(),
+                )
+            } else if input[tag_content_start..].starts_with('=') {
+                (
+                    ErbTagOpen::Output,
+                    true,
+                    false,
+                    tag_content_start + "=".len(),
+                )
+            } else if input[tag_content_start..].starts_with('#') {
+                (
+                    ErbTagOpen::Comment,
+                    false,
+                    true,
+                    tag_content_start + "#".len(),
+                )
+            } else if input[tag_content_start..].starts_with('-') {
+                (
+                    ErbTagOpen::TrimCode,
+                    false,
+                    false,
+                    tag_content_start + "-".len(),
+                )
+            } else {
+                (ErbTagOpen::Code, false, false, tag_content_start)
+            };
 
         let Some(relative_end) = input[code_start..].find("%>") else {
             return Err(LexError::unterminated_erb(input, start));
         };
 
-        let code_end = code_start + relative_end;
-        if input[..code_end].ends_with('-') {
-            return Err(LexError::unsupported_erb_marker(
-                input,
-                code_end - '-'.len_utf8(),
-                "-%>",
-            ));
-        }
-        let code = input[code_start..code_end].trim().to_string();
+        let mut code_end = code_start + relative_end;
         let token_end = code_end + "%>".len();
-        let token = if is_comment {
-            Token::ErbComment(code)
-        } else if is_output {
-            classify_output_code(code)
+        let close = if input[..code_end].ends_with('-') {
+            code_end -= '-'.len_utf8();
+            ErbTagClose::Trim
         } else {
-            classify_code(code)
+            ErbTagClose::Normal
+        };
+        let code = input[code_start..code_end].trim().to_string();
+        let tag = ErbTag::new(code, ErbTagSyntax { open, close });
+        let token = if is_comment {
+            Token::ErbComment(tag)
+        } else if is_output {
+            classify_output_code(tag)
+        } else {
+            classify_code(tag)
         };
 
         tokens.push(spanned_token(input, start, token_end, token));

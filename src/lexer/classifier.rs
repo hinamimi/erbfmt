@@ -1,77 +1,77 @@
-use super::{ErbBlockKind, ErbBranchKind, Token};
+use super::{ErbBlockKind, ErbBranchKind, ErbTag, Token};
 
-pub(super) fn classify_code(code: String) -> Token {
-    if starts_with_keyword(&code, "if") {
+pub(super) fn classify_code(tag: ErbTag) -> Token {
+    if starts_with_keyword(&tag.code, "if") {
         Token::ErbBlockStart {
             kind: ErbBlockKind::If,
-            code,
+            tag,
             output: false,
         }
-    } else if starts_with_keyword(&code, "unless") {
+    } else if starts_with_keyword(&tag.code, "unless") {
         Token::ErbBlockStart {
             kind: ErbBlockKind::Unless,
-            code,
+            tag,
             output: false,
         }
-    } else if starts_with_keyword(&code, "case") {
+    } else if starts_with_keyword(&tag.code, "case") {
         Token::ErbBlockStart {
             kind: ErbBlockKind::Case,
-            code,
+            tag,
             output: false,
         }
-    } else if starts_with_keyword(&code, "begin") {
+    } else if starts_with_keyword(&tag.code, "begin") {
         Token::ErbBlockStart {
             kind: ErbBlockKind::Begin,
-            code,
+            tag,
             output: false,
         }
-    } else if starts_with_keyword(&code, "else") {
+    } else if starts_with_keyword(&tag.code, "else") {
         Token::ErbBranch {
             kind: ErbBranchKind::Else,
-            code,
+            tag,
         }
-    } else if starts_with_keyword(&code, "elsif") {
+    } else if starts_with_keyword(&tag.code, "elsif") {
         Token::ErbBranch {
             kind: ErbBranchKind::Elsif,
-            code,
+            tag,
         }
-    } else if starts_with_keyword(&code, "when") {
+    } else if starts_with_keyword(&tag.code, "when") {
         Token::ErbBranch {
             kind: ErbBranchKind::When,
-            code,
+            tag,
         }
-    } else if starts_with_keyword(&code, "rescue") {
+    } else if starts_with_keyword(&tag.code, "rescue") {
         Token::ErbBranch {
             kind: ErbBranchKind::Rescue,
-            code,
+            tag,
         }
-    } else if starts_with_keyword(&code, "ensure") {
+    } else if starts_with_keyword(&tag.code, "ensure") {
         Token::ErbBranch {
             kind: ErbBranchKind::Ensure,
-            code,
+            tag,
         }
-    } else if starts_with_keyword(&code, "end") {
-        Token::ErbBlockEnd(code)
-    } else if starts_with_keyword(&code, "do") || ends_with_do_block(&code) {
+    } else if starts_with_keyword(&tag.code, "end") {
+        Token::ErbBlockEnd(tag)
+    } else if starts_with_keyword(&tag.code, "do") || ends_with_do_block(&tag.code) {
         Token::ErbBlockStart {
             kind: ErbBlockKind::Do,
-            code,
+            tag,
             output: false,
         }
     } else {
-        Token::ErbCode(code)
+        Token::ErbCode(tag)
     }
 }
 
-pub(super) fn classify_output_code(code: String) -> Token {
-    if ends_with_do_block(&code) {
+pub(super) fn classify_output_code(tag: ErbTag) -> Token {
+    if ends_with_do_block(&tag.code) {
         Token::ErbBlockStart {
             kind: ErbBlockKind::Do,
-            code,
+            tag,
             output: true,
         }
     } else {
-        Token::ErbOutput(code)
+        Token::ErbOutput(tag)
     }
 }
 

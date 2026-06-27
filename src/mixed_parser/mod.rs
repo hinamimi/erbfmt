@@ -79,25 +79,25 @@ impl Parser {
     fn parse_token(&mut self, token_index: usize, token: &Token) -> Result<(), ParseError> {
         match token {
             Token::Html(fragment) => self.parse_html_fragment(fragment),
-            Token::ErbCode(code) => {
-                self.push_node(Node::ErbCode(code.clone()));
+            Token::ErbCode(tag) => {
+                self.push_node(Node::ErbCode(tag.clone()));
                 Ok(())
             }
-            Token::ErbComment(comment) => {
-                self.push_node(Node::ErbComment(comment.clone()));
+            Token::ErbComment(tag) => {
+                self.push_node(Node::ErbComment(tag.clone()));
                 Ok(())
             }
-            Token::ErbOutput(code) => {
-                self.push_node(Node::ErbOutput(code.clone()));
+            Token::ErbOutput(tag) => {
+                self.push_node(Node::ErbOutput(tag.clone()));
                 Ok(())
             }
-            Token::ErbBlockStart { kind, code, output } => {
+            Token::ErbBlockStart { kind, tag, output } => {
                 self.stack
-                    .push(Frame::erb(*kind, code.clone(), *output, token_index, None));
+                    .push(Frame::erb(*kind, tag.clone(), *output, token_index, None));
                 Ok(())
             }
-            Token::ErbBranch { kind, code } => self.add_erb_branch(token_index, *kind, code),
-            Token::ErbBlockEnd(code) => self.close_erb_block(token_index, code, None),
+            Token::ErbBranch { kind, tag } => self.add_erb_branch(token_index, *kind, tag),
+            Token::ErbBlockEnd(tag) => self.close_erb_block(token_index, tag, None),
         }
     }
 
@@ -117,31 +117,31 @@ impl Parser {
                 spanned.span.start,
                 spanned.span.location,
             ),
-            Token::ErbCode(code) => {
-                self.push_spanned_node(Node::ErbCode(code.clone()), range);
+            Token::ErbCode(tag) => {
+                self.push_spanned_node(Node::ErbCode(tag.clone()), range);
                 Ok(())
             }
-            Token::ErbComment(comment) => {
-                self.push_spanned_node(Node::ErbComment(comment.clone()), range);
+            Token::ErbComment(tag) => {
+                self.push_spanned_node(Node::ErbComment(tag.clone()), range);
                 Ok(())
             }
-            Token::ErbOutput(code) => {
-                self.push_spanned_node(Node::ErbOutput(code.clone()), range);
+            Token::ErbOutput(tag) => {
+                self.push_spanned_node(Node::ErbOutput(tag.clone()), range);
                 Ok(())
             }
-            Token::ErbBlockStart { kind, code, output } => {
+            Token::ErbBlockStart { kind, tag, output } => {
                 self.stack.push(Frame::erb(
                     *kind,
-                    code.clone(),
+                    tag.clone(),
                     *output,
                     token_index,
                     Some(range),
                 ));
                 Ok(())
             }
-            Token::ErbBranch { kind, code } => self.add_erb_branch(token_index, *kind, code),
-            Token::ErbBlockEnd(code) => {
-                self.close_erb_block(token_index, code, Some(spanned.span.end))
+            Token::ErbBranch { kind, tag } => self.add_erb_branch(token_index, *kind, tag),
+            Token::ErbBlockEnd(tag) => {
+                self.close_erb_block(token_index, tag, Some(spanned.span.end))
             }
         }
     }
@@ -249,14 +249,14 @@ impl Parser {
             FrameKind::Erb {
                 kind,
                 token_index,
-                code,
+                tag: erb_tag,
                 output,
                 range,
             } => {
                 self.stack.push(Frame {
                     kind: FrameKind::Erb {
                         kind,
-                        code: code.clone(),
+                        tag: erb_tag.clone(),
                         output,
                         token_index,
                         range,
@@ -314,13 +314,13 @@ impl Parser {
     fn close_erb_block(
         &mut self,
         token_index: usize,
-        code: &str,
+        end_tag: &lexer::ErbTag,
         end: Option<usize>,
     ) -> Result<(), ParseError> {
         let Some(frame) = self.stack.pop() else {
             return Err(ParseError::UnexpectedErbBlockEnd {
                 token_index,
-                code: code.to_string(),
+                code: end_tag.code.clone(),
             });
         };
 
@@ -329,7 +329,7 @@ impl Parser {
                 self.stack.push(frame);
                 Err(ParseError::UnexpectedErbBlockEnd {
                     token_index,
-                    code: code.to_string(),
+                    code: end_tag.code.clone(),
                 })
             }
             FrameKind::Html {
@@ -358,17 +358,18 @@ impl Parser {
             }
             FrameKind::Erb {
                 kind,
-                ref code,
+                ref tag,
                 output,
                 range,
                 ..
             } => {
-                let block_code = code.clone();
+                let block_tag = tag.clone();
                 let (children, branches) = frame.finish_erb_branches();
                 let node = Node::ErbBlock {
                     kind,
-                    code: block_code,
+                    tag: block_tag,
                     output,
+                    end_tag: end_tag.clone(),
                     children,
                     branches,
                 };
@@ -382,19 +383,19 @@ impl Parser {
         &mut self,
         token_index: usize,
         kind: ErbBranchKind,
-        code: &str,
+        tag: &lexer::ErbTag,
     ) -> Result<(), ParseError> {
         let Some(frame) = self.stack.last_mut() else {
             return Err(ParseError::UnexpectedErbBranch {
                 token_index,
-                code: code.to_string(),
+                code: tag.code.clone(),
             });
         };
 
         match frame.kind {
             FrameKind::Root => Err(ParseError::UnexpectedErbBranch {
                 token_index,
-                code: code.to_string(),
+                code: tag.code.clone(),
             }),
             FrameKind::Html {
                 ref name,
@@ -407,7 +408,7 @@ impl Parser {
                 location,
             }),
             FrameKind::Erb { .. } => {
-                frame.start_erb_branch(kind, code.to_string());
+                frame.start_erb_branch(kind, tag.clone());
                 Ok(())
             }
         }
@@ -435,8 +436,11 @@ impl Parser {
                 location,
             }),
             FrameKind::Erb {
-                token_index, code, ..
-            } => Err(ParseError::UnclosedErbBlock { token_index, code }),
+                token_index, tag, ..
+            } => Err(ParseError::UnclosedErbBlock {
+                token_index,
+                code: tag.code,
+            }),
         }
     }
 

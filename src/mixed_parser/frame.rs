@@ -1,6 +1,6 @@
 use crate::{
     html::HtmlTag,
-    lexer::{ErbBlockKind, ErbBranchKind, SourceLocation},
+    lexer::{ErbBlockKind, ErbBranchKind, ErbTag, SourceLocation},
 };
 
 use super::{ErbBranch, Node, SourceRange};
@@ -45,7 +45,7 @@ impl Frame {
 
     pub(super) fn erb(
         kind: ErbBlockKind,
-        code: String,
+        tag: ErbTag,
         output: bool,
         token_index: usize,
         range: Option<SourceRange>,
@@ -53,7 +53,7 @@ impl Frame {
         Self {
             kind: FrameKind::Erb {
                 kind,
-                code,
+                tag,
                 output,
                 token_index,
                 range,
@@ -65,25 +65,25 @@ impl Frame {
         }
     }
 
-    pub(super) fn start_erb_branch(&mut self, kind: ErbBranchKind, code: String) {
+    pub(super) fn start_erb_branch(&mut self, kind: ErbBranchKind, tag: ErbTag) {
         if let Some(active_branch) = self.active_branch.take() {
             self.branches.push(ErbBranch {
                 kind: active_branch.kind,
-                code: active_branch.code,
+                tag: active_branch.tag,
                 children: std::mem::take(&mut self.children),
             });
         } else {
             self.initial_children = Some(std::mem::take(&mut self.children));
         }
 
-        self.active_branch = Some(ErbBranchHeader { kind, code });
+        self.active_branch = Some(ErbBranchHeader { kind, tag });
     }
 
     pub(super) fn finish_erb_branches(mut self) -> (Vec<Node>, Vec<ErbBranch>) {
         if let Some(active_branch) = self.active_branch.take() {
             self.branches.push(ErbBranch {
                 kind: active_branch.kind,
-                code: active_branch.code,
+                tag: active_branch.tag,
                 children: std::mem::take(&mut self.children),
             });
         }
@@ -97,7 +97,7 @@ impl Frame {
 
 pub(super) struct ErbBranchHeader {
     kind: ErbBranchKind,
-    code: String,
+    tag: ErbTag,
 }
 
 pub(super) enum FrameKind {
@@ -110,7 +110,7 @@ pub(super) enum FrameKind {
     },
     Erb {
         kind: ErbBlockKind,
-        code: String,
+        tag: ErbTag,
         output: bool,
         token_index: usize,
         range: Option<SourceRange>,
