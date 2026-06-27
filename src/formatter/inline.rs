@@ -132,9 +132,8 @@ fn is_inline_node(node: &Node) -> bool {
         Node::HtmlSelfClosing { .. }
         | Node::HtmlVoid { .. }
         | Node::HtmlComment(_)
-        | Node::ErbComment(_)
-        | Node::ErbCode(_)
-        | Node::ErbOutput(_) => true,
+        | Node::ErbComment(_) => true,
+        Node::ErbCode(code) | Node::ErbOutput(code) => is_single_line_erb_code(code),
         Node::HtmlDoctype(_) | Node::Spanned { .. } | Node::ErbBlock { .. } => false,
     }
 }
@@ -162,9 +161,14 @@ fn is_inline_boundary_html_node(node: &Node) -> bool {
         Node::HtmlVoid { name, .. } | Node::HtmlSelfClosing { name, .. } => {
             is_inline_boundary_html_tag(name)
         }
-        Node::HtmlComment(_) | Node::ErbComment(_) | Node::ErbCode(_) | Node::ErbOutput(_) => true,
+        Node::HtmlComment(_) | Node::ErbComment(_) => true,
+        Node::ErbCode(code) | Node::ErbOutput(code) => is_single_line_erb_code(code),
         Node::HtmlDoctype(_) | Node::Spanned { .. } | Node::ErbBlock { .. } => false,
     }
+}
+
+fn is_single_line_erb_code(code: &str) -> bool {
+    !code.contains('\n') && !code.contains('\r')
 }
 
 fn is_inline_boundary_html_tag(name: &str) -> bool {

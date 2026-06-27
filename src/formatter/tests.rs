@@ -637,6 +637,14 @@ fn preserves_existing_multiline_erb_output_shape() {
 }
 
 #[test]
+fn normalizes_multiline_erb_output_opening_marker_inside_html() {
+    assert_eq!(
+        format("<p><%= render(\n  partial: \"partial\",\n  locals: {key: \"value\"}\n) %></p>\n"),
+        "<p>\n  <%=\n    render(\n      partial: \"partial\",\n      locals: {key: \"value\"}\n    )\n  %>\n</p>\n"
+    );
+}
+
+#[test]
 fn formats_if_elsif_else_branches() {
     assert_eq!(
         format(
