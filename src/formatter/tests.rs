@@ -725,6 +725,35 @@ fn normalizes_multiline_erb_output_opening_marker_inside_html() {
 }
 
 #[test]
+fn wraps_single_foldable_erb_output_child_with_multiline_markers() {
+    let options = FormatOptions {
+        line_width: 40,
+        ..FormatOptions::default()
+    };
+    let input = "<p><%= render(partial: \"foo\", locals: { key: \"value\" }) %></p>\n";
+    let expected = "<p>\n  <%=\n    render(\n      partial: \"foo\",\n      locals: { key: \"value\" }\n    )\n  %>\n</p>\n";
+
+    assert_eq!(format_source_with_options(input, options), expected);
+    assert_eq!(format_source_with_options(expected, options), expected);
+}
+
+#[test]
+fn preserves_text_adjacent_to_foldable_erb_output_child() {
+    let input = "<p>Before <%= render(partial: \"foo\", locals: { key: \"value\" }) %> after</p>\n";
+
+    assert_eq!(
+        format_source_with_options(
+            input,
+            FormatOptions {
+                line_width: 40,
+                ..FormatOptions::default()
+            }
+        ),
+        input
+    );
+}
+
+#[test]
 fn normalizes_existing_multiline_parenthesized_erb_output_arguments() {
     assert_eq!(
         format(

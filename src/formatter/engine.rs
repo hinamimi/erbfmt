@@ -203,6 +203,20 @@ impl<'a> Formatter<'a> {
             let open = normalize_tag(open).unwrap_or_else(|| open.to_string());
             let close = normalize_close_tag(close).unwrap_or_else(|| close.to_string());
             let inline = format!("{open}{content}{close}");
+
+            if !self.can_keep_html_element_inline(&inline, depth)
+                && self.can_expand_single_foldable_erb_child(children)
+            {
+                self.write_html_element_multiline(
+                    open.as_str(),
+                    close.as_str(),
+                    children,
+                    None,
+                    depth,
+                );
+                return;
+            }
+
             let inline_width_target = if children.is_empty() {
                 inline.as_str()
             } else {
@@ -302,6 +316,22 @@ impl<'a> Formatter<'a> {
         let trimmed = inline.trim();
 
         !trimmed.contains('\n') && self.fits_on_line(depth, trimmed)
+    }
+
+    fn can_expand_single_foldable_erb_child(&self, children: &[Node]) -> bool {
+        let mut foldable_erb_children = 0;
+
+        for child in children {
+            match child.unspanned() {
+                Node::HtmlText(text) if text.trim().is_empty() => {}
+                Node::ErbOutput(tag) if formatted_erb_code_lines(&tag.code).len() > 1 => {
+                    foldable_erb_children += 1;
+                }
+                _ => return false,
+            }
+        }
+
+        foldable_erb_children == 1
     }
 
     fn write_tag(&mut self, raw: &str, depth: usize) {
