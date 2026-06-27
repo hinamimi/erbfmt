@@ -52,9 +52,7 @@ fn normalized_erb_code_lines(code: &str) -> Vec<String> {
 }
 
 pub(super) fn formatted_erb_code_lines(code: &str) -> Vec<String> {
-    if !code.contains('\n')
-        && let Some(lines) = ruby_wrap::fold_command_call(code)
-    {
+    if let Some(lines) = ruby_wrap::fold_command_call(code) {
         return lines;
     }
 

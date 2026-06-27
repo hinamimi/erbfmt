@@ -16,12 +16,8 @@ pub(super) fn fold_command_call(code: &str) -> Option<Vec<String>> {
     let mut lines = vec![format!("{callee}(")];
 
     for (index, argument) in arguments.iter().enumerate() {
-        let comma = if index + 1 == arguments.len() {
-            ""
-        } else {
-            ","
-        };
-        lines.push(format!("  {argument}{comma}"));
+        let comma = index + 1 < arguments.len();
+        lines.extend(format_argument_lines(argument, comma));
     }
 
     match block_suffix {
@@ -30,6 +26,91 @@ pub(super) fn fold_command_call(code: &str) -> Option<Vec<String>> {
     }
 
     Some(lines)
+}
+
+fn format_argument_lines(argument: &str, comma: bool) -> Vec<String> {
+    let mut lines = normalize_multiline_argument(argument);
+    let last_index = lines.len().saturating_sub(1);
+
+    for (index, line) in lines.iter_mut().enumerate() {
+        *line = format!("  {line}");
+
+        if comma && index == last_index {
+            line.push(',');
+        }
+    }
+
+    lines
+}
+
+fn normalize_multiline_argument(argument: &str) -> Vec<String> {
+    let mut lines = trim_blank_edges(argument.lines().collect());
+    let common_indent = common_argument_indent(&lines);
+
+    lines
+        .drain(..)
+        .map(|line| {
+            strip_leading_whitespace(line, common_indent)
+                .trim_end()
+                .to_string()
+        })
+        .collect()
+}
+
+fn common_argument_indent(lines: &[&str]) -> usize {
+    let non_empty_lines = lines.iter().copied().filter(|line| !line.trim().is_empty());
+
+    if lines
+        .first()
+        .is_some_and(|line| leading_whitespace_count(line) == 0)
+    {
+        let skipped_first = lines
+            .iter()
+            .copied()
+            .skip(1)
+            .filter(|line| !line.trim().is_empty())
+            .map(leading_whitespace_count)
+            .min();
+
+        if let Some(indent) = skipped_first {
+            return indent;
+        }
+    }
+
+    non_empty_lines
+        .map(leading_whitespace_count)
+        .min()
+        .unwrap_or(0)
+}
+
+fn trim_blank_edges(mut lines: Vec<&str>) -> Vec<&str> {
+    while lines.first().is_some_and(|line| line.trim().is_empty()) {
+        lines.remove(0);
+    }
+
+    while lines.last().is_some_and(|line| line.trim().is_empty()) {
+        lines.pop();
+    }
+
+    lines
+}
+
+fn leading_whitespace_count(line: &str) -> usize {
+    line.chars().take_while(|ch| ch.is_whitespace()).count()
+}
+
+fn strip_leading_whitespace(line: &str, count: usize) -> &str {
+    if count == 0 {
+        return line;
+    }
+
+    for (stripped, (index, ch)) in line.char_indices().enumerate() {
+        if stripped == count || !ch.is_whitespace() {
+            return &line[index..];
+        }
+    }
+
+    ""
 }
 
 fn split_call(code: &str) -> Option<(&str, &str)> {
@@ -312,6 +393,24 @@ mod tests {
                 "  model: user,".to_string(),
                 "  url: user_path(user)".to_string(),
                 ") do |form|".to_string(),
+            ])
+        );
+    }
+
+    #[test]
+    fn folds_existing_multiline_parenthesized_call_arguments() {
+        assert_eq!(
+            fold_command_call(
+                "react_component(\"ReactComponent\",\n  props: {\n    key1: \"value1\",\n    key2: \"value2\"\n  }\n)"
+            ),
+            Some(vec![
+                "react_component(".to_string(),
+                r#"  "ReactComponent","#.to_string(),
+                "  props: {".to_string(),
+                r#"    key1: "value1","#.to_string(),
+                r#"    key2: "value2""#.to_string(),
+                "  }".to_string(),
+                ")".to_string(),
             ])
         );
     }

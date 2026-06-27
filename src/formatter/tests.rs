@@ -645,6 +645,16 @@ fn normalizes_multiline_erb_output_opening_marker_inside_html() {
 }
 
 #[test]
+fn normalizes_existing_multiline_parenthesized_erb_output_arguments() {
+    assert_eq!(
+        format(
+            "<%= react_component(\"ReactComponent\",\n  props: {\n    key1: \"value1\",\n    key2: \"value2\"\n  }\n) %>\n"
+        ),
+        "<%=\n  react_component(\n    \"ReactComponent\",\n    props: {\n      key1: \"value1\",\n      key2: \"value2\"\n    }\n  )\n%>\n"
+    );
+}
+
+#[test]
 fn formats_if_elsif_else_branches() {
     assert_eq!(
         format(
