@@ -1,18 +1,30 @@
 {
   "name": "erbfmt-vscode",
   "displayName": "erbfmt",
-  "description": "Format and lint ERB and HTML+ERB with erbfmt.",
+  "description": "Format, lint, highlight, and comment ERB and HTML+ERB templates with erbfmt.",
   "version": "0.1.5",
   "publisher": "erbfmt",
   "license": "MIT",
+  "preview": true,
   "repository": {
     "type": "git",
     "url": "https://github.com/hinamimi/erbfmt.git",
     "directory": "editors/vscode"
   },
+  "bugs": {
+    "url": "https://github.com/hinamimi/erbfmt/issues"
+  },
+  "homepage": "https://hinamimi.github.io/erbfmt/",
   "icon": "media/icon.png",
   "engines": {
     "vscode": "^1.85.0"
+  },
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": "limited",
+      "description": "Syntax highlighting is available, but formatting and diagnostics execute the configured erbfmt command."
+    },
+    "virtualWorkspaces": false
   },
   "categories": [
     "Formatters",

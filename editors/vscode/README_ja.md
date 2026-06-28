@@ -2,7 +2,7 @@
 
 [English](https://github.com/hinamimi/erbfmt/blob/main/editors/vscode/README.md)
 
-**VS Code上でERBとHTML+ERBをformatし、lintできます。**
+**VS Code上でERBとHTML+ERB templateをformat、lint、highlight、comment toggleできます。**
 
 ```diff
 -<div><% if user.admin? %><span>Admin</span><% end %></div>
@@ -14,11 +14,17 @@
 ```
 
 高速なRust製CLI [erbfmt](https://github.com/hinamimi/erbfmt) をVS Codeから利用する
-ためのextensionです。formatとlintの処理はCLIに集約されるため、command line、CI、
-editorで同じ結果を得られます。
+ためのextensionです。Railsの `*.html.erb` template向けに、formatとlintの処理はCLIに
+集約されるため、command line、CI、editorで同じ結果を得られます。
 
+> [!IMPORTANT]
 > 現在のextensionは `erbfmt` binaryを同梱またはdownloadしません。formatする前に
-> CLIを別途installするか、`erbfmt.command`を設定してください。
+> CLIを別途installするか、`bundle exec erbfmt` のようなproject-local commandを
+> `erbfmt.command` に設定してください。
+
+> [!WARNING]
+> erbfmtはbeta版です。format差分を確認してからcommitし、自動実行する環境では
+> CLI versionを固定してください。
 
 ## 機能
 
@@ -31,29 +37,42 @@ editorで同じ結果を得られます。
 - CLI、追加arguments、config pathの明示的な設定
 - 解決されたcommandとworking directoryを確認する `erbfmt: Show Command`
 
-## 必要なもの
+## インストール
+
+VS Code Marketplaceから **erbfmt** をinstallし、その後 erbfmt CLI を以下のいずれかの
+方法でinstallします。
+
+### RubyGems / Bundler
+
+Rails projectではBundlerでerbfmtを固定する方法が便利です。
+
+```bash
+bundle add erbfmt --group development --require false
+```
+
+extensionにBundler経由で実行するよう設定します。
+
+```json
+{
+  "erbfmt.command": "bundle exec erbfmt"
+}
+```
+
+### GitHub Release Binary
 
 [v0.1.5 GitHub Release](https://github.com/hinamimi/erbfmt/releases/tag/v0.1.5)から
-CLIをdownloadしてinstallします。Rust toolchainがある場合はtagged sourceからも
-installできます。
+CLIをdownloadして展開し、`erbfmt` または `erbfmt.exe` を `PATH` に配置します。
+
+### Cargo
+
+Rust toolchainがある場合はtagged sourceからinstallできます。
 
 ```bash
 cargo install --git https://github.com/hinamimi/erbfmt --tag v0.1.5 --locked
 erbfmt --version
 ```
 
-releaseではprebuilt binaryとplatform-specific gem fileも提供します。
-extensionは、実行可能な `erbfmt` commandを提供するいずれのinstall方法でも利用できます。
-
-## Extensionのインストール
-
-extensionはVS Code Marketplaceへ公開していません。
-[`erbfmt-vscode-0.1.5.vsix`](https://github.com/hinamimi/erbfmt/releases/download/v0.1.5/erbfmt-vscode-0.1.5.vsix)
-をdownloadしてlocal installします。
-
-```bash
-code --install-extension erbfmt-vscode-0.1.5.vsix
-```
+## クイックスタート
 
 `*.html.erb`を開いて **Format Document** を実行します。formatterの選択を求められた
 場合は **erbfmt** を選択してください。
@@ -68,8 +87,6 @@ code --install-extension erbfmt-vscode-0.1.5.vsix
   }
 }
 ```
-
-## クイックスタート
 
 Rails projectのrootにconfig fileを作成します。
 
@@ -86,7 +103,7 @@ lint diagnosticsは `erbfmt --lint` から生成し、format diagnosticsはerbfm
 
 ## Bundlerで使う
 
-erbfmtをRuby gemとして導入したprojectでは、bundle内のversionを実行できます。
+erbfmtをRuby gemとして導入したprojectでは、projectで固定したversionを実行できます。
 
 ```json
 {
@@ -140,6 +157,13 @@ formatまたはdiagnosticsが `ENOENT`や `EACCES`で失敗する場合:
 
 Shopify Ruby LSPと併用できます。このextensionは `html-erb` language idを提供し、
 `html-erb`と `erb`の両方にformatterを登録します。
+
+## Links
+
+- [erbfmt documentation](https://hinamimi.github.io/erbfmt/)
+- [CLI repository](https://github.com/hinamimi/erbfmt)
+- [Issues](https://github.com/hinamimi/erbfmt/issues)
+- [Release notes](https://github.com/hinamimi/erbfmt/releases)
 
 ## 開発
 

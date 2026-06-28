@@ -2,7 +2,8 @@
 
 [日本語](https://github.com/hinamimi/erbfmt/blob/main/editors/vscode/README_ja.md)
 
-**Format and lint ERB and HTML+ERB directly in VS Code.**
+**Format, lint, highlight, and comment ERB and HTML+ERB templates directly in
+VS Code.**
 
 ```diff
 -<div><% if user.admin? %><span>Admin</span><% end %></div>
@@ -14,11 +15,18 @@
 ```
 
 This extension adds editor integration for the fast Rust-based
-[erbfmt](https://github.com/hinamimi/erbfmt) CLI. Formatting and linting remain
-in the CLI, so command-line, CI, and editor results stay consistent.
+[erbfmt](https://github.com/hinamimi/erbfmt) CLI. It is designed for Rails
+`*.html.erb` templates and keeps formatting and linting in the CLI, so
+command-line, CI, and editor results stay consistent.
 
-> The extension does not bundle or download the `erbfmt` binary yet. Install
-> the CLI separately or configure `erbfmt.command` before formatting.
+> [!IMPORTANT]
+> This extension does not bundle or download the `erbfmt` binary yet. Install
+> the CLI separately, or configure `erbfmt.command` to run your project-local
+> command such as `bundle exec erbfmt`.
+
+> [!WARNING]
+> erbfmt is beta software. Review formatting diffs before committing them and
+> pin an exact CLI version in automated environments.
 
 ## Features
 
@@ -32,29 +40,43 @@ in the CLI, so command-line, CI, and editor results stay consistent.
 - `erbfmt: Show Command` for inspecting the resolved command and working
   directory.
 
-## Requirements
+## Install
 
-Download and install the CLI from the
-[v0.1.5 GitHub Release](https://github.com/hinamimi/erbfmt/releases/tag/v0.1.5).
-With a Rust toolchain, it can also be installed from the tagged source:
+Install **erbfmt** from the VS Code Marketplace, then install the erbfmt CLI
+using one of the methods below.
+
+### RubyGems / Bundler
+
+For Rails projects, Bundler is usually the most convenient way to pin erbfmt:
+
+```bash
+bundle add erbfmt --group development --require false
+```
+
+Configure the extension to use the bundled command:
+
+```json
+{
+  "erbfmt.command": "bundle exec erbfmt"
+}
+```
+
+### GitHub Release Binary
+
+Download the CLI from the
+[v0.1.5 GitHub Release](https://github.com/hinamimi/erbfmt/releases/tag/v0.1.5),
+extract it, and place `erbfmt` or `erbfmt.exe` on your `PATH`.
+
+### Cargo
+
+With a Rust toolchain, install the tagged source directly:
 
 ```bash
 cargo install --git https://github.com/hinamimi/erbfmt --tag v0.1.5 --locked
 erbfmt --version
 ```
 
-The release provides prebuilt binaries and platform-specific gem files. The
-extension can use any installation that exposes an executable `erbfmt` command.
-
-## Install the Extension
-
-The extension is not published to the VS Code Marketplace. Download
-[`erbfmt-vscode-0.1.5.vsix`](https://github.com/hinamimi/erbfmt/releases/download/v0.1.5/erbfmt-vscode-0.1.5.vsix)
-and install it locally:
-
-```bash
-code --install-extension erbfmt-vscode-0.1.5.vsix
-```
+## Quick Start
 
 Open a `*.html.erb` file and run **Format Document**. If VS Code asks for a
 formatter, select **erbfmt**.
@@ -69,8 +91,6 @@ To format automatically on save:
   }
 }
 ```
-
-## Quick Start
 
 Create a configuration file at the root of the Rails project:
 
@@ -89,7 +109,7 @@ them manually.
 
 ## Using Bundler
 
-Projects that install erbfmt as a Ruby gem can run the bundled version:
+Projects that install erbfmt as a Ruby gem can run the project-pinned version:
 
 ```json
 {
@@ -143,6 +163,13 @@ If formatting or diagnostics fail with `ENOENT` or `EACCES`:
 
 The extension can coexist with Shopify Ruby LSP. It contributes the
 `html-erb` language id and registers formatting for both `html-erb` and `erb`.
+
+## Links
+
+- [erbfmt documentation](https://hinamimi.github.io/erbfmt/)
+- [CLI repository](https://github.com/hinamimi/erbfmt)
+- [Issues](https://github.com/hinamimi/erbfmt/issues)
+- [Release notes](https://github.com/hinamimi/erbfmt/releases)
 
 ## Development
 
