@@ -101,6 +101,12 @@ The gemspec uses an explicit file list that includes the staged binary. Do not
 derive `spec.files` only from `git ls-files`, because the binary is intentionally
 untracked.
 
+New platform gems also include `erbfmt.gemspec` itself. This makes `gem unpack`
+produce a Bundler-readable path gem without asking users to run
+`gem spec --ruby` manually. When that unpacked gemspec is evaluated from a
+directory named `erbfmt-<version>-<platform>`, it infers the same platform from
+the directory name.
+
 ## Launcher Resolution
 
 `Erbfmt::Binary.path` resolves in this order:
@@ -171,15 +177,13 @@ curl -L \
   https://github.com/hinamimi/erbfmt/releases/download/v0.1.4/erbfmt-0.1.4-x86_64-linux-gnu.gem
 ```
 
-Then unpack it into `vendor/gems` and write the gemspec into the unpacked
-directory. `gem unpack` extracts the gem files, but it does not create a
-Bundler-readable `.gemspec` file by itself.
+Then unpack it into `vendor/gems`. New erbfmt gems include
+`erbfmt.gemspec`, so Bundler can read the unpacked directory directly as a path
+gem.
 
 ```bash
 mkdir -p vendor/gems
 gem unpack erbfmt-0.1.4-x86_64-linux-gnu.gem --target vendor/gems
-gem spec erbfmt-0.1.4-x86_64-linux-gnu.gem --ruby \
-  > vendor/gems/erbfmt-0.1.4-x86_64-linux-gnu/erbfmt.gemspec
 ```
 
 Add the unpacked gem as a path dependency without auto-requiring Ruby code:
@@ -204,6 +208,10 @@ the project should be installable by other developers without a separate erbfmt
 download step. You may also commit the downloaded `.gem` under `vendor/cache`
 as the original release artifact, but the Gemfile path entry reads the unpacked
 directory.
+
+Older erbfmt gems that do not include `erbfmt.gemspec` still need the manual
+`gem spec <asset>.gem --ruby > vendor/gems/.../erbfmt.gemspec` workaround. New
+release gems should not.
 
 The package must match the local RubyGems platform:
 

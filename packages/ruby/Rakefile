@@ -103,6 +103,27 @@ namespace :gem do
     abort "unexpected gem platform: #{specification.platform}" unless specification.platform.to_s == platform
     abort "unexpected gem version: #{specification.version}" unless specification.version.to_s == Erbfmt::VERSION
     abort "packaged binary is missing: #{packaged_binary}" unless specification.files.include?(packaged_binary)
+    abort "gemspec is missing from package files" unless specification.files.include?("erbfmt.gemspec")
+
+    Dir.mktmpdir("erbfmt-gem-unpack") do |directory|
+      with_unbundled_env do
+        sh(gem_command, "unpack", package, "--target", directory)
+      end
+
+      unpacked_gemspec = File.join(directory, "erbfmt-#{Erbfmt::VERSION}-#{platform}", "erbfmt.gemspec")
+      abort "unpacked gemspec is missing: #{unpacked_gemspec}" unless File.file?(unpacked_gemspec)
+
+      unpacked_specification = begin
+        previous_verbose = $VERBOSE
+        $VERBOSE = nil
+        Gem::Specification.load(unpacked_gemspec)
+      ensure
+        $VERBOSE = previous_verbose
+      end
+      abort "unpacked gemspec could not be loaded: #{unpacked_gemspec}" if unpacked_specification.nil?
+      abort "unexpected unpacked gem platform: #{unpacked_specification.platform}" unless unpacked_specification.platform.to_s == platform
+      abort "unexpected unpacked gem version: #{unpacked_specification.version}" unless unpacked_specification.version.to_s == Erbfmt::VERSION
+    end
   end
 
   desc "Build, install, and execute the platform-specific gem in isolation"

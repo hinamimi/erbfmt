@@ -57,8 +57,7 @@ not published to crates.io, npm, or RubyGems.org, so registry-based installation
 commands are not currently supported.
 
 To manage erbfmt through a Rails project's Gemfile, download the matching
-platform gem, unpack it into `vendor/gems`, write its gemspec, and reference it
-as a path gem:
+platform gem, unpack it into `vendor/gems`, and reference it as a path gem:
 
 ```bash
 curl -L \
@@ -66,8 +65,6 @@ curl -L \
   https://github.com/hinamimi/erbfmt/releases/download/v0.1.4/erbfmt-0.1.4-x86_64-linux-gnu.gem
 mkdir -p vendor/gems
 gem unpack erbfmt-0.1.4-x86_64-linux-gnu.gem --target vendor/gems
-gem spec erbfmt-0.1.4-x86_64-linux-gnu.gem --ruby \
-  > vendor/gems/erbfmt-0.1.4-x86_64-linux-gnu/erbfmt.gemspec
 ```
 
 ```ruby
@@ -83,9 +80,12 @@ bundle install
 bundle exec erbfmt --version
 ```
 
+New release gems include the gemspec needed by Bundler. If an older downloaded
+asset does not unpack `erbfmt.gemspec`, use the fallback in the Ruby gem docs.
+
 Use the gem matching each development platform. See
 [Ruby Gem Wrapper](docs/RubyGem.md#installing-from-a-gemfile) for platform
-names, why `gem spec --ruby` is needed, and multi-platform projects.
+names, older gem fallback steps, and multi-platform projects.
 
 ## Quick Start
 

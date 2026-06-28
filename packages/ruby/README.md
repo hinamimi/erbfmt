@@ -16,7 +16,7 @@ erbfmt --version
 
 Since the gem is not on RubyGems.org, Bundler cannot resolve it from a normal
 `source` entry. Download the matching release asset, unpack it into
-`vendor/gems`, and write the gemspec that Bundler needs for a path dependency:
+`vendor/gems`, and reference the unpacked path dependency:
 
 ```bash
 curl -L \
@@ -24,8 +24,6 @@ curl -L \
   https://github.com/hinamimi/erbfmt/releases/download/v0.1.4/erbfmt-0.1.4-x86_64-linux-gnu.gem
 mkdir -p vendor/gems
 gem unpack erbfmt-0.1.4-x86_64-linux-gnu.gem --target vendor/gems
-gem spec erbfmt-0.1.4-x86_64-linux-gnu.gem --ruby \
-  > vendor/gems/erbfmt-0.1.4-x86_64-linux-gnu/erbfmt.gemspec
 ```
 
 Add the unpacked gem to the project Gemfile:
@@ -45,12 +43,15 @@ bundle install
 bundle exec erbfmt --version
 ```
 
+New release gems include the gemspec needed by Bundler. If an older downloaded
+asset does not unpack `erbfmt.gemspec`, use the fallback in the Ruby gem docs.
+
 Commit the unpacked `vendor/gems/erbfmt-...` directory and `Gemfile.lock` when
 the project should be installable by other team members without a separate
 download step. You can also commit the downloaded `.gem` under `vendor/cache`
 as the original release artifact. See
 [RubyGem.md](../../docs/RubyGem.md#installing-from-a-gemfile) for supported
-platforms, multi-platform guidance, and why `gem spec --ruby` is needed.
+platforms, older gem fallback steps, and multi-platform guidance.
 
 The wrapper packages one Rust binary and does not implement formatting or
 linting in Ruby.

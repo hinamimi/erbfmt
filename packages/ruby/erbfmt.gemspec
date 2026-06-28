@@ -2,9 +2,18 @@
 
 require_relative "lib/erbfmt/version"
 
+erbfmt_version = Erbfmt::VERSION
+configured_platform = ENV["ERBFMT_GEM_PLATFORM"]
+unpacked_platform = File.basename(__dir__).match(/\Aerbfmt-#{Regexp.escape(erbfmt_version)}-(.+)\z/)
+erbfmt_platform = if configured_platform.nil? || configured_platform.empty?
+                    unpacked_platform ? Gem::Platform.new(unpacked_platform[1]) : Gem::Platform::RUBY
+                  else
+                    Gem::Platform.new(configured_platform)
+                  end
+
 Gem::Specification.new do |spec|
   spec.name = "erbfmt"
-  spec.version = Erbfmt::VERSION
+  spec.version = erbfmt_version
   spec.authors = ["erbfmt contributors"]
   spec.summary = "Ruby wrapper for the erbfmt formatter and linter"
   spec.description = "A thin Ruby launcher for the platform-specific erbfmt Rust binary."
@@ -20,13 +29,9 @@ Gem::Specification.new do |spec|
   spec.bindir = "exe"
   spec.executables = ["erbfmt"]
   spec.require_paths = ["lib"]
-  configured_platform = ENV["ERBFMT_GEM_PLATFORM"]
-  spec.platform = if configured_platform.nil? || configured_platform.empty?
-                    Gem::Platform::RUBY
-                  else
-                    Gem::Platform.new(configured_platform)
-                  end
+  spec.platform = erbfmt_platform
   spec.files = [
+    "erbfmt.gemspec",
     "LICENSE.txt",
     "README.md",
     "exe/erbfmt",
