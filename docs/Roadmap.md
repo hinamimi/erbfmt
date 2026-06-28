@@ -78,7 +78,8 @@ erbfmt は `*.html.erb` 向けの formatter / linter です。
 - Ruby AST はまだ使っていない。
 - Ruby expression の folding は、構文的に安全に分割できる範囲だけ扱う。
 - CSS の `display` や Rails helper の semantic analysis はしない。
-- RubyGems.org、crates.io、npm、VSCode Marketplace にはまだ公開しない。
+- RubyGems.org と VSCode Marketplace は公開導線として扱う。
+- crates.io、npm、Open VSX はまだ公開しない。
 - VSCode extension は Rust binary をまだ bundle / download しない。
 - formatter が安全に判断できない領域は、整形しないか lint / diagnostic に寄せる。
 
@@ -86,7 +87,8 @@ erbfmt は `*.html.erb` 向けの formatter / linter です。
 
 ### Milestone A: v0.1.x release hygiene
 
-GitHub Release だけで配布する前提で、release 作業を安定させます。
+RubyGems.org、VSCode Marketplace、GitHub Release を併用する前提で、release 作業を
+安定させます。
 
 やること:
 
@@ -99,8 +101,8 @@ GitHub Release だけで配布する前提で、release 作業を安定させま
 完了条件:
 
 - 新しい patch release を迷わず作れる。
-- GitHub Release から CLI / gem / VSIX を導入する説明が破綻していない。
-- registry に公開しない期間の運用が明確になっている。
+- RubyGems.org から Bundler / global install する説明が破綻していない。
+- GitHub Release asset は standalone binary / 手動 fallback として説明されている。
 
 ### Milestone B: formatter safety hardening
 
@@ -176,16 +178,14 @@ VSCode で「入れたら動く」に近づけます。
 - local checkout 開発と installed extension の binary resolution が混ざらない。
 - Marketplace 公開を始めるかどうか判断できる。
 
-### Milestone F: package registry strategy
+### Milestone F: remaining package registry strategy
 
-GitHub Release 配布から、registry 公開へ進むか判断します。
+未公開の registry へ進むか判断します。
 
 候補:
 
-- RubyGems.org
 - crates.io
 - npm
-- VSCode Marketplace
 - Open VSX
 
 やること:

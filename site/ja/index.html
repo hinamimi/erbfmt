@@ -41,7 +41,7 @@
         <p class="lede">RailsのERBとHTML+ERB向けの高速な、Prettier/BiomeのようなFormatter/Linterです。</p>
         <div class="actions">
           <a class="action primary" href="#install">はじめる</a>
-          <a class="action" href="https://github.com/hinamimi/erbfmt/releases/tag/v0.1.5">v0.1.5をdownload</a>
+          <a class="action" href="https://rubygems.org/gems/erbfmt">RubyGems</a>
         </div>
         <pre aria-label="整形例"><code class="nohighlight"><span class="diff-remove">-&lt;div&gt;&lt;% if user.admin? %&gt;&lt;span&gt;Admin&lt;/span&gt;&lt;% end %&gt;&lt;/div&gt;</span>
 <span class="diff-add">+&lt;div&gt;</span>
@@ -66,13 +66,13 @@
         </div>
 
         <h2 id="install">インストール</h2>
-        <p><a href="https://github.com/hinamimi/erbfmt/releases/tag/v0.1.5">v0.1.5 release</a>からLinux、macOS、Windows向けarchiveをdownloadして展開し、<code>erbfmt</code>または <code>erbfmt.exe</code>を <code>PATH</code>へ配置します。</p>
-        <p>Rust toolchainがある場合はtagged sourceから直接installできます。</p>
-        <pre><code class="language-bash">cargo install --git https://github.com/hinamimi/erbfmt --tag v0.1.5 --locked</code></pre>
-        <p>commandが利用できることを確認します。</p>
-        <pre><code class="language-bash">erbfmt --version
-erbfmt --help</code></pre>
-        <div class="callout"><p>初期releaseはGitHub Releasesだけで配布し、crates.io、npm、RubyGems.org、extension marketplaceには登録しません。</p></div>
+        <p>Rails projectでは、Bundlerでerbfmtを追加して全員とCIで同じversionを使う方法を推奨します。</p>
+        <pre><code class="language-bash">bundle add erbfmt --group development --require false
+bundle exec erbfmt --version</code></pre>
+        <p>手元でglobal commandとして使いたい場合は、RubyGemを直接installします。</p>
+        <pre><code class="language-bash">gem install erbfmt -v 0.1.5
+erbfmt --version</code></pre>
+        <div class="callout"><p>projectではformatter versionを固定できるBundlerを優先してください。standalone binaryは<a href="https://github.com/hinamimi/erbfmt/releases/tag/v0.1.5">v0.1.5 release</a>からも入手できます。</p></div>
 
         <h2 id="quick-start">クイックスタート</h2>
         <p>Rails projectに <code>erbfmt.json</code>を作り、templateをformatまたはlintします。</p>

@@ -100,6 +100,19 @@ HTML/ERB lines are split so ERB code is not executed inside an HTML comment.
 
 ## Local Package
 
+For normal use, install the extension from the VS Code Marketplace and install
+the CLI through Bundler or RubyGems:
+
+```bash
+bundle add erbfmt --group development --require false
+```
+
+```json
+{
+  "erbfmt.command": "bundle exec erbfmt"
+}
+```
+
 Build a local VSIX package:
 
 From the repository root:

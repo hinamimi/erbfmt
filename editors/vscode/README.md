@@ -51,15 +51,27 @@ For Rails projects, Bundler is usually the most convenient way to pin erbfmt:
 
 ```bash
 bundle add erbfmt --group development --require false
+bundle exec erbfmt --version
 ```
 
-Configure the extension to use the bundled command:
+Configure the extension to use the project-pinned command:
 
 ```json
 {
   "erbfmt.command": "bundle exec erbfmt"
 }
 ```
+
+For a global local command, install the RubyGem directly:
+
+```bash
+gem install erbfmt -v 0.1.5
+erbfmt --version
+```
+
+The global install works with the default extension setting
+`"erbfmt.command": "erbfmt"`. Bundler is preferred for project use because it
+pins the formatter version.
 
 ### GitHub Release Binary
 

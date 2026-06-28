@@ -48,14 +48,14 @@ There is no Ruby formatter API and no Ruby implementation of ERB parsing.
 Platform-specific gems provide the intended user experience:
 
 ```bash
-gem install --local ./erbfmt-0.1.5-x86_64-linux-gnu.gem
+gem install erbfmt -v 0.1.5
 erbfmt --version
 ```
 
-Users do not need a Rust toolchain. Once the matching `.gem` file has been
-downloaded from GitHub Releases, installation can be local and offline. After
-erbfmt is published to RubyGems.org, the Gemfile workflow can become the normal
-`bundle add erbfmt --group development --require false` flow.
+Users do not need a Rust toolchain. For projects, the normal workflow is
+`bundle add erbfmt --group development --require false`; for quick local use,
+`gem install erbfmt -v 0.1.5` provides a global `erbfmt` command. GitHub Release
+`.gem` files remain useful for offline installation and release debugging.
 
 A source-build fallback would require Rust and duplicate the concerns already
 handled by the release-binary workflow. A generic gem with install-time download
@@ -179,8 +179,8 @@ tests from the tagged commit.
 
 #### RubyGems.org
 
-After the gems are published to RubyGems.org, Bundler can resolve erbfmt from
-the normal gem source:
+For Rails projects, use Bundler so every developer and CI job runs the same
+formatter version:
 
 ```bash
 bundle add erbfmt --group development --require false
@@ -202,12 +202,24 @@ Bundler installs the fallback on an unsupported platform, `bundle exec erbfmt`
 will fail at runtime until a matching platform gem is published or
 `ERBFMT_BINARY` points to a local binary.
 
+#### Global Installation
+
+For a global local command, install erbfmt directly from RubyGems.org:
+
+```bash
+gem install erbfmt -v 0.1.5
+erbfmt --version
+```
+
+The global install is convenient for quick trials. Prefer Bundler inside Rails
+projects because it pins the formatter version in `Gemfile.lock`.
+
 #### GitHub Release Fallback
 
-The initial GitHub-only distribution does not provide a RubyGems package index.
-Bundler therefore cannot resolve erbfmt from a normal `source` entry alone. The
-most reliable Gemfile setup is to unpack the platform-specific release gem into
-the project and reference it as a path gem.
+GitHub Release assets are still useful for offline installation, release
+debugging, or versions that have not been published to RubyGems.org. In that
+case, unpack the platform-specific release gem into the project and reference it
+as a path gem.
 
 For glibc Linux x64, first download the matching GitHub Release asset:
 
@@ -281,7 +293,8 @@ end
 If your local RubyGems platform string differs from the release asset name,
 map it explicitly in the Gemfile.
 
-One-off local installation does not need a Gemfile:
+One-off local installation from a downloaded release asset does not need a
+Gemfile:
 
 ```bash
 gem install --local ./erbfmt-0.1.5-x86_64-linux-gnu.gem

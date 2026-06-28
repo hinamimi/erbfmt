@@ -2,32 +2,45 @@
 
 This gem is a thin launcher for the erbfmt Rust binary.
 
-Initial releases are distributed as `.gem` files attached to the
-[erbfmt GitHub Release](https://github.com/hinamimi/erbfmt/releases/tag/v0.1.5).
-Newer releases may also be published to RubyGems.org. To install a downloaded
-release gem directly, choose the file matching the local platform. For example,
-on glibc Linux x64:
-
-```bash
-gem install --local ./erbfmt-0.1.5-x86_64-linux-gnu.gem
-erbfmt --version
-```
-
 ## Installing from a Gemfile
 
-If the erbfmt version you want is available on RubyGems.org, use Bundler:
+For Rails projects, use Bundler so the formatter version is pinned for every
+developer and CI job:
 
 ```bash
 bundle add erbfmt --group development --require false
 bundle exec erbfmt --version
 ```
 
+Or write the dependency manually:
+
+```ruby
+group :development do
+  gem "erbfmt", require: false
+end
+```
+
+## Global Installation
+
+For a global local command, install erbfmt directly from RubyGems.org:
+
+```bash
+gem install erbfmt -v 0.1.5
+erbfmt --version
+```
+
+The global install is convenient for quick trials, but Bundler is preferred for
+project use because it pins the formatter version.
+
 RubyGems.org releases include platform-specific gems with the packaged Rust
 binary and may include `erbfmt-0.1.5.gem` as a binary-free Bundler fallback for
 multi-platform lockfiles. The fallback resolves dependency installation but
 needs either a matching platform gem or `ERBFMT_BINARY` to run.
 
-If the version is only available as a GitHub Release asset, download the
+## GitHub Release Fallback
+
+If you need an offline install or a version only available as a GitHub Release
+asset, download the
 matching release asset, unpack it into `vendor/gems`, and reference the
 unpacked path dependency:
 

@@ -5,9 +5,11 @@ gems, and editor extensions should stay thin wrappers around that binary.
 
 ## Decision
 
-The first public distribution consists entirely of assets attached to a release
-in `https://github.com/hinamimi/erbfmt`: prebuilt `erbfmt` binaries, Ruby gems,
-checksums, and a thin VSIX.
+The first public distribution started with assets attached to a GitHub Release.
+The default user-facing installation path is now RubyGems.org for the CLI and
+the VS Code Marketplace for the editor extension. GitHub Releases continue to
+host standalone binaries, checksums, Ruby gem assets, and VSIX files for manual
+or offline installation.
 
 Local development remains:
 
@@ -22,22 +24,44 @@ expects a separately installed or configured binary.
 
 ## Options
 
-### Local `cargo install`
+### RubyGems.org
 
-Status: current path.
+Status: default user-facing CLI installation path.
 
 Pros:
 
-- Simple and already documented.
-- Good for contributors and early testers.
-- Avoids premature release automation.
+- Natural for Rails projects.
+- Bundler pins erbfmt in `Gemfile.lock`.
+- Does not require a Rust toolchain for users on supported platforms.
 
 Cons:
 
-- Requires a Rust toolchain.
-- Awkward for editor-only users.
+- Requires platform-specific binary gem coverage.
+- Unsupported platforms may resolve the fallback gem but still need a binary.
 
-Use this for local development until public binaries exist.
+Recommended project install:
+
+```bash
+bundle add erbfmt --group development --require false
+bundle exec erbfmt --version
+```
+
+Global install for quick trials:
+
+```bash
+gem install erbfmt -v 0.1.5
+erbfmt --version
+```
+
+### Local `cargo install`
+
+Status: development path.
+
+Use this for local development or source-based testing:
+
+```bash
+cargo install --path .
+```
 
 ### Prebuilt Release Binaries
 
@@ -95,7 +119,7 @@ after they are built and verified from the release tag. See
 
 ### VSCode Binary Handling
 
-Status: publish a thin VSIX with `0.1.0`; defer bundling or download logic.
+Status: publish a thin VSIX; defer bundling or download logic.
 
 The VSCode extension currently expects an installed or configured binary. Once
 prebuilt release binaries exist, the extension can either:
@@ -103,20 +127,18 @@ prebuilt release binaries exist, the extension can either:
 - keep using `erbfmt.command` and document installation, or
 - download/cache a matching binary from release assets.
 
-The `0.1.0` VSIX is attached to the GitHub Release and is not published to the
-VSCode Marketplace. It expects `erbfmt` on `PATH` or an explicit
-`erbfmt.command`. Bundling large binaries directly into the VSIX should be
-avoided until package size and platform strategy are clear.
+The extension is published through the VS Code Marketplace and a VSIX is also
+attached to GitHub Releases. It expects `erbfmt` on `PATH` or an explicit
+`erbfmt.command`, such as `bundle exec erbfmt`. Bundling large binaries directly
+into the VSIX should be avoided until package size and platform strategy are
+clear.
 
 ### Registry Policy
 
-Current pre-1.0 releases use GitHub Release assets first. Standalone binaries,
-checksums, Ruby gems, and the VSIX are downloaded from the same release.
-
-Do not publish current pre-1.0 releases to RubyGems.org, crates.io, npm,
-GitHub Packages, the VSCode Marketplace, or Open VSX. Registry publication can
-be reconsidered after the release process and artifact formats have remained
-stable for a while.
+Current pre-1.0 releases use RubyGems.org for the Ruby CLI wrapper and the VS
+Code Marketplace for the editor extension. GitHub Releases remain the canonical
+place for standalone binaries, checksums, gem assets, and VSIX files. crates.io,
+npm, GitHub Packages, and Open VSX remain deferred.
 
 ## Release Version
 

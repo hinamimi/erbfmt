@@ -48,15 +48,26 @@ Rails projectではBundlerでerbfmtを固定する方法が便利です。
 
 ```bash
 bundle add erbfmt --group development --require false
+bundle exec erbfmt --version
 ```
 
-extensionにBundler経由で実行するよう設定します。
+extensionにprojectで固定したcommandを使うよう設定します。
 
 ```json
 {
   "erbfmt.command": "bundle exec erbfmt"
 }
 ```
+
+手元でglobal commandとして使いたい場合は、RubyGemを直接installします。
+
+```bash
+gem install erbfmt -v 0.1.5
+erbfmt --version
+```
+
+global installはdefault設定の `"erbfmt.command": "erbfmt"` で動きます。projectでは
+formatter versionを固定できるBundlerを優先してください。
 
 ### GitHub Release Binary
 

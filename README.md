@@ -25,12 +25,36 @@ first-party VSCode extension.
 > automated environments.
 
 > erbfmt is currently in pre-release development. Version `0.1.5` is available
-> through GitHub Releases. Initial releases are not registered with package
-> indexes or extension marketplaces.
+> through RubyGems.org and GitHub Releases.
 
 ## Install
 
-Download the archive for your platform from the
+For Rails projects, install erbfmt through Bundler so every developer and CI
+job uses the same pinned version:
+
+```bash
+bundle add erbfmt --group development --require false
+bundle exec erbfmt --version
+```
+
+Then run erbfmt through Bundler:
+
+```bash
+bundle exec erbfmt --write app/views/users/show.html.erb
+```
+
+For a global local command, install the RubyGem directly:
+
+```bash
+gem install erbfmt -v 0.1.5
+erbfmt --version
+```
+
+The global install is convenient for quick trials, but Bundler is preferred for
+project use because it pins the formatter version.
+
+Alternative installation methods are still available. Download a standalone
+archive from the
 [v0.1.5 release](https://github.com/hinamimi/erbfmt/releases/tag/v0.1.5), extract
 it, and place `erbfmt` or `erbfmt.exe` on your `PATH`.
 
@@ -45,58 +69,8 @@ With a Rust toolchain, install the tagged source directly from GitHub:
 cargo install --git https://github.com/hinamimi/erbfmt --tag v0.1.5 --locked
 ```
 
-Confirm that the command is available:
-
-```bash
-erbfmt --version
-erbfmt --help
-```
-
-The release also provides `.gem` files and a VSIX. erbfmt is not published to
-crates.io, npm, or the VS Code Marketplace. RubyGems.org may provide platform
-gems and a Bundler fallback gem for newer releases.
-
-If the erbfmt version you want is available on RubyGems.org, manage it through a
-Rails project's Gemfile with Bundler:
-
-```bash
-bundle add erbfmt --group development --require false
-bundle exec erbfmt --version
-```
-
-If the version is only available as a GitHub Release asset, download the
-matching platform gem, unpack it into `vendor/gems`, and reference it as a path
-gem:
-
-```bash
-curl -L \
-  -o erbfmt-0.1.5-x86_64-linux-gnu.gem \
-  https://github.com/hinamimi/erbfmt/releases/download/v0.1.5/erbfmt-0.1.5-x86_64-linux-gnu.gem
-mkdir -p vendor/gems
-gem unpack erbfmt-0.1.5-x86_64-linux-gnu.gem --target vendor/gems
-```
-
-```ruby
-group :development do
-  gem "erbfmt",
-    path: "vendor/gems/erbfmt-0.1.5-x86_64-linux-gnu",
-    require: false
-end
-```
-
-```bash
-bundle install
-bundle exec erbfmt --version
-```
-
-New release gems include the gemspec needed by Bundler. If an older downloaded
-asset does not unpack `erbfmt.gemspec`, use the fallback in the Ruby gem docs.
-
-Use the gem matching each development platform when using the GitHub Release
-fallback. RubyGems.org releases may also include `erbfmt-0.1.5.gem` as a
-binary-free Bundler fallback for lockfiles with unsupported platforms. See
-[Ruby Gem Wrapper](docs/RubyGem.md#installing-from-a-gemfile) for platform
-names, older gem fallback steps, and multi-platform projects.
+See [Ruby Gem Wrapper](docs/RubyGem.md#installing-from-a-gemfile) for Bundler,
+global gem installation, and platform notes.
 
 ## Quick Start
 
@@ -190,9 +164,9 @@ untouched. See [Ignore Directives](docs/Ignore.md) for the supported syntax.
 ## VSCode
 
 The first-party extension provides `html-erb` syntax highlighting, document
-formatting, diagnostics, and ERB-safe comment toggling. It currently needs a
-local VSIX installation and an available `erbfmt` command because it is not yet
-published to the Marketplace.
+formatting, diagnostics, and ERB-safe comment toggling. Install the extension
+from the VS Code Marketplace, then install the erbfmt CLI through Bundler,
+RubyGems, or a standalone release binary.
 
 See [VSCode Integration](docs/VSCode.md) for current installation and command
 resolution details.
@@ -208,8 +182,6 @@ resolution details.
 - Preformatted or format-sensitive content such as `pre`, `textarea`, `script`,
   `style`, `svg`, `math`, `template`, `noscript`, `contenteditable` subtrees,
   and inline `white-space` styles is kept on the safe side.
-- Initial releases are distributed only through GitHub Releases, not package
-  registries or extension marketplaces.
 
 ## Documentation
 
