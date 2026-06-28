@@ -3,9 +3,10 @@
 This gem is a thin launcher for the platform-specific erbfmt Rust binary.
 
 Initial releases are distributed as platform-specific `.gem` files attached to
-the [erbfmt GitHub Release](https://github.com/hinamimi/erbfmt/releases/tag/v0.1.4)
-rather than through RubyGems.org. Download the file matching the local platform
-and install it directly. For example, on glibc Linux x64:
+the [erbfmt GitHub Release](https://github.com/hinamimi/erbfmt/releases/tag/v0.1.4).
+Newer releases may also be published to RubyGems.org. To install a downloaded
+release gem directly, choose the file matching the local platform. For example,
+on glibc Linux x64:
 
 ```bash
 gem install --local ./erbfmt-0.1.4-x86_64-linux-gnu.gem
@@ -14,9 +15,16 @@ erbfmt --version
 
 ## Installing from a Gemfile
 
-Since the gem is not on RubyGems.org, Bundler cannot resolve it from a normal
-`source` entry. Download the matching release asset, unpack it into
-`vendor/gems`, and reference the unpacked path dependency:
+If the erbfmt version you want is available on RubyGems.org, use Bundler:
+
+```bash
+bundle add erbfmt --group development --require false
+bundle exec erbfmt --version
+```
+
+If the version is only available as a GitHub Release asset, download the
+matching release asset, unpack it into `vendor/gems`, and reference the
+unpacked path dependency:
 
 ```bash
 curl -L \
@@ -84,4 +92,5 @@ BUNDLE_GEMFILE=packages/ruby/Gemfile \
   bundle exec rake -f packages/ruby/Rakefile gem:verify
 ```
 
-The gem is not published to RubyGems.org.
+RubyGems.org publishing is an explicit release step handled from the repository
+root. See [Release.md](../../docs/Release.md#rubygemsorg-publishing).

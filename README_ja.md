@@ -50,10 +50,19 @@ erbfmt --help
 ```
 
 releaseにはplatform-specific `.gem` fileとVSIXも含まれます。crates.io、npm、
-RubyGems.orgには公開していないため、registry経由のinstall commandは利用できません。
+VS Code Marketplaceには公開していません。新しいreleaseではRubyGems.orgに
+platform gemを公開する場合があります。
 
-Rails projectのGemfileでerbfmtを管理する場合は、利用platformに対応するgemを
-downloadし、`vendor/gems`へ展開してpath gemとして参照します。
+利用したいerbfmtのversionがRubyGems.orgにある場合は、BundlerでRails projectの
+Gemfileに追加できます。
+
+```bash
+bundle add erbfmt --group development --require false
+bundle exec erbfmt --version
+```
+
+GitHub Release assetとしてだけ公開されているversionを使う場合は、利用platformに対応する
+gemをdownloadし、`vendor/gems`へ展開してpath gemとして参照します。
 
 ```bash
 curl -L \
@@ -80,8 +89,8 @@ bundle exec erbfmt --version
 assetを展開して `erbfmt.gemspec` が存在しない場合は、Ruby gem docsのfallback手順を
 使ってください。
 
-開発環境ごとに対応するplatform gemを使ってください。platform名、offline install、
-複数platformのprojectについては
+GitHub Release fallbackを使う場合は、開発環境ごとに対応するplatform gemを使ってください。
+platform名、offline install、複数platformのprojectについては
 [Ruby Gem Wrapper](docs/RubyGem.md#installing-from-a-gemfile)にまとめています。
 
 ## クイックスタート

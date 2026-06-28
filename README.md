@@ -53,11 +53,20 @@ erbfmt --help
 ```
 
 The release also provides platform-specific `.gem` files and a VSIX. erbfmt is
-not published to crates.io, npm, or RubyGems.org, so registry-based installation
-commands are not currently supported.
+not published to crates.io, npm, or the VS Code Marketplace. RubyGems.org may
+provide platform gems for newer releases.
 
-To manage erbfmt through a Rails project's Gemfile, download the matching
-platform gem, unpack it into `vendor/gems`, and reference it as a path gem:
+If the erbfmt version you want is available on RubyGems.org, manage it through a
+Rails project's Gemfile with Bundler:
+
+```bash
+bundle add erbfmt --group development --require false
+bundle exec erbfmt --version
+```
+
+If the version is only available as a GitHub Release asset, download the
+matching platform gem, unpack it into `vendor/gems`, and reference it as a path
+gem:
 
 ```bash
 curl -L \
@@ -83,7 +92,8 @@ bundle exec erbfmt --version
 New release gems include the gemspec needed by Bundler. If an older downloaded
 asset does not unpack `erbfmt.gemspec`, use the fallback in the Ruby gem docs.
 
-Use the gem matching each development platform. See
+Use the gem matching each development platform when using the GitHub Release
+fallback. See
 [Ruby Gem Wrapper](docs/RubyGem.md#installing-from-a-gemfile) for platform
 names, older gem fallback steps, and multi-platform projects.
 

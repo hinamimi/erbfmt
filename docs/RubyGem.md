@@ -10,9 +10,10 @@ The wrapper is implemented in `packages/ruby`. It can run a Rust binary through
 metadata, install it into an isolated `GEM_HOME`, and verify `erbfmt --version`.
 
 The manual `Release Binaries` workflow builds this gem on each matching native
-runner and uploads it beside the standalone archive. Initial releases attach
+runner and uploads it beside the standalone archive. Initial releases attached
 those exact verified artifacts to GitHub Releases without publishing them to a
-package registry.
+package registry. The v0.1.5 release is the planned point for also publishing
+the verified platform gems to RubyGems.org.
 
 ## Decision
 
@@ -43,9 +44,9 @@ erbfmt --version
 ```
 
 Users do not need a Rust toolchain. Once the matching `.gem` file has been
-downloaded from GitHub Releases, installation can be local and offline. If
-erbfmt is later published to RubyGems.org, the Gemfile workflow can become the
-normal `bundle add erbfmt --group development` flow.
+downloaded from GitHub Releases, installation can be local and offline. After
+erbfmt is published to RubyGems.org, the Gemfile workflow can become the normal
+`bundle add erbfmt --group development --require false` flow.
 
 A source-build fallback would require Rust and duplicate the concerns already
 handled by the release-binary workflow. A generic gem with install-time download
@@ -164,6 +165,30 @@ tests from the tagged commit.
 
 ### Installing from a Gemfile
 
+#### RubyGems.org
+
+After the platform gems are published to RubyGems.org, Bundler can resolve the
+matching local platform directly from the normal gem source:
+
+```bash
+bundle add erbfmt --group development --require false
+bundle exec erbfmt --version
+```
+
+Or write the dependency manually:
+
+```ruby
+group :development do
+  gem "erbfmt", require: false
+end
+```
+
+Bundler should select the platform gem that matches the current RubyGems
+platform. Unsupported platforms, including Alpine/musl and Linux arm64, still do
+not currently have a gem.
+
+#### GitHub Release Fallback
+
 The initial GitHub-only distribution does not provide a RubyGems package index.
 Bundler therefore cannot resolve erbfmt from a normal `source` entry alone. The
 most reliable Gemfile setup is to unpack the platform-specific release gem into
@@ -276,6 +301,32 @@ The current erbfmt VSCode extension can use the bundled executable with:
 The extension runs from the active document directory, allowing Bundler to find
 the project Gemfile in that directory or a parent.
 
+## RubyGems.org Publishing
+
+RubyGems.org publishing remains an explicit maintainer step after GitHub Release
+assets are built and verified. Use `scripts/publish-rubygems.sh` with the four
+platform gems downloaded from the release.
+
+The script reads the API key from `RUBYGEMS_API_KEY`, `GEM_HOST_API_KEY`,
+`API_KEY`, or matching entries in `.env`. It never prints the key. RubyGems
+itself reads `GEM_HOST_API_KEY`, so the script exports the chosen key under that
+name before running `gem push`.
+
+```bash
+mkdir -p release-assets
+gh release download v0.1.5 --pattern '*.gem' --dir release-assets
+
+scripts/publish-rubygems.sh \
+  --version 0.1.5 \
+  --asset-dir release-assets \
+  --dry-run
+
+scripts/publish-rubygems.sh \
+  --version 0.1.5 \
+  --asset-dir release-assets \
+  --yes
+```
+
 ## Build And Test Boundary
 
 The scaffold includes:
@@ -303,9 +354,9 @@ BUNDLE_GEMFILE=packages/ruby/Gemfile \
   packages/ruby/exe/erbfmt --version
 ```
 
-RubyGems.org credentials and automated gem pushes remain outside the initial
-release. Users download the matching verified gem from GitHub Releases and
-install it as a local package.
+RubyGems.org credentials must not be committed. Publishing uses the local
+environment or `.env` via `scripts/publish-rubygems.sh`, and remains separate
+from the automatic tag workflow.
 
 ## References
 

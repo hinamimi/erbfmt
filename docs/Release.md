@@ -134,6 +134,12 @@ Initial releases attach the standalone archives, checksums, platform-specific
 gems, and VSIX to GitHub Releases. They are not pushed to package registries or
 extension marketplaces.
 
+Starting with the v0.1.5 release, the platform-specific Ruby gems may also be
+published to RubyGems.org after the GitHub Release assets have been produced and
+verified. Keep RubyGems publishing as an explicit maintainer action; do not let
+the tag workflow publish gems automatically until the release process has more
+history.
+
 ## Release Contents
 
 Keep these files in the release verification surface:
@@ -215,6 +221,63 @@ matching local platform, and publish it manually.
 
 The workflow refuses to overwrite assets on an already published release. A
 rerun may update assets only while the release remains a draft.
+
+## RubyGems.org Publishing
+
+RubyGems.org publishing is a separate step after the GitHub Release workflow has
+created and verified the platform-specific `.gem` assets.
+
+Prerequisites:
+
+- a RubyGems.org API key with permission to push `erbfmt`;
+- the key available as `RUBYGEMS_API_KEY`, `GEM_HOST_API_KEY`, or `API_KEY`; or
+- a local `.env` file containing one of those names.
+
+The `.env` file must remain untracked. The publish script reads the key but never
+prints it. RubyGems itself reads `GEM_HOST_API_KEY`, so the script exports the
+chosen key under that name before running `gem push`.
+
+Download the gem assets from the draft or published GitHub Release:
+
+```bash
+mkdir -p release-assets
+gh release download v0.1.5 \
+  --pattern '*.gem' \
+  --dir release-assets
+```
+
+Validate the asset set without publishing:
+
+```bash
+scripts/publish-rubygems.sh \
+  --version 0.1.5 \
+  --asset-dir release-assets \
+  --dry-run
+```
+
+Publish all four platform gems:
+
+```bash
+scripts/publish-rubygems.sh \
+  --version 0.1.5 \
+  --asset-dir release-assets \
+  --yes
+```
+
+The script expects exactly these RubyGems assets for the version:
+
+- `erbfmt-${version}-x86_64-linux-gnu.gem`
+- `erbfmt-${version}-x86_64-darwin.gem`
+- `erbfmt-${version}-arm64-darwin.gem`
+- `erbfmt-${version}-x64-mingw-ucrt.gem`
+
+After publishing, verify from a clean Bundler project that RubyGems.org can
+resolve and install the matching platform gem:
+
+```bash
+bundle add erbfmt --group development --require false
+bundle exec erbfmt --version
+```
 
 For the next release:
 
