@@ -767,6 +767,13 @@ fn preserves_heredoc_erb_tags() {
 }
 
 #[test]
+fn preserves_self_contained_multiline_erb_case_tags() {
+    let input = "<% name = 1 %>\n\n<%\n  case name\n  when 1\n    x = \"1\"\n  when 2\n    x = \"2\"\n  end\n%>\n";
+
+    assert_eq!(format_source(input), input);
+}
+
+#[test]
 fn preserves_long_erb_block_opening_tags_when_they_are_control_flow() {
     assert_eq!(
         format_with_options(

@@ -121,6 +121,46 @@ fn tokenizes_supported_erb_control_tags() {
 }
 
 #[test]
+fn tokenizes_self_contained_erb_control_flow_as_code() {
+    let cases = [
+        "<% if user\n  greeting = \"hello\"\nend %>",
+        "<% unless hidden?\n  visible = true\nend %>",
+        "<% case name\nwhen 1\n  value = \"one\"\nend %>",
+        "<% begin\n  render\nrescue\n  nil\nend %>",
+        "<% users.each do |user|\n  user.name\nend %>",
+    ];
+
+    for input in cases {
+        let Token::ErbCode(tag) = tokenize(input).unwrap().remove(0) else {
+            panic!("{input} should be an ERB code tag");
+        };
+
+        assert!(tag.code.contains("end"));
+    }
+}
+
+#[test]
+fn tokenizes_erb_control_tags_with_end_in_strings_as_blocks() {
+    let cases = [
+        (r#"<% if status == "end" %>"#, r#"if status == "end""#),
+        ("<% if status == :end %>", "if status == :end"),
+        ("<% if options[:end] %>", "if options[:end]"),
+        ("<% if end_value %>", "if end_value"),
+    ];
+
+    for (input, code) in cases {
+        assert_eq!(
+            tokenize(input).unwrap(),
+            vec![Token::ErbBlockStart {
+                kind: ErbBlockKind::If,
+                tag: code_tag(code),
+                output: false
+            }]
+        );
+    }
+}
+
+#[test]
 fn tokenizes_erb_block_end_tag() {
     let tokens = tokenize("<% end %>").unwrap();
 
