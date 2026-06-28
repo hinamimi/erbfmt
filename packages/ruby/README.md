@@ -1,9 +1,9 @@
 # erbfmt Ruby wrapper
 
-This gem is a thin launcher for the platform-specific erbfmt Rust binary.
+This gem is a thin launcher for the erbfmt Rust binary.
 
-Initial releases are distributed as platform-specific `.gem` files attached to
-the [erbfmt GitHub Release](https://github.com/hinamimi/erbfmt/releases/tag/v0.1.5).
+Initial releases are distributed as `.gem` files attached to the
+[erbfmt GitHub Release](https://github.com/hinamimi/erbfmt/releases/tag/v0.1.5).
 Newer releases may also be published to RubyGems.org. To install a downloaded
 release gem directly, choose the file matching the local platform. For example,
 on glibc Linux x64:
@@ -21,6 +21,11 @@ If the erbfmt version you want is available on RubyGems.org, use Bundler:
 bundle add erbfmt --group development --require false
 bundle exec erbfmt --version
 ```
+
+RubyGems.org releases include platform-specific gems with the packaged Rust
+binary and may include `erbfmt-0.1.5.gem` as a binary-free Bundler fallback for
+multi-platform lockfiles. The fallback resolves dependency installation but
+needs either a matching platform gem or `ERBFMT_BINARY` to run.
 
 If the version is only available as a GitHub Release asset, download the
 matching release asset, unpack it into `vendor/gems`, and reference the

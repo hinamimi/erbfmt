@@ -29,6 +29,7 @@ jobs:
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             gem_platform: x86_64-linux-gnu
+            fallback_gem: true
             archive: tar.gz
             binary: erbfmt
           - os: macos-15-intel
@@ -76,6 +77,13 @@ jobs:
         env:
           ERBFMT_BINARY: target/${{ matrix.target }}/release/${{ matrix.binary }}
         run: bundle exec rake gem:verify ERBFMT_PACKAGE_PLATFORM=${{ matrix.gem_platform }}
+
+      - name: Build and verify Ruby fallback gem
+        if: matrix.fallback_gem == true
+        working-directory: packages/ruby
+        env:
+          ERBFMT_BINARY: target/${{ matrix.target }}/release/${{ matrix.binary }}
+        run: bundle exec rake gem:verify ERBFMT_PACKAGE_PLATFORM=ruby
 
       - name: Package binary
         shell: bash

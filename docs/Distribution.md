@@ -6,8 +6,8 @@ gems, and editor extensions should stay thin wrappers around that binary.
 ## Decision
 
 The first public distribution consists entirely of assets attached to a release
-in `https://github.com/hinamimi/erbfmt`: prebuilt `erbfmt` binaries,
-platform-specific gems, checksums, and a thin VSIX.
+in `https://github.com/hinamimi/erbfmt`: prebuilt `erbfmt` binaries, Ruby gems,
+checksums, and a thin VSIX.
 
 Local development remains:
 
@@ -16,8 +16,9 @@ cargo build
 cargo install --path .
 ```
 
-Every wrapper delegates to the Rust binary. The gem packages one matching
-binary; the VSIX expects a separately installed or configured binary.
+Every wrapper delegates to the Rust binary. Platform-specific gems package one
+matching binary; the Ruby fallback gem packages only the launcher; the VSIX
+expects a separately installed or configured binary.
 
 ## Options
 
@@ -85,10 +86,12 @@ a platform-specific binary. It should not parse Ruby or ERB separately from the
 Rust binary.
 
 The initial wrapper uses same-name platform-specific gems with a Ruby launcher
-and one packaged Rust binary. It does not build Rust or download binaries during
-gem installation. The four variants are attached to the GitHub Release after
-they are built and verified from the release tag. See [RubyGem.md](RubyGem.md)
-for the complete design.
+and one packaged Rust binary. It also publishes a binary-free `ruby` fallback
+gem so Bundler can resolve multi-platform lockfiles that include unsupported
+platforms. It does not build Rust or download binaries during gem installation.
+The four native variants and fallback gem are attached to the GitHub Release
+after they are built and verified from the release tag. See
+[RubyGem.md](RubyGem.md) for the complete design.
 
 ### VSCode Binary Handling
 
@@ -107,9 +110,8 @@ avoided until package size and platform strategy are clear.
 
 ### Registry Policy
 
-Current pre-1.0 releases use GitHub Release assets only. Standalone binaries,
-checksums, platform-specific gems, and the VSIX are downloaded from the same
-release.
+Current pre-1.0 releases use GitHub Release assets first. Standalone binaries,
+checksums, Ruby gems, and the VSIX are downloaded from the same release.
 
 Do not publish current pre-1.0 releases to RubyGems.org, crates.io, npm,
 GitHub Packages, the VSCode Marketplace, or Open VSX. Registry publication can

@@ -118,5 +118,5 @@ binary resolution details.
 
 - [Release.md](Release.md): release verification and version tooling
 - [Distribution.md](Distribution.md): binary distribution strategy
-- [RubyGem.md](RubyGem.md): platform-specific Ruby wrapper
+- [RubyGem.md](RubyGem.md): Ruby wrapper
 - [Roadmap.md](Roadmap.md): completed and upcoming milestones

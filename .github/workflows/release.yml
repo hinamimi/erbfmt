@@ -73,6 +73,7 @@ jobs:
             "erbfmt-${version}-aarch64-apple-darwin.tar.gz.sha256"
             "erbfmt-${version}-x86_64-pc-windows-msvc.zip"
             "erbfmt-${version}-x86_64-pc-windows-msvc.zip.sha256"
+            "erbfmt-${version}.gem"
             "erbfmt-${version}-x86_64-linux-gnu.gem"
             "erbfmt-${version}-x86_64-darwin.gem"
             "erbfmt-${version}-arm64-darwin.gem"

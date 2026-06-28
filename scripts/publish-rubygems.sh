@@ -7,7 +7,8 @@ Usage:
   scripts/publish-rubygems.sh --version VERSION --asset-dir DIR [--dry-run]
   scripts/publish-rubygems.sh --version VERSION --asset-dir DIR --yes
 
-Publishes the four platform-specific erbfmt gems to RubyGems.org.
+Publishes the erbfmt Ruby fallback gem and platform-specific gems to
+RubyGems.org.
 
 The RubyGems API key is read from the first available source:
 
@@ -121,6 +122,7 @@ if [[ -z "$api_key" ]]; then
 fi
 
 expected=(
+  "erbfmt-${version}.gem"
   "erbfmt-${version}-x86_64-linux-gnu.gem"
   "erbfmt-${version}-x86_64-darwin.gem"
   "erbfmt-${version}-arm64-darwin.gem"

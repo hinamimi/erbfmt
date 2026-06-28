@@ -20,12 +20,25 @@ def gem_platform
   local == "x86_64-linux" ? "x86_64-linux-gnu" : local
 end
 
+def ruby_platform?(platform)
+  Gem::Platform.new(platform) == Gem::Platform::RUBY
+end
+
 def packaged_binary_name(platform)
   platform.include?("mingw") || platform.include?("mswin") ? "erbfmt-bin.exe" : "erbfmt-bin"
 end
 
+def staged_binaries
+  Dir[File.join(PACKAGE_ROOT, "libexec", "erbfmt-bin*")]
+end
+
 def gem_package_path(platform = gem_platform)
-  File.join(PACKAGE_ROOT, "pkg", "erbfmt-#{Erbfmt::VERSION}-#{platform}.gem")
+  package = if ruby_platform?(platform)
+              "erbfmt-#{Erbfmt::VERSION}.gem"
+            else
+              "erbfmt-#{Erbfmt::VERSION}-#{platform}.gem"
+            end
+  File.join(PACKAGE_ROOT, "pkg", package)
 end
 
 def cargo_version
@@ -60,22 +73,27 @@ task :verify_version do
 end
 
 namespace :gem do
-  desc "Build a platform-specific gem using ERBFMT_BINARY"
+  desc "Build a Ruby gem package"
   task build: [:test, :verify_version] do
     source = ENV["ERBFMT_BINARY"]
-    abort "ERBFMT_BINARY must point to a built erbfmt binary" if source.nil? || source.empty?
-
-    source = File.expand_path(source, REPOSITORY_ROOT)
-    abort "ERBFMT_BINARY is missing or not executable: #{source}" unless File.file?(source) && File.executable?(source)
-
     platform = gem_platform
-    staged = File.join(PACKAGE_ROOT, "libexec", packaged_binary_name(platform))
     package = gem_package_path(platform)
+    staged = nil
+    FileUtils.rm_f(staged_binaries)
 
-    FileUtils.mkdir_p(File.dirname(staged))
+    unless ruby_platform?(platform)
+      abort "ERBFMT_BINARY must point to a built erbfmt binary" if source.nil? || source.empty?
+
+      source = File.expand_path(source, REPOSITORY_ROOT)
+      abort "ERBFMT_BINARY is missing or not executable: #{source}" unless File.file?(source) && File.executable?(source)
+
+      staged = File.join(PACKAGE_ROOT, "libexec", packaged_binary_name(platform))
+      FileUtils.mkdir_p(File.dirname(staged))
+      FileUtils.cp(source, staged)
+      FileUtils.chmod(0o755, staged)
+    end
+
     FileUtils.mkdir_p(File.dirname(package))
-    FileUtils.cp(source, staged)
-    FileUtils.chmod(0o755, staged)
 
     with_unbundled_env do
       Dir.chdir(PACKAGE_ROOT) do
@@ -90,10 +108,10 @@ namespace :gem do
       end
     end
   ensure
-    FileUtils.rm_f(staged) if defined?(staged)
+    FileUtils.rm_f(staged) if staged
   end
 
-  desc "Build and inspect the platform-specific gem"
+  desc "Build and inspect the Ruby gem package"
   task verify_package: :build do
     package = gem_package_path
     platform = gem_platform
@@ -102,7 +120,12 @@ namespace :gem do
 
     abort "unexpected gem platform: #{specification.platform}" unless specification.platform.to_s == platform
     abort "unexpected gem version: #{specification.version}" unless specification.version.to_s == Erbfmt::VERSION
-    abort "packaged binary is missing: #{packaged_binary}" unless specification.files.include?(packaged_binary)
+    if ruby_platform?(platform)
+      binary_files = specification.files.grep(%r{\Alibexec/erbfmt-bin})
+      abort "ruby fallback gem must not package a binary: #{binary_files.join(", ")}" unless binary_files.empty?
+    else
+      abort "packaged binary is missing: #{packaged_binary}" unless specification.files.include?(packaged_binary)
+    end
     abort "gemspec is missing from package files" unless specification.files.include?("erbfmt.gemspec")
 
     Dir.mktmpdir("erbfmt-gem-unpack") do |directory|
@@ -110,7 +133,12 @@ namespace :gem do
         sh(gem_command, "unpack", package, "--target", directory)
       end
 
-      unpacked_gemspec = File.join(directory, "erbfmt-#{Erbfmt::VERSION}-#{platform}", "erbfmt.gemspec")
+      unpacked_directory = if ruby_platform?(platform)
+                             "erbfmt-#{Erbfmt::VERSION}"
+                           else
+                             "erbfmt-#{Erbfmt::VERSION}-#{platform}"
+                           end
+      unpacked_gemspec = File.join(directory, unpacked_directory, "erbfmt.gemspec")
       abort "unpacked gemspec is missing: #{unpacked_gemspec}" unless File.file?(unpacked_gemspec)
 
       unpacked_specification = begin
@@ -126,9 +154,17 @@ namespace :gem do
     end
   end
 
-  desc "Build, install, and execute the platform-specific gem in isolation"
+  desc "Build, install, and execute the Ruby gem package in isolation"
   task verify: :verify_package do
     package = gem_package_path
+    platform = gem_platform
+    source = ENV["ERBFMT_BINARY"]
+    if ruby_platform?(platform)
+      abort "ERBFMT_BINARY must point to a built erbfmt binary to verify the ruby fallback gem" if source.nil? || source.empty?
+
+      source = File.expand_path(source, REPOSITORY_ROOT)
+      abort "ERBFMT_BINARY is missing or not executable: #{source}" unless File.file?(source) && File.executable?(source)
+    end
 
     Dir.mktmpdir("erbfmt-gem") do |directory|
       gem_home = File.join(directory, "gems")
@@ -150,7 +186,7 @@ namespace :gem do
 
       executable = File.join(bindir, Gem.win_platform? ? "erbfmt.bat" : "erbfmt")
       execution_environment = {
-        "ERBFMT_BINARY" => nil,
+        "ERBFMT_BINARY" => ruby_platform?(platform) ? source : nil,
         "GEM_HOME" => gem_home,
         "GEM_PATH" => gem_home
       }

@@ -8,7 +8,7 @@ Ruby gems and editor extensions are thin wrappers around the Rust binary rather
 than separate formatter engines. An npm wrapper remains deferred.
 
 See [Distribution.md](Distribution.md) for the binary distribution strategy.
-See [RubyGem.md](RubyGem.md) for the platform-specific gem wrapper design.
+See [RubyGem.md](RubyGem.md) for the Ruby gem wrapper design.
 
 ## Local Install
 
@@ -98,9 +98,9 @@ scripts/package-binary.sh x86_64-unknown-linux-gnu
 ```
 
 The `Release Binaries` GitHub Actions workflow can run manually for rehearsals
-or as a reusable workflow for tagged releases. It uploads binary archives and
-matching platform-specific Ruby gems from four native runners, and builds the
-thin VSIX in a separate job. Each native runner installs its gem into an
+or as a reusable workflow for tagged releases. It uploads binary archives,
+matching platform-specific Ruby gems from four native runners, one `ruby`
+fallback gem, and the thin VSIX. Each native runner installs its gem into an
 isolated `GEM_HOME` and executes `erbfmt --version`.
 
 For an unpublished stable-version rehearsal, provide the optional workflow
@@ -118,6 +118,7 @@ come directly from the checked-out files.
 
 Ruby gem names should be:
 
+- `erbfmt-${version}.gem`
 - `erbfmt-${version}-x86_64-linux-gnu.gem`
 - `erbfmt-${version}-x86_64-darwin.gem`
 - `erbfmt-${version}-arm64-darwin.gem`
@@ -130,15 +131,14 @@ The VSCode artifact should contain:
 The VSIX does not contain a Rust binary. Release notes must direct users to a
 standalone binary or the Ruby gem before installing the extension.
 
-Initial releases attach the standalone archives, checksums, platform-specific
-gems, and VSIX to GitHub Releases. They are not pushed to package registries or
-extension marketplaces.
+Initial releases attach the standalone archives, checksums, Ruby gems, and VSIX
+to GitHub Releases. They are not pushed to package registries or extension
+marketplaces.
 
-Starting with the v0.1.5 release, the platform-specific Ruby gems may also be
-published to RubyGems.org after the GitHub Release assets have been produced and
-verified. Keep RubyGems publishing as an explicit maintainer action; do not let
-the tag workflow publish gems automatically until the release process has more
-history.
+Starting with the v0.1.5 release, the Ruby gems may also be published to
+RubyGems.org after the GitHub Release assets have been produced and verified.
+Keep RubyGems publishing as an explicit maintainer action; do not let the tag
+workflow publish gems automatically until the release process has more history.
 
 ## Release Contents
 
@@ -201,7 +201,7 @@ Before a public release:
 - Confirm `cargo run --quiet -- --version` prints the new version.
 - Confirm `erbfmt --version` after local install.
 - Confirm the `Release` workflow produced all four expected archives, sibling
-  `.sha256` files, platform-specific gems, and the VSIX from the release tag.
+  `.sha256` files, Ruby gems, and the VSIX from the release tag.
 
 ## Tagged Release Workflow
 
@@ -211,7 +211,7 @@ requires the exact `vMAJOR.MINOR.PATCH` form. It:
 1. verifies that the tag version matches every repository version source;
 2. calls `Release Binaries` to build on Linux, Intel and Apple Silicon macOS,
    and Windows;
-3. collects an exact set of 13 binary, checksum, gem, and VSIX assets;
+3. collects an exact set of 14 binary, checksum, gem, and VSIX assets;
 4. verifies every standalone archive checksum; and
 5. creates a draft GitHub Release with generated notes.
 
@@ -225,7 +225,7 @@ rerun may update assets only while the release remains a draft.
 ## RubyGems.org Publishing
 
 RubyGems.org publishing is a separate step after the GitHub Release workflow has
-created and verified the platform-specific `.gem` assets.
+created and verified the `.gem` assets.
 
 Prerequisites:
 
@@ -255,7 +255,7 @@ scripts/publish-rubygems.sh \
   --dry-run
 ```
 
-Publish all four platform gems:
+Publish the fallback gem and all four platform gems:
 
 ```bash
 scripts/publish-rubygems.sh \
@@ -266,13 +266,25 @@ scripts/publish-rubygems.sh \
 
 The script expects exactly these RubyGems assets for the version:
 
+- `erbfmt-${version}.gem`
 - `erbfmt-${version}-x86_64-linux-gnu.gem`
 - `erbfmt-${version}-x86_64-darwin.gem`
 - `erbfmt-${version}-arm64-darwin.gem`
 - `erbfmt-${version}-x64-mingw-ucrt.gem`
 
+If a release version was already partially published to RubyGems.org before the
+fallback gem existed, do not rerun the full publish script for the already
+published platform gems. Build or download `erbfmt-${version}.gem` and push only
+that missing fallback variant:
+
+```bash
+gem push release-assets/erbfmt-${version}.gem --host https://rubygems.org
+```
+
 After publishing, verify from a clean Bundler project that RubyGems.org can
-resolve and install the matching platform gem:
+resolve and install erbfmt. The local platform should use a matching platform
+gem when one exists; the `ruby` fallback gem is present for unsupported
+platforms in multi-platform lockfiles.
 
 ```bash
 bundle add erbfmt --group development --require false

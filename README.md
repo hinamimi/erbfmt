@@ -52,9 +52,9 @@ erbfmt --version
 erbfmt --help
 ```
 
-The release also provides platform-specific `.gem` files and a VSIX. erbfmt is
-not published to crates.io, npm, or the VS Code Marketplace. RubyGems.org may
-provide platform gems for newer releases.
+The release also provides `.gem` files and a VSIX. erbfmt is not published to
+crates.io, npm, or the VS Code Marketplace. RubyGems.org may provide platform
+gems and a Bundler fallback gem for newer releases.
 
 If the erbfmt version you want is available on RubyGems.org, manage it through a
 Rails project's Gemfile with Bundler:
@@ -93,7 +93,8 @@ New release gems include the gemspec needed by Bundler. If an older downloaded
 asset does not unpack `erbfmt.gemspec`, use the fallback in the Ruby gem docs.
 
 Use the gem matching each development platform when using the GitHub Release
-fallback. See
+fallback. RubyGems.org releases may also include `erbfmt-0.1.5.gem` as a
+binary-free Bundler fallback for lockfiles with unsupported platforms. See
 [Ruby Gem Wrapper](docs/RubyGem.md#installing-from-a-gemfile) for platform
 names, older gem fallback steps, and multi-platform projects.
 

@@ -48,7 +48,7 @@ erbfmt は `*.html.erb` 向けの formatter / linter です。
 - VSCode document formatter wrapper
 - VSCode diagnostics wrapper
 - VSCode ERB-safe comment toggling
-- platform-specific Ruby gem wrapper
+- Ruby gem wrapper
 - GitHub Release 向け binary / gem / VSIX packaging
 - GitHub Pages documentation
 
@@ -59,7 +59,7 @@ erbfmt は `*.html.erb` 向けの formatter / linter です。
 - [Ignore.md](Ignore.md): ignore directive
 - [Release.md](Release.md): release verification と versioning
 - [Distribution.md](Distribution.md): binary distribution strategy
-- [RubyGem.md](RubyGem.md): platform-specific Ruby gem wrapper
+- [RubyGem.md](RubyGem.md): Ruby gem wrapper
 - [VSCode.md](VSCode.md): VSCode extension
 - [Development.md](Development.md): local development workflow
 

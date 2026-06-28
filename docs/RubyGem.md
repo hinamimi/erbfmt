@@ -6,27 +6,36 @@ remains the only formatter and linter engine.
 ## Current Status
 
 The wrapper is implemented in `packages/ruby`. It can run a Rust binary through
-`ERBFMT_BINARY`, build a platform-specific gem, inspect its platform and binary
-metadata, install it into an isolated `GEM_HOME`, and verify `erbfmt --version`.
+`ERBFMT_BINARY`, build platform-specific gems, build a `ruby` platform fallback
+gem, inspect gem metadata, install into an isolated `GEM_HOME`, and verify
+`erbfmt --version`.
 
 The manual `Release Binaries` workflow builds this gem on each matching native
-runner and uploads it beside the standalone archive. Initial releases attached
-those exact verified artifacts to GitHub Releases without publishing them to a
-package registry. The v0.1.5 release is the planned point for also publishing
-the verified platform gems to RubyGems.org.
+runner and uploads it beside the standalone archive. It also builds one
+binary-free `ruby` platform fallback gem so Bundler can resolve projects whose
+lockfiles contain platforms that erbfmt does not ship binaries for. Initial
+releases attached those exact verified artifacts to GitHub Releases without
+publishing them to a package registry. The v0.1.5 release is the planned point
+for also publishing the verified gems to RubyGems.org.
 
 ## Decision
 
-Start with platform-specific binary gems. Do not provide a source-build gem or
-a generic gem that downloads a binary during installation.
+Start with platform-specific binary gems plus a minimal `ruby` platform
+fallback gem. Do not provide a source-build gem or a generic gem that downloads
+a binary during installation.
 
 Each published gem has:
 
 - the name `erbfmt`;
 - the same public version as the Rust crate and GitHub Release;
 - a Ruby executable at `exe/erbfmt`; and
-- one prebuilt Rust binary at `libexec/erbfmt-bin` or
-  `libexec/erbfmt-bin.exe`.
+- for platform-specific gems, one prebuilt Rust binary at `libexec/erbfmt-bin`
+  or `libexec/erbfmt-bin.exe`.
+
+The `ruby` platform fallback gem intentionally contains no binary. It exists to
+let Bundler resolve multi-platform lockfiles. Running it on an unsupported
+platform fails with the same explicit "packaged erbfmt binary is missing"
+launcher error unless `ERBFMT_BINARY` points to a local binary.
 
 RubyGems executables are Ruby scripts, so `exe/erbfmt` is a small launcher. It
 resolves the packaged binary and replaces itself with it using `Kernel.exec`.
@@ -51,7 +60,8 @@ erbfmt is published to RubyGems.org, the Gemfile workflow can become the normal
 A source-build fallback would require Rust and duplicate the concerns already
 handled by the release-binary workflow. A generic gem with install-time download
 logic would add checksum, proxy, offline, and cache behavior to the wrapper.
-Both are deferred.
+Both are deferred. The `ruby` platform fallback gem is deliberately smaller: it
+only keeps Bundler resolution working and does not try to obtain a binary.
 
 ## Initial Platforms
 
@@ -59,6 +69,7 @@ Build the following gem variants from the matching Rust release binaries:
 
 | RubyGems platform | Rust target | Packaged binary |
 | --- | --- | --- |
+| `ruby` | none | none |
 | `x86_64-linux-gnu` | `x86_64-unknown-linux-gnu` | `erbfmt-bin` |
 | `x86_64-darwin` | `x86_64-apple-darwin` | `erbfmt-bin` |
 | `arm64-darwin` | `aarch64-apple-darwin` | `erbfmt-bin` |
@@ -71,9 +82,10 @@ the MSVC target.
 Linux starts with glibc only. Alpine/musl and Linux arm64 require additional
 Rust release targets and separate gem variants.
 
-Do not publish a generic `ruby` platform variant initially. Unsupported
-platforms should fail dependency resolution clearly instead of installing a gem
-that cannot run.
+The `ruby` fallback gem prevents Bundler from failing dependency resolution for
+lockfiles that already include platforms such as `aarch64-linux`, `arm-linux`,
+or `arm64-darwin-24`. Unsupported platforms can install the fallback gem, but
+running `erbfmt` still fails clearly because no packaged binary is present.
 
 ## Repository Layout
 
@@ -167,8 +179,8 @@ tests from the tagged commit.
 
 #### RubyGems.org
 
-After the platform gems are published to RubyGems.org, Bundler can resolve the
-matching local platform directly from the normal gem source:
+After the gems are published to RubyGems.org, Bundler can resolve erbfmt from
+the normal gem source:
 
 ```bash
 bundle add erbfmt --group development --require false
@@ -184,8 +196,11 @@ end
 ```
 
 Bundler should select the platform gem that matches the current RubyGems
-platform. Unsupported platforms, including Alpine/musl and Linux arm64, still do
-not currently have a gem.
+platform when one is available. The `ruby` fallback gem is also published so
+projects with multi-platform lockfiles can still resolve the dependency. If
+Bundler installs the fallback on an unsupported platform, `bundle exec erbfmt`
+will fail at runtime until a matching platform gem is published or
+`ERBFMT_BINARY` points to a local binary.
 
 #### GitHub Release Fallback
 
@@ -242,6 +257,7 @@ The package must match the local RubyGems platform:
 
 | Development platform | Release gem |
 | --- | --- |
+| Bundler fallback | `erbfmt-0.1.5.gem` |
 | glibc Linux x64 | `erbfmt-0.1.5-x86_64-linux-gnu.gem` |
 | macOS Intel | `erbfmt-0.1.5-x86_64-darwin.gem` |
 | macOS Apple Silicon | `erbfmt-0.1.5-arm64-darwin.gem` |
@@ -304,8 +320,8 @@ the project Gemfile in that directory or a parent.
 ## RubyGems.org Publishing
 
 RubyGems.org publishing remains an explicit maintainer step after GitHub Release
-assets are built and verified. Use `scripts/publish-rubygems.sh` with the four
-platform gems downloaded from the release.
+assets are built and verified. Use `scripts/publish-rubygems.sh` with the
+fallback gem and platform gems downloaded from the release.
 
 The script reads the API key from `RUBYGEMS_API_KEY`, `GEM_HOST_API_KEY`,
 `API_KEY`, or matching entries in `.env`. It never prints the key. RubyGems
@@ -337,13 +353,16 @@ The scaffold includes:
 - installation into an isolated `GEM_HOME`;
 - `erbfmt --version` execution against the staged Rust binary;
 - a version consistency check against `Cargo.toml`; and
-- one Linux CI job that builds the Rust binary and verifies the local gem; and
+- one Linux CI job that builds the Rust binary and verifies the local gem;
 - a four-platform release matrix that verifies each native gem and uploads it
-  as a workflow artifact.
+  as a workflow artifact; and
+- one binary-free `ruby` fallback gem built and verified from the Linux release
+  runner.
 
 The release matrix has successfully built, installed, executed, and uploaded
-all four platform-specific gems. A stable `0.1.0` gem can also be rehearsed in
-an isolated copy without the development-version activation allowance.
+all four platform-specific gems plus the fallback gem. A stable `0.1.0` gem can
+also be rehearsed in an isolated copy without the development-version activation
+allowance.
 
 Local development uses:
 

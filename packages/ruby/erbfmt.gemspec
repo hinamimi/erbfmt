@@ -16,7 +16,7 @@ Gem::Specification.new do |spec|
   spec.version = erbfmt_version
   spec.authors = ["erbfmt contributors"]
   spec.summary = "Ruby wrapper for the erbfmt formatter and linter"
-  spec.description = "A thin Ruby launcher for the platform-specific erbfmt Rust binary."
+  spec.description = "A thin Ruby launcher for the erbfmt Rust binary."
   spec.homepage = "https://github.com/hinamimi/erbfmt"
   spec.license = "MIT"
   spec.required_ruby_version = ">= 3.1"
