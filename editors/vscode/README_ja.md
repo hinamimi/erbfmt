@@ -33,12 +33,12 @@ editorで同じ結果を得られます。
 
 ## 必要なもの
 
-[v0.1.4 GitHub Release](https://github.com/hinamimi/erbfmt/releases/tag/v0.1.4)から
+[v0.1.5 GitHub Release](https://github.com/hinamimi/erbfmt/releases/tag/v0.1.5)から
 CLIをdownloadしてinstallします。Rust toolchainがある場合はtagged sourceからも
 installできます。
 
 ```bash
-cargo install --git https://github.com/hinamimi/erbfmt --tag v0.1.4 --locked
+cargo install --git https://github.com/hinamimi/erbfmt --tag v0.1.5 --locked
 erbfmt --version
 ```
 
@@ -48,11 +48,11 @@ extensionは、実行可能な `erbfmt` commandを提供するいずれのinstal
 ## Extensionのインストール
 
 extensionはVS Code Marketplaceへ公開していません。
-[`erbfmt-vscode-0.1.4.vsix`](https://github.com/hinamimi/erbfmt/releases/download/v0.1.4/erbfmt-vscode-0.1.4.vsix)
+[`erbfmt-vscode-0.1.5.vsix`](https://github.com/hinamimi/erbfmt/releases/download/v0.1.5/erbfmt-vscode-0.1.5.vsix)
 をdownloadしてlocal installします。
 
 ```bash
-code --install-extension erbfmt-vscode-0.1.4.vsix
+code --install-extension erbfmt-vscode-0.1.5.vsix
 ```
 
 `*.html.erb`を開いて **Format Document** を実行します。formatterの選択を求められた

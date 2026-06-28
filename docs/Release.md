@@ -186,7 +186,7 @@ Keep these files in the release verification surface:
 
 ## Versioning
 
-The repository is currently set to `0.1.4` for the next prerelease.
+The repository is currently set to `0.1.5` for the next prerelease.
 Earlier milestone work used the fixed development version `0.0.0-dev`, and the
 first public prerelease used `0.1.0`.
 
@@ -282,10 +282,10 @@ bundle exec erbfmt --version
 For the next release:
 
 ```bash
-ruby scripts/version.rb set 0.1.4
-ruby scripts/version.rb verify 0.1.4
+ruby scripts/version.rb set 0.1.5
+ruby scripts/version.rb verify 0.1.5
 # Run the release verification commands above, then commit.
-git tag -a v0.1.4 -m "erbfmt 0.1.4"
+git tag -a v0.1.5 -m "erbfmt 0.1.5"
 git push origin main
-git push origin v0.1.4
+git push origin v0.1.5
 ```

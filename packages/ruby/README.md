@@ -3,13 +3,13 @@
 This gem is a thin launcher for the platform-specific erbfmt Rust binary.
 
 Initial releases are distributed as platform-specific `.gem` files attached to
-the [erbfmt GitHub Release](https://github.com/hinamimi/erbfmt/releases/tag/v0.1.4).
+the [erbfmt GitHub Release](https://github.com/hinamimi/erbfmt/releases/tag/v0.1.5).
 Newer releases may also be published to RubyGems.org. To install a downloaded
 release gem directly, choose the file matching the local platform. For example,
 on glibc Linux x64:
 
 ```bash
-gem install --local ./erbfmt-0.1.4-x86_64-linux-gnu.gem
+gem install --local ./erbfmt-0.1.5-x86_64-linux-gnu.gem
 erbfmt --version
 ```
 
@@ -28,10 +28,10 @@ unpacked path dependency:
 
 ```bash
 curl -L \
-  -o erbfmt-0.1.4-x86_64-linux-gnu.gem \
-  https://github.com/hinamimi/erbfmt/releases/download/v0.1.4/erbfmt-0.1.4-x86_64-linux-gnu.gem
+  -o erbfmt-0.1.5-x86_64-linux-gnu.gem \
+  https://github.com/hinamimi/erbfmt/releases/download/v0.1.5/erbfmt-0.1.5-x86_64-linux-gnu.gem
 mkdir -p vendor/gems
-gem unpack erbfmt-0.1.4-x86_64-linux-gnu.gem --target vendor/gems
+gem unpack erbfmt-0.1.5-x86_64-linux-gnu.gem --target vendor/gems
 ```
 
 Add the unpacked gem to the project Gemfile:
@@ -39,7 +39,7 @@ Add the unpacked gem to the project Gemfile:
 ```ruby
 group :development do
   gem "erbfmt",
-    path: "vendor/gems/erbfmt-0.1.4-x86_64-linux-gnu",
+    path: "vendor/gems/erbfmt-0.1.5-x86_64-linux-gnu",
     require: false
 end
 ```
@@ -80,8 +80,8 @@ The shared version check covers Cargo, this gem, the VSCode extension, and
 their lockfiles. Release versions are updated from the repository root:
 
 ```bash
-ruby scripts/version.rb set 0.1.4
-ruby scripts/version.rb verify 0.1.4
+ruby scripts/version.rb set 0.1.5
+ruby scripts/version.rb verify 0.1.5
 ```
 
 Build, install, and execute a local platform-specific gem in isolation:

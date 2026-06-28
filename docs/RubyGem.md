@@ -39,7 +39,7 @@ There is no Ruby formatter API and no Ruby implementation of ERB parsing.
 Platform-specific gems provide the intended user experience:
 
 ```bash
-gem install --local ./erbfmt-0.1.4-x86_64-linux-gnu.gem
+gem install --local ./erbfmt-0.1.5-x86_64-linux-gnu.gem
 erbfmt --version
 ```
 
@@ -152,7 +152,7 @@ Release version. A gem must contain the binary built from the same tagged commit
 
 The unpublished development wrapper used RubyGems version `0.0.0.dev` while
 Cargo and the VSCode extension used `0.0.0-dev`. The current release version
-`0.1.4` is identical everywhere.
+`0.1.5` is identical everywhere.
 
 `lib/erbfmt/version.rb` is the gem version source. The release verification task
 must compare its normalized value with `Cargo.toml` and `erbfmt --version`.
@@ -198,8 +198,8 @@ For glibc Linux x64, first download the matching GitHub Release asset:
 
 ```bash
 curl -L \
-  -o erbfmt-0.1.4-x86_64-linux-gnu.gem \
-  https://github.com/hinamimi/erbfmt/releases/download/v0.1.4/erbfmt-0.1.4-x86_64-linux-gnu.gem
+  -o erbfmt-0.1.5-x86_64-linux-gnu.gem \
+  https://github.com/hinamimi/erbfmt/releases/download/v0.1.5/erbfmt-0.1.5-x86_64-linux-gnu.gem
 ```
 
 Then unpack it into `vendor/gems`. New erbfmt gems include
@@ -208,7 +208,7 @@ gem.
 
 ```bash
 mkdir -p vendor/gems
-gem unpack erbfmt-0.1.4-x86_64-linux-gnu.gem --target vendor/gems
+gem unpack erbfmt-0.1.5-x86_64-linux-gnu.gem --target vendor/gems
 ```
 
 Add the unpacked gem as a path dependency without auto-requiring Ruby code:
@@ -216,7 +216,7 @@ Add the unpacked gem as a path dependency without auto-requiring Ruby code:
 ```ruby
 group :development do
   gem "erbfmt",
-    path: "vendor/gems/erbfmt-0.1.4-x86_64-linux-gnu",
+    path: "vendor/gems/erbfmt-0.1.5-x86_64-linux-gnu",
     require: false
 end
 ```
@@ -242,10 +242,10 @@ The package must match the local RubyGems platform:
 
 | Development platform | Release gem |
 | --- | --- |
-| glibc Linux x64 | `erbfmt-0.1.4-x86_64-linux-gnu.gem` |
-| macOS Intel | `erbfmt-0.1.4-x86_64-darwin.gem` |
-| macOS Apple Silicon | `erbfmt-0.1.4-arm64-darwin.gem` |
-| Windows RubyInstaller UCRT x64 | `erbfmt-0.1.4-x64-mingw-ucrt.gem` |
+| glibc Linux x64 | `erbfmt-0.1.5-x86_64-linux-gnu.gem` |
+| macOS Intel | `erbfmt-0.1.5-x86_64-darwin.gem` |
+| macOS Apple Silicon | `erbfmt-0.1.5-arm64-darwin.gem` |
+| Windows RubyInstaller UCRT x64 | `erbfmt-0.1.5-x64-mingw-ucrt.gem` |
 
 Projects used on multiple platforms should unpack every required variant under
 `vendor/gems` and choose the path that matches the current platform in the
@@ -257,7 +257,7 @@ erbfmt_platform = Gem::Platform.local.to_s
 
 group :development do
   gem "erbfmt",
-    path: "vendor/gems/erbfmt-0.1.4-#{erbfmt_platform}",
+    path: "vendor/gems/erbfmt-0.1.5-#{erbfmt_platform}",
     require: false
 end
 ```
@@ -268,7 +268,7 @@ map it explicitly in the Gemfile.
 One-off local installation does not need a Gemfile:
 
 ```bash
-gem install --local ./erbfmt-0.1.4-x86_64-linux-gnu.gem
+gem install --local ./erbfmt-0.1.5-x86_64-linux-gnu.gem
 erbfmt --version
 ```
 
@@ -276,7 +276,7 @@ Do not use a Git source as a substitute:
 
 ```ruby
 # Unsupported: the repository does not contain a staged Rust binary.
-gem "erbfmt", git: "https://github.com/hinamimi/erbfmt.git", tag: "v0.1.4"
+gem "erbfmt", git: "https://github.com/hinamimi/erbfmt.git", tag: "v0.1.5"
 ```
 
 The Rust binary is inserted only while each release gem is built. Installing

@@ -22,12 +22,12 @@ first-party VSCode extensionから利用できます。
 > 後方互換性なく変更される可能性があります。format差分を確認してからcommitし、
 > 自動実行する環境ではversionを固定してください。
 
-> erbfmtは現在プレリリース開発中です。Version `0.1.4`をGitHub Releasesで
+> erbfmtは現在プレリリース開発中です。Version `0.1.5`をGitHub Releasesで
 > 公開しています。初期releaseはpackage indexやextension marketplaceへ登録しません。
 
 ## インストール
 
-[v0.1.4 release](https://github.com/hinamimi/erbfmt/releases/tag/v0.1.4)から
+[v0.1.5 release](https://github.com/hinamimi/erbfmt/releases/tag/v0.1.5)から
 利用するplatformのarchiveをdownloadして展開し、`erbfmt`または `erbfmt.exe`を
 `PATH`へ配置します。
 
@@ -39,7 +39,7 @@ first-party VSCode extensionから利用できます。
 Rust toolchainがある場合は、tagged sourceをGitHubから直接installできます。
 
 ```bash
-cargo install --git https://github.com/hinamimi/erbfmt --tag v0.1.4 --locked
+cargo install --git https://github.com/hinamimi/erbfmt --tag v0.1.5 --locked
 ```
 
 インストール後にcommandを確認します。
@@ -66,16 +66,16 @@ gemをdownloadし、`vendor/gems`へ展開してpath gemとして参照します
 
 ```bash
 curl -L \
-  -o erbfmt-0.1.4-x86_64-linux-gnu.gem \
-  https://github.com/hinamimi/erbfmt/releases/download/v0.1.4/erbfmt-0.1.4-x86_64-linux-gnu.gem
+  -o erbfmt-0.1.5-x86_64-linux-gnu.gem \
+  https://github.com/hinamimi/erbfmt/releases/download/v0.1.5/erbfmt-0.1.5-x86_64-linux-gnu.gem
 mkdir -p vendor/gems
-gem unpack erbfmt-0.1.4-x86_64-linux-gnu.gem --target vendor/gems
+gem unpack erbfmt-0.1.5-x86_64-linux-gnu.gem --target vendor/gems
 ```
 
 ```ruby
 group :development do
   gem "erbfmt",
-    path: "vendor/gems/erbfmt-0.1.4-x86_64-linux-gnu",
+    path: "vendor/gems/erbfmt-0.1.5-x86_64-linux-gnu",
     require: false
 end
 ```
