@@ -15,7 +15,7 @@ use std::process::ExitCode;
 
 const CONFIG_FILE: &str = "erbfmt.json";
 const DEFAULT_CONFIG: &str = r#"{
-  "$schema": "https://raw.githubusercontent.com/hinamimi/erbfmt/main/docs/schema/erbfmt.schema.json",
+  "$schema": "https://raw.githubusercontent.com/hinamimi/erbfmt/refs/heads/main/docs/schema/erbfmt.schema.json",
   "files": {
     "includes": ["**/*.html.erb"]
   },

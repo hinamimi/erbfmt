@@ -54,7 +54,7 @@ fn init_creates_default_config() {
 
     assert_eq!(
         value["$schema"],
-        "https://raw.githubusercontent.com/hinamimi/erbfmt/main/docs/schema/erbfmt.schema.json"
+        "https://raw.githubusercontent.com/hinamimi/erbfmt/refs/heads/main/docs/schema/erbfmt.schema.json"
     );
     assert_eq!(value["formatter"]["indentWidth"], 2);
     assert_eq!(value["formatter"]["indentHtml"], true);
@@ -452,7 +452,7 @@ fn config_accepts_jsonc_comments_and_trailing_commas() {
         "erbfmt.json",
         r#"{
   // erbfmt accepts JSONC-style line comments.
-  "$schema": "https://raw.githubusercontent.com/hinamimi/erbfmt/main/docs/schema/erbfmt.schema.json",
+  "$schema": "https://raw.githubusercontent.com/hinamimi/erbfmt/refs/heads/main/docs/schema/erbfmt.schema.json",
   "formatter": {
     "lineWidth": 48, /* block comments are accepted too */
   },
