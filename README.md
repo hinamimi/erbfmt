@@ -1,6 +1,6 @@
 # erbfmt
 
-[日本語](README_ja.md)
+[Documentation](https://hinamimi.github.io/erbfmt/) · [日本語](README_ja.md)
 
 **A fast, Prettier/Biome-like formatter and linter for ERB and HTML+ERB.**
 

@@ -1,6 +1,6 @@
 # erbfmt
 
-[English](README.md)
+[ドキュメント](https://hinamimi.github.io/erbfmt/ja/) · [English](README.md)
 
 **ERBとHTML+ERB向けの高速な、Prettier/BiomeのようなFormatter/Linterです。**
 
