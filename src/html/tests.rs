@@ -183,6 +183,50 @@ fn treats_erb_like_tags_as_text() {
 }
 
 #[test]
+fn tokenizes_script_raw_text_without_parsing_javascript_comparisons() {
+    let tokens = tokenize(
+        "<script type=\"text/javascript\">\n(function(){\n  if(x < 10){\n    console.log(\"test\");\n  }\n  if (y > 10) {\n    console.log(\"test\");\n  }\n})()\n</script>",
+    );
+
+    assert_eq!(
+        tokens,
+        vec![
+            HtmlToken::OpenTag(HtmlTag {
+                name: "script".to_string(),
+                raw: "<script type=\"text/javascript\">".to_string()
+            }),
+            HtmlToken::Text(
+                "\n(function(){\n  if(x < 10){\n    console.log(\"test\");\n  }\n  if (y > 10) {\n    console.log(\"test\");\n  }\n})()\n".to_string()
+            ),
+            HtmlToken::CloseTag(HtmlTag {
+                name: "script".to_string(),
+                raw: "</script>".to_string()
+            })
+        ]
+    );
+}
+
+#[test]
+fn tokenizes_style_raw_text_without_parsing_css_combinators() {
+    let tokens = tokenize("<style>.item > .label { content: \"<\"; }</style>");
+
+    assert_eq!(
+        tokens,
+        vec![
+            HtmlToken::OpenTag(HtmlTag {
+                name: "style".to_string(),
+                raw: "<style>".to_string()
+            }),
+            HtmlToken::Text(".item > .label { content: \"<\"; }".to_string()),
+            HtmlToken::CloseTag(HtmlTag {
+                name: "style".to_string(),
+                raw: "</style>".to_string()
+            })
+        ]
+    );
+}
+
+#[test]
 fn treats_unterminated_tags_as_text() {
     let tokens = tokenize("<div");
 

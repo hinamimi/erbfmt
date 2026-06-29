@@ -122,7 +122,50 @@ pub fn tokenize_with_spans(input: &str) -> Vec<SpannedHtmlToken> {
             } else if is_void_tag(&tag.name) {
                 tokens.push(spanned_html_token(start, end, HtmlToken::VoidTag(tag)));
             } else {
+                let raw_text_tag_name = tag.name.clone();
                 tokens.push(spanned_html_token(start, end, HtmlToken::OpenTag(tag)));
+
+                if is_raw_text_element(&raw_text_tag_name) {
+                    let Some((close_start, close_end)) =
+                        find_raw_text_close_tag(input, end, &raw_text_tag_name)
+                    else {
+                        if end < input.len() {
+                            tokens.push(spanned_html_token(
+                                end,
+                                input.len(),
+                                HtmlToken::Text(input[end..].to_string()),
+                            ));
+                        }
+                        return tokens;
+                    };
+
+                    if end < close_start {
+                        tokens.push(spanned_html_token(
+                            end,
+                            close_start,
+                            HtmlToken::Text(input[end..close_start].to_string()),
+                        ));
+                    }
+
+                    let close_raw = &input[close_start..close_end];
+                    let close_body =
+                        input[close_start + '<'.len_utf8()..close_end - '>'.len_utf8()].trim();
+                    let close_name = close_body
+                        .strip_prefix('/')
+                        .map(tag_name)
+                        .unwrap_or_default()
+                        .to_string();
+                    tokens.push(spanned_html_token(
+                        close_start,
+                        close_end,
+                        HtmlToken::CloseTag(HtmlTag {
+                            name: close_name,
+                            raw: close_raw.to_string(),
+                        }),
+                    ));
+                    cursor = close_end;
+                    continue;
+                }
             }
         }
 
@@ -138,4 +181,36 @@ pub fn tokenize_with_spans(input: &str) -> Vec<SpannedHtmlToken> {
     }
 
     tokens
+}
+
+fn is_raw_text_element(name: &str) -> bool {
+    matches!(name.to_ascii_lowercase().as_str(), "script" | "style")
+}
+
+fn find_raw_text_close_tag(input: &str, cursor: usize, name: &str) -> Option<(usize, usize)> {
+    let lower = input[cursor..].to_ascii_lowercase();
+    let pattern = format!("</{}", name.to_ascii_lowercase());
+    let mut relative_cursor = 0;
+
+    while let Some(relative_start) = lower[relative_cursor..].find(&pattern) {
+        let close_start = cursor + relative_cursor + relative_start;
+        let name_end = close_start + pattern.len();
+
+        if is_close_tag_name_boundary(input, name_end)
+            && let Some(close_end) = find_tag_end(input, close_start)
+        {
+            return Some((close_start, close_end));
+        }
+
+        relative_cursor += relative_start + '<'.len_utf8();
+    }
+
+    None
+}
+
+fn is_close_tag_name_boundary(input: &str, index: usize) -> bool {
+    input[index..]
+        .chars()
+        .next()
+        .is_some_and(|ch| ch == '>' || ch.is_ascii_whitespace())
 }

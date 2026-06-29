@@ -499,6 +499,13 @@ fn preserves_script_and_style_content() {
 }
 
 #[test]
+fn preserves_javascript_comparisons_inside_script_tags() {
+    let input = "<script type=\"text/javascript\">\n(function(){\n  console.log(\"test\");\n  if(x < 10){\n    console.log(\"small\");\n  }\n  if (y > 10) {\n    console.log(\"large\");\n  }\n})()\n</script>\n";
+
+    assert_eq!(format_source(input), input);
+}
+
+#[test]
 fn preserves_erb_spacing_inside_format_sensitive_subtrees() {
     assert_eq!(
         format_source("<pre>  A <%=   value   %> B  </pre>\n"),
