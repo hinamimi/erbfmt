@@ -43,11 +43,15 @@
         <p class="lede">Format, check, and lint HTML+ERB files from a terminal or CI.</p>
 
         <h2 id="usage">Usage</h2>
-        <pre><code class="language-bash">erbfmt [OPTIONS] [FILE]...
+        <pre><code class="language-bash">erbfmt [OPTIONS] [FILE_OR_DIRECTORY]...
 erbfmt init [--force]</code></pre>
-        <p>At least one file path is required for formatting, checking, or linting. Standard input is not currently supported. A single file can use any mode; multiple files require <code>--write</code>, <code>--check</code>, or <code>--lint</code>.</p>
-        <p>Shell glob expansion can provide multiple paths:</p>
+        <p>At least one file or directory path is required for formatting, checking, or linting. Standard input is not currently supported. A single file can use any mode; multiple files or directory inputs require <code>--write</code>, <code>--check</code>, or <code>--lint</code>.</p>
+        <p>Directory inputs are searched recursively. Discovered files are filtered by <code>files.includes</code>; without <code>files.includes</code>, recursive discovery targets <code>*.html.erb</code> files. Shell glob expansion can also provide multiple paths:</p>
         <pre><code class="language-bash">erbfmt --write app/views/**/*.html.erb</code></pre>
+        <p>For recursive project usage, pass a directory directly:</p>
+        <pre><code class="language-bash">erbfmt --write app/views
+erbfmt --check app/views
+erbfmt --lint app/views</code></pre>
 
         <h2 id="modes">Modes</h2>
         <dl class="option-list">

@@ -93,16 +93,22 @@ Format multiple files:
 erbfmt --write app/views/users/show.html.erb app/views/users/edit.html.erb
 ```
 
+Format a directory recursively:
+
+```bash
+erbfmt --write app/views
+```
+
 Check formatting without changing files, for example in CI:
 
 ```bash
-erbfmt --check app/views/users/show.html.erb app/views/users/edit.html.erb
+erbfmt --check app/views
 ```
 
 Run the linter:
 
 ```bash
-erbfmt --lint app/views/users/show.html.erb
+erbfmt --lint app/views
 ```
 
 Lint output defaults to a human-readable format with source excerpts. Use
@@ -110,7 +116,9 @@ Lint output defaults to a human-readable format with source excerpts. Use
 
 `--write`, `--check`, and `--lint` are mutually exclusive. Check mode returns a
 nonzero status when formatting would change a file; lint mode does so when an
-error-level diagnostic is found.
+error-level diagnostic is found. Directory inputs require one of these modes and
+are filtered by `files.includes`; without `files.includes`, recursive discovery
+uses `*.html.erb` files.
 
 ## What erbfmt Handles
 

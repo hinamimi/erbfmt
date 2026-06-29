@@ -91,7 +91,7 @@ erbfmt init --force</code></pre>
 
         <h2 id="files">Files</h2>
         <dl class="option-list">
-          <div class="option"><dt><code>files.includes</code><span class="meta">array of glob patterns</span></dt><dd><p>Filters CLI targets before formatting, checking, or linting. Patterns are evaluated relative to the config file directory when possible. Use <code>!</code> for exclusions, for example <code>["**/*.html.erb", "!vendor/**"]</code>. Supported wildcards are <code>*</code>, <code>?</code>, and <code>**</code>.</p></dd></div>
+          <div class="option"><dt><code>files.includes</code><span class="meta">array of glob patterns</span></dt><dd><p>Filters CLI targets before formatting, checking, or linting. Patterns are evaluated relative to the config file directory when possible. Use <code>!</code> for exclusions, for example <code>["**/*.html.erb", "!vendor/**"]</code>. Supported wildcards are <code>*</code>, <code>?</code>, and <code>**</code>. When this setting is omitted, explicit file paths are processed as-is; recursive directory discovery defaults to <code>*.html.erb</code> files.</p></dd></div>
         </dl>
 
         <h2 id="parser">Parser</h2>

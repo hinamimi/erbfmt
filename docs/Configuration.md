@@ -67,7 +67,8 @@ configuration sections, with a small erbfmt-specific `parser` section and
   `["**/*.html.erb", "!vendor/**"]`.
 - Supported wildcards are `*`, `?`, and `**`.
 - When `files.includes` is omitted, erbfmt processes every file explicitly
-  passed on the command line.
+  passed on the command line. For recursive directory discovery, erbfmt uses
+  `*.html.erb` files by default.
 
 ## Parser
 

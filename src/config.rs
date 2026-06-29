@@ -57,6 +57,17 @@ impl Config {
     pub fn includes_file(&self, path: &Path) -> bool {
         self.files.includes(path)
     }
+
+    pub fn includes_discovered_file(&self, path: &Path) -> bool {
+        if self.files.includes.is_empty() {
+            return path
+                .file_name()
+                .and_then(|name| name.to_str())
+                .is_some_and(|name| name.ends_with(".html.erb"));
+        }
+
+        self.includes_file(path)
+    }
 }
 
 fn strip_jsonc(input: &str) -> String {

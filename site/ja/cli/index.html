@@ -43,11 +43,15 @@
         <p class="lede">terminalやCIからHTML+ERB fileをformat、check、lintします。</p>
 
         <h2 id="usage">使い方</h2>
-        <pre><code class="language-bash">erbfmt [OPTIONS] [FILE]...
+        <pre><code class="language-bash">erbfmt [OPTIONS] [FILE_OR_DIRECTORY]...
 erbfmt init [--force]</code></pre>
-        <p>format、check、lintには1つ以上のfile pathが必要です。現在は標準入力に対応していません。単一fileはすべてのmodeを利用でき、複数fileには <code>--write</code>、<code>--check</code>、<code>--lint</code>のいずれかが必要です。</p>
-        <p>shellのglob展開で複数pathを渡せます。</p>
+        <p>format、check、lintには1つ以上のfileまたはdirectory pathが必要です。現在は標準入力に対応していません。単一fileはすべてのmodeを利用でき、複数fileやdirectory指定には <code>--write</code>、<code>--check</code>、<code>--lint</code>のいずれかが必要です。</p>
+        <p>directory指定は再帰的に探索されます。見つかったfileは <code>files.includes</code> で絞られます。<code>files.includes</code> がない場合、再帰探索では <code>*.html.erb</code> fileを対象にします。shellのglob展開でも複数pathを渡せます。</p>
         <pre><code class="language-bash">erbfmt --write app/views/**/*.html.erb</code></pre>
+        <p>project内のdirectoryをまとめて処理する場合はdirectoryを直接渡せます。</p>
+        <pre><code class="language-bash">erbfmt --write app/views
+erbfmt --check app/views
+erbfmt --lint app/views</code></pre>
 
         <h2 id="modes">モード</h2>
         <dl class="option-list">

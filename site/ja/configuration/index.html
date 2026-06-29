@@ -91,7 +91,7 @@ erbfmt init --force</code></pre>
 
         <h2 id="files">Files</h2>
         <dl class="option-list">
-          <div class="option"><dt><code>files.includes</code><span class="meta">glob patternのarray</span></dt><dd><p>format、check、lintの前にCLI targetを絞り込みます。可能な場合、patternはconfig fileのdirectoryからの相対pathとして評価します。除外には <code>!</code> を使います。例: <code>["**/*.html.erb", "!vendor/**"]</code>。対応wildcardは <code>*</code>、<code>?</code>、<code>**</code>です。</p></dd></div>
+          <div class="option"><dt><code>files.includes</code><span class="meta">glob patternのarray</span></dt><dd><p>format、check、lintの前にCLI targetを絞り込みます。可能な場合、patternはconfig fileのdirectoryからの相対pathとして評価します。除外には <code>!</code> を使います。例: <code>["**/*.html.erb", "!vendor/**"]</code>。対応wildcardは <code>*</code>、<code>?</code>、<code>**</code>です。この設定がない場合、明示的に渡したfile pathはそのまま処理し、directoryの再帰探索では <code>*.html.erb</code> fileを対象にします。</p></dd></div>
         </dl>
 
         <h2 id="parser">Parser</h2>

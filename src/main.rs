@@ -115,14 +115,15 @@ fn main() -> Result<ExitCode> {
         bail!("multiple files require --write, --check, or --lint");
     }
 
+    if args.files.iter().any(|file| file.is_dir()) && !args.write && !args.check && !args.lint {
+        bail!("directory inputs require --write, --check, or --lint");
+    }
+
     let config = config::Config::load(args.config.as_deref())?;
+    let files = expand_input_files(&args.files, &config)?;
 
     let mut failed = false;
-    for file in &args.files {
-        if !config.includes_file(file) {
-            continue;
-        }
-
+    for file in &files {
         if run_file(&args, &config, file)? == FileStatus::Failed {
             failed = true;
         }
@@ -153,6 +154,55 @@ fn parse_init_args() -> Option<InitArgs> {
     .chain(args);
 
     Some(InitArgs::parse_from(init_args))
+}
+
+fn expand_input_files(inputs: &[PathBuf], config: &config::Config) -> Result<Vec<PathBuf>> {
+    let mut files = Vec::new();
+
+    for input in inputs {
+        if input.is_dir() {
+            collect_directory_files(input, config, &mut files)?;
+        } else if input.is_file() {
+            if config.includes_file(input) {
+                files.push(input.clone());
+            }
+        } else {
+            bail!("`{}` is not a file or directory", input.display());
+        }
+    }
+
+    files.sort();
+    files.dedup();
+
+    Ok(files)
+}
+
+fn collect_directory_files(
+    directory: &Path,
+    config: &config::Config,
+    files: &mut Vec<PathBuf>,
+) -> Result<()> {
+    let mut entries = fs::read_dir(directory)
+        .with_context(|| format!("failed to read directory `{}`", directory.display()))?
+        .collect::<std::io::Result<Vec<_>>>()
+        .with_context(|| format!("failed to read directory `{}`", directory.display()))?;
+
+    entries.sort_by_key(|entry| entry.path());
+
+    for entry in entries {
+        let path = entry.path();
+        let file_type = entry
+            .file_type()
+            .with_context(|| format!("failed to inspect `{}`", path.display()))?;
+
+        if file_type.is_dir() {
+            collect_directory_files(&path, config, files)?;
+        } else if file_type.is_file() && config.includes_discovered_file(&path) {
+            files.push(path);
+        }
+    }
+
+    Ok(())
 }
 
 fn run_init(force: bool) -> Result<ExitCode> {

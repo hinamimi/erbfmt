@@ -159,6 +159,48 @@ fn write_formats_file_in_place() {
 }
 
 #[test]
+fn write_formats_directory_recursively() {
+    let dir = TestDir::new("write_directory");
+    let views = dir.path.join("app/views");
+    let first = dir.write("app/views/users/show.html.erb", UNFORMATTED);
+    let second = dir.write("app/views/admin/index.html.erb", UNFORMATTED);
+    let skipped = dir.write("app/views/generated.txt", UNFORMATTED);
+
+    let output = run(["--write".as_ref(), views.as_path()]);
+
+    assert_success(&output);
+    assert_eq!(fs::read_to_string(&first).unwrap(), FORMATTED);
+    assert_eq!(fs::read_to_string(&second).unwrap(), FORMATTED);
+    assert_eq!(fs::read_to_string(&skipped).unwrap(), UNFORMATTED);
+    assert_eq!(
+        stdout(&output),
+        format!(
+            "{}: wrote formatted file.\n{}: wrote formatted file.\n",
+            second.display(),
+            first.display()
+        )
+    );
+    assert_eq!(stderr(&output), "");
+}
+
+#[test]
+fn directory_inputs_require_mode() {
+    let dir = TestDir::new("directory_without_mode");
+    dir.write("app/views/show.html.erb", FORMATTED);
+    let views = dir.path.join("app/views");
+
+    let output = run([views.as_path()]);
+
+    assert_failure(&output);
+    assert_eq!(stdout(&output), "");
+    assert!(
+        stderr(&output).contains("directory inputs require --write, --check, or --lint"),
+        "{}",
+        stderr(&output)
+    );
+}
+
+#[test]
 fn write_preserves_supported_erb_markers() {
     let dir = TestDir::new("supported_erb_markers");
     let input = "<%- if visible? -%>\n<span>Visible</span>\n<%- end -%>\n";
@@ -659,6 +701,31 @@ fn config_files_includes_filters_lint_targets() {
         config.as_path(),
         included.as_path(),
         excluded.as_path(),
+    ]);
+
+    assert_success(&output);
+    assert_eq!(
+        stdout(&output),
+        format!("{}: no lint issues found.\n", included.display())
+    );
+    assert_eq!(stderr(&output), "");
+}
+
+#[test]
+fn config_files_includes_filters_directory_targets() {
+    let dir = TestDir::new("config_files_includes_filters_directory_targets");
+    let config = dir.write(
+        "erbfmt.json",
+        r#"{"files":{"includes":["app/views/**/*.html.erb"]}}"#,
+    );
+    let included = dir.write("app/views/show.html.erb", FORMATTED);
+    dir.write("tmp/bad.html.erb", "<% if user %>\n");
+
+    let output = run([
+        "--lint".as_ref(),
+        "--config".as_ref(),
+        config.as_path(),
+        dir.path.as_path(),
     ]);
 
     assert_success(&output);
