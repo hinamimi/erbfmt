@@ -84,6 +84,10 @@ pub(super) fn render_tag(raw: &str, suffix: &str, context: TagRenderContext<'_>)
         return None;
     }
 
+    if has_erb_control_attribute_block(trimmed) {
+        return Some(format!("{}{trimmed}{suffix}", context.indent));
+    }
+
     let Some(tag) = ParsedTag::parse(trimmed) else {
         let is_multiline = trimmed.contains('\n');
         if !is_multiline && fits_on_line(context.indent, trimmed, context.line_width) {
@@ -135,6 +139,88 @@ fn should_expand_erb_attribute_tag(
             .iter()
             .any(|attribute| attribute.contains("<%"))
         && indent.chars().count() + inline.chars().count() >= line_width
+}
+
+fn has_erb_control_attribute_block(raw: &str) -> bool {
+    let mut saw_opener = false;
+    let mut cursor = 0;
+
+    while cursor < raw.len() {
+        let Some(relative_start) = raw[cursor..].find("<%") else {
+            break;
+        };
+        let start = cursor + relative_start;
+        let Some(relative_end) = raw[start + "<%".len()..].find("%>") else {
+            break;
+        };
+        let end = start + "<%".len() + relative_end;
+        let marker = raw[start..].chars().nth(2);
+        let code = raw[start + "<%".len()..end].trim();
+
+        if marker != Some('=') && marker != Some('#') && marker != Some('%') {
+            if starts_with_erb_control_opener(code) {
+                saw_opener = true;
+            } else if saw_opener && code == "end" {
+                return true;
+            }
+        }
+
+        cursor = end + "%>".len();
+    }
+
+    false
+}
+
+fn starts_with_erb_control_opener(code: &str) -> bool {
+    starts_with_keyword(code, "if")
+        || starts_with_keyword(code, "unless")
+        || starts_with_keyword(code, "case")
+        || starts_with_keyword(code, "begin")
+        || starts_with_keyword(code, "do")
+        || ends_with_do_block(code)
+}
+
+fn starts_with_keyword(code: &str, keyword: &str) -> bool {
+    let trimmed = code.trim_start();
+
+    if !trimmed.starts_with(keyword) {
+        return false;
+    }
+
+    trimmed[keyword.len()..]
+        .chars()
+        .next()
+        .is_none_or(|c| !is_identifier_char(c))
+}
+
+fn ends_with_do_block(code: &str) -> bool {
+    let trimmed = code.trim_end();
+    let Some(index) = find_last_keyword(trimmed, "do") else {
+        return false;
+    };
+
+    let rest = trimmed[index + "do".len()..].trim();
+    rest.is_empty() || (rest.starts_with('|') && rest.ends_with('|'))
+}
+
+fn find_last_keyword(code: &str, keyword: &str) -> Option<usize> {
+    code.match_indices(keyword)
+        .filter_map(|(index, _)| {
+            let before = code[..index].chars().next_back();
+            let after = code[index + keyword.len()..].chars().next();
+
+            let has_left_boundary = before.is_none_or(char::is_whitespace);
+            let has_right_boundary = after.is_none_or(|c| !is_identifier_char(c));
+
+            has_left_boundary
+                .then_some(index)
+                .filter(|_| has_right_boundary)
+        })
+        .last()
+}
+
+fn is_identifier_char(c: char) -> bool {
+    c.is_ascii_alphanumeric() || matches!(c, '_' | '?' | '!')
 }
 
 pub(super) fn should_expand_tag_with_erb_attributes(

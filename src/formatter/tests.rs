@@ -543,6 +543,30 @@ fn can_disable_html_indentation() {
 }
 
 #[test]
+fn preserves_conditional_erb_attribute_blocks_in_html_tags() {
+    let input = "<table>\n<tr <% unless linked %>style=\"cursor: pointer\" onclick=\"console.log('test');\"<% end %>>\n<td>test</td>\n</tr>\n</table>\n";
+    let expected = "<table>\n  <tr <% unless linked %>style=\"cursor: pointer\" onclick=\"console.log('test');\"<% end %>>\n    <td>test</td>\n  </tr>\n</table>\n";
+
+    assert_eq!(format_source(input), expected);
+}
+
+#[test]
+fn preserves_conditional_erb_attribute_blocks_even_when_long() {
+    let input = "<tr <% if clickable? %>class=\"clickable cursor-pointer\" data-controller=\"row-link\" data-action=\"click->row-link#open\"<% end %>></tr>\n";
+
+    assert_eq!(
+        format_with_options(
+            input,
+            FormatOptions {
+                line_width: 40,
+                ..FormatOptions::default()
+            }
+        ),
+        "<tr <% if clickable? %>class=\"clickable cursor-pointer\" data-controller=\"row-link\" data-action=\"click->row-link#open\"<% end %>>\n</tr>\n"
+    );
+}
+
+#[test]
 fn can_configure_indent_width() {
     assert_eq!(
         format_with_options(
