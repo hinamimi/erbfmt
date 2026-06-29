@@ -186,7 +186,7 @@ Keep these files in the release verification surface:
 
 ## Versioning
 
-The repository is currently set to `0.1.5` for the next prerelease.
+The repository is currently set to `0.2.0` for the next prerelease.
 Earlier milestone work used the fixed development version `0.0.0-dev`, and the
 first public prerelease used `0.1.0`.
 
@@ -241,7 +241,7 @@ Download the gem assets from the draft or published GitHub Release:
 
 ```bash
 mkdir -p release-assets
-gh release download v0.1.5 \
+gh release download v0.2.0 \
   --pattern '*.gem' \
   --dir release-assets
 ```
@@ -250,7 +250,7 @@ Validate the asset set without publishing:
 
 ```bash
 scripts/publish-rubygems.sh \
-  --version 0.1.5 \
+  --version 0.2.0 \
   --asset-dir release-assets \
   --dry-run
 ```
@@ -259,7 +259,7 @@ Publish the fallback gem and all four platform gems:
 
 ```bash
 scripts/publish-rubygems.sh \
-  --version 0.1.5 \
+  --version 0.2.0 \
   --asset-dir release-assets \
   --yes
 ```
@@ -294,10 +294,10 @@ bundle exec erbfmt --version
 For the next release:
 
 ```bash
-ruby scripts/version.rb set 0.1.5
-ruby scripts/version.rb verify 0.1.5
+ruby scripts/version.rb set 0.2.0
+ruby scripts/version.rb verify 0.2.0
 # Run the release verification commands above, then commit.
-git tag -a v0.1.5 -m "erbfmt 0.1.5"
+git tag -a v0.2.0 -m "erbfmt 0.2.0"
 git push origin main
-git push origin v0.1.5
+git push origin v0.2.0
 ```

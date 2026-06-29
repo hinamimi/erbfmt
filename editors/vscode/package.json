@@ -2,7 +2,7 @@
   "name": "erbfmt-vscode",
   "displayName": "erbfmt",
   "description": "Format, lint, highlight, and comment ERB and HTML+ERB templates with erbfmt.",
-  "version": "0.1.5",
+  "version": "0.2.0",
   "publisher": "erbfmt",
   "license": "MIT",
   "repository": {

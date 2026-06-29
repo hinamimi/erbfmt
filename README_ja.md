@@ -22,7 +22,7 @@ first-party VSCode extensionから利用できます。
 > 後方互換性なく変更される可能性があります。format差分を確認してからcommitし、
 > 自動実行する環境ではversionを固定してください。
 
-> erbfmtは現在プレリリース開発中です。Version `0.1.5`をRubyGems.orgと
+> erbfmtは現在プレリリース開発中です。Version `0.2.0`をRubyGems.orgと
 > GitHub Releasesで公開しています。
 
 ## インストール
@@ -44,7 +44,7 @@ bundle exec erbfmt --write app/views/users/show.html.erb
 手元でglobal commandとして使いたい場合は、RubyGemを直接installします。
 
 ```bash
-gem install erbfmt -v 0.1.5
+gem install erbfmt -v 0.2.0
 erbfmt --version
 ```
 
@@ -52,7 +52,7 @@ global installは試用には便利ですが、projectではformatter versionを
 優先してください。
 
 その他のinstall方法も利用できます。
-[v0.1.5 release](https://github.com/hinamimi/erbfmt/releases/tag/v0.1.5)から
+[v0.2.0 release](https://github.com/hinamimi/erbfmt/releases/tag/v0.2.0)から
 利用するplatformのarchiveをdownloadして展開し、`erbfmt`または `erbfmt.exe`を
 `PATH`へ配置します。
 
@@ -64,7 +64,7 @@ global installは試用には便利ですが、projectではformatter versionを
 Rust toolchainがある場合は、tagged sourceをGitHubから直接installできます。
 
 ```bash
-cargo install --git https://github.com/hinamimi/erbfmt --tag v0.1.5 --locked
+cargo install --git https://github.com/hinamimi/erbfmt --tag v0.2.0 --locked
 ```
 
 Bundler、global gem install、platformごとの注意点は

@@ -24,7 +24,7 @@ first-party VSCode extension.
 > Review formatting diffs before committing them and pin an exact version in
 > automated environments.
 
-> erbfmt is currently in pre-release development. Version `0.1.5` is available
+> erbfmt is currently in pre-release development. Version `0.2.0` is available
 > through RubyGems.org and GitHub Releases.
 
 ## Install
@@ -46,7 +46,7 @@ bundle exec erbfmt --write app/views/users/show.html.erb
 For a global local command, install the RubyGem directly:
 
 ```bash
-gem install erbfmt -v 0.1.5
+gem install erbfmt -v 0.2.0
 erbfmt --version
 ```
 
@@ -55,7 +55,7 @@ project use because it pins the formatter version.
 
 Alternative installation methods are still available. Download a standalone
 archive from the
-[v0.1.5 release](https://github.com/hinamimi/erbfmt/releases/tag/v0.1.5), extract
+[v0.2.0 release](https://github.com/hinamimi/erbfmt/releases/tag/v0.2.0), extract
 it, and place `erbfmt` or `erbfmt.exe` on your `PATH`.
 
 - Linux x64: `x86_64-unknown-linux-gnu`
@@ -66,7 +66,7 @@ it, and place `erbfmt` or `erbfmt.exe` on your `PATH`.
 With a Rust toolchain, install the tagged source directly from GitHub:
 
 ```bash
-cargo install --git https://github.com/hinamimi/erbfmt --tag v0.1.5 --locked
+cargo install --git https://github.com/hinamimi/erbfmt --tag v0.2.0 --locked
 ```
 
 See [Ruby Gem Wrapper](docs/RubyGem.md#installing-from-a-gemfile) for Bundler,
