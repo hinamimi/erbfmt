@@ -54,13 +54,14 @@ erbfmt init [--force]</code></pre>
           <div class="option"><dt><code>erbfmt FILE</code><span class="meta">stdout · one file</span></dt><dd><p>Formats one file and prints the result to standard output without changing the source file.</p></dd></div>
           <div class="option"><dt><code>--write</code><span class="meta">one or more files</span></dt><dd><p>Formats each file in place. A successful write prints one confirmation line per file.</p></dd></div>
           <div class="option"><dt><code>--check</code><span class="meta">one or more files</span></dt><dd><p>Checks whether formatting would change each file without writing it. The command fails when any file is not formatted.</p></dd></div>
-          <div class="option"><dt><code>--lint</code><span class="meta">one or more files</span></dt><dd><p>Runs lint diagnostics without formatting. Error diagnostics fail the command; warning-only results succeed.</p></dd></div>
+          <div class="option"><dt><code>--lint</code><span class="meta">one or more files</span></dt><dd><p>Runs lint diagnostics without formatting. Error diagnostics fail the command; warning-only results succeed. Diagnostics use the human-readable <code>pretty</code> format by default.</p></dd></div>
         </dl>
         <div class="callout"><p><code>--write</code>, <code>--check</code>, and <code>--lint</code> are mutually exclusive.</p></div>
 
         <h2 id="options">Options</h2>
         <dl class="option-list">
           <div class="option"><dt><code>--config PATH</code></dt><dd><p>Uses the specified <code>erbfmt.json</code>. Without this option, erbfmt searches the current directory and then its parents. If no config is found, built-in defaults are used.</p></dd></div>
+          <div class="option"><dt><code>--lint-format pretty|plain</code></dt><dd><p>Controls lint diagnostic output. <code>pretty</code> is the default and includes severity labels, source excerpts, carets, and a summary. <code>plain</code> preserves the compact <code>file: message at line, column</code> format for scripts and editor integrations.</p></dd></div>
           <div class="option"><dt><code>-h, --help</code></dt><dd><p>Prints command help and exits.</p></dd></div>
           <div class="option"><dt><code>-V, --version</code></dt><dd><p>Prints the installed erbfmt version and exits.</p></dd></div>
         </dl>

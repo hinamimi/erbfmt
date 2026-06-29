@@ -103,6 +103,9 @@ Linterを実行します。
 erbfmt --lint app/views/users/show.html.erb
 ```
 
+lint出力はデフォルトでsource excerpt付きの人間向け表示になります。scriptから旧来の
+compactな1行形式を扱いたい場合は `--lint-format plain` を指定してください。
+
 `--write`、`--check`、`--lint` は同時に指定できません。checkは整形による変更が
 必要な場合、lintはerror levelの診断が見つかった場合にnonzero statusで終了します。
 

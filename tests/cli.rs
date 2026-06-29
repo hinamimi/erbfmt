@@ -1,5 +1,5 @@
 use std::{
-    ffi::OsStr,
+    ffi::{OsStr, OsString},
     fs,
     path::PathBuf,
     process::{Command, Output},
@@ -34,6 +34,7 @@ fn help_describes_core_modes() {
     assert!(stdout.contains("--write"), "{stdout}");
     assert!(stdout.contains("--check"), "{stdout}");
     assert!(stdout.contains("--lint"), "{stdout}");
+    assert!(stdout.contains("--lint-format"), "{stdout}");
     assert!(stdout.contains("--config"), "{stdout}");
     assert!(stdout.contains("init"), "{stdout}");
     assert_eq!(stderr(&output), "");
@@ -114,6 +115,8 @@ fn lint_can_target_file_named_init() {
 
     let output = run([
         "--lint".as_ref(),
+        "--lint-format".as_ref(),
+        "plain".as_ref(),
         "--config".as_ref(),
         config.as_path(),
         file.as_path(),
@@ -238,7 +241,7 @@ fn lint_fails_for_invalid_file() {
     let dir = TestDir::new("lint_fail");
     let file = dir.write("input.html.erb", "<% if show_empty_state %>\n<% end %>\n");
 
-    let output = run(["--lint".as_ref(), file.as_path()]);
+    let output = run_lint_plain([file.as_path()]);
 
     assert_failure(&output);
     assert_eq!(stdout(&output), "");
@@ -252,11 +255,47 @@ fn lint_fails_for_invalid_file() {
 }
 
 #[test]
+fn lint_defaults_to_pretty_output() {
+    let dir = TestDir::new("lint_pretty");
+    let file = dir.write(
+        "input.html.erb",
+        "<article class=\"card\" id=\"one\" class=\"wide\"></article>\n",
+    );
+
+    let output = run(["--lint".as_ref(), file.as_path()]);
+
+    assert_failure(&output);
+    assert_eq!(stdout(&output), "");
+    let stderr = stderr(&output);
+    assert!(
+        stderr.contains(&format!("{}:\n", file.display())),
+        "{stderr}"
+    );
+    assert!(
+        stderr.contains("  error: duplicate HTML attribute `class`"),
+        "{stderr}"
+    );
+    assert!(stderr.contains("    --> line 1, column 32"), "{stderr}");
+    assert!(
+        stderr.contains("   1 | <article class=\"card\" id=\"one\" class=\"wide\"></article>"),
+        "{stderr}"
+    );
+    assert!(
+        stderr.contains("     |                                ^"),
+        "{stderr}"
+    );
+    assert!(
+        stderr.contains("1 lint issue found (1 error, 0 warnings)."),
+        "{stderr}"
+    );
+}
+
+#[test]
 fn lint_fails_for_empty_erb_code_tags() {
     let dir = TestDir::new("lint_empty_erb_code_tag");
     let file = dir.write("input.html.erb", "<p>Before</p>\n  <% %>\n  <%=   %>\n");
 
-    let output = run(["--lint".as_ref(), file.as_path()]);
+    let output = run_lint_plain([file.as_path()]);
 
     assert_failure(&output);
     assert_eq!(stdout(&output), "");
@@ -278,7 +317,7 @@ fn lint_fails_for_empty_erb_branches() {
         "<% if current_user %>\n<p>Hello</p>\n<% else %>\n<% end %>\n",
     );
 
-    let output = run(["--lint".as_ref(), file.as_path()]);
+    let output = run_lint_plain([file.as_path()]);
 
     assert_failure(&output);
     assert_eq!(stdout(&output), "");
@@ -299,7 +338,7 @@ fn lint_fails_for_html_rules() {
         "<main>\n  <center>Legacy</center>\n  <div />\n</main>\n",
     );
 
-    let output = run(["--lint".as_ref(), file.as_path()]);
+    let output = run_lint_plain([file.as_path()]);
 
     assert_failure(&output);
     assert_eq!(stdout(&output), "");
@@ -321,7 +360,7 @@ fn lint_fails_for_duplicate_html_attributes() {
         "<article class=\"card\" id=\"one\" class=\"wide\"></article>\n",
     );
 
-    let output = run(["--lint".as_ref(), file.as_path()]);
+    let output = run_lint_plain([file.as_path()]);
 
     assert_failure(&output);
     assert_eq!(stdout(&output), "");
@@ -342,7 +381,7 @@ fn lint_fails_for_invalid_html_boolean_attributes() {
         "<button disabled=\"false\" checked=\"checked\" hidden>Save</button>\n",
     );
 
-    let output = run(["--lint".as_ref(), file.as_path()]);
+    let output = run_lint_plain([file.as_path()]);
 
     assert_failure(&output);
     assert_eq!(stdout(&output), "");
@@ -364,7 +403,7 @@ fn lint_fails_for_invalid_html_nesting() {
         "<ul>\n  <div>Bad</div>\n</ul>\n<p>\n  <div>Bad</div>\n</p>\n<table>\n  <tr><div>Bad</div></tr>\n</table>\n",
     );
 
-    let output = run(["--lint".as_ref(), file.as_path()]);
+    let output = run_lint_plain([file.as_path()]);
 
     assert_failure(&output);
     assert_eq!(stdout(&output), "");
@@ -688,6 +727,8 @@ fn config_can_disable_linter_rule() {
 
     let output = run([
         "--lint".as_ref(),
+        "--lint-format".as_ref(),
+        "plain".as_ref(),
         "--config".as_ref(),
         config.as_path(),
         file.as_path(),
@@ -712,6 +753,8 @@ fn config_lint_warning_rule_does_not_fail_cli() {
 
     let output = run([
         "--lint".as_ref(),
+        "--lint-format".as_ref(),
+        "plain".as_ref(),
         "--config".as_ref(),
         config.as_path(),
         file.as_path(),
@@ -739,6 +782,8 @@ fn config_lint_warning_and_error_rules_still_fail_cli() {
 
     let output = run([
         "--lint".as_ref(),
+        "--lint-format".as_ref(),
+        "plain".as_ref(),
         "--config".as_ref(),
         config.as_path(),
         file.as_path(),
@@ -935,7 +980,7 @@ fn lint_lexer_errors_include_line_and_column() {
     let dir = TestDir::new("lint_lex_location");
     let file = dir.write("input.html.erb", "<div>\n  <% if user");
 
-    let output = run(["--lint".as_ref(), file.as_path()]);
+    let output = run_lint_plain([file.as_path()]);
 
     assert_failure(&output);
     assert_eq!(stdout(&output), "");
@@ -953,7 +998,7 @@ fn lint_parser_errors_include_line_and_column() {
     let dir = TestDir::new("lint_parse_location");
     let file = dir.write("input.html.erb", "<p>Hello</p>\n<% end %>\n");
 
-    let output = run(["--lint".as_ref(), file.as_path()]);
+    let output = run_lint_plain([file.as_path()]);
 
     assert_failure(&output);
     assert_eq!(stdout(&output), "");
@@ -971,7 +1016,7 @@ fn lint_unexpected_html_close_errors_include_close_tag_location() {
     let dir = TestDir::new("lint_unexpected_html_close_location");
     let file = dir.write("input.html.erb", "<p>Hello</p>\n</div>\n");
 
-    let output = run(["--lint".as_ref(), file.as_path()]);
+    let output = run_lint_plain([file.as_path()]);
 
     assert_failure(&output);
     assert_eq!(stdout(&output), "");
@@ -989,7 +1034,7 @@ fn lint_mismatched_html_close_errors_include_close_tag_location() {
     let dir = TestDir::new("lint_mismatched_html_close_location");
     let file = dir.write("input.html.erb", "<div>\n  <span>Hello</div>\n");
 
-    let output = run(["--lint".as_ref(), file.as_path()]);
+    let output = run_lint_plain([file.as_path()]);
 
     assert_failure(&output);
     assert_eq!(stdout(&output), "");
@@ -1007,7 +1052,7 @@ fn lint_unclosed_html_tag_errors_include_open_tag_location() {
     let dir = TestDir::new("lint_unclosed_html_location");
     let file = dir.write("input.html.erb", "<div>\n  <p>Hello</p>\n");
 
-    let output = run(["--lint".as_ref(), file.as_path()]);
+    let output = run_lint_plain([file.as_path()]);
 
     assert_failure(&output);
     assert_eq!(stdout(&output), "");
@@ -1028,7 +1073,7 @@ fn lint_rule_diagnostics_include_line_and_column() {
         "<p>Before</p>\n  <% while job.running? %>\n<p>Waiting</p>\n",
     );
 
-    let output = run(["--lint".as_ref(), file.as_path()]);
+    let output = run_lint_plain([file.as_path()]);
 
     assert_failure(&output);
     assert_eq!(stdout(&output), "");
@@ -1070,7 +1115,7 @@ fn multi_file_lint_returns_failure_if_any_file_has_diagnostics() {
     let valid = dir.write("valid.html.erb", FORMATTED);
     let invalid = dir.write("invalid.html.erb", "<% if show_empty_state %>\n<% end %>\n");
 
-    let output = run(["--lint".as_ref(), valid.as_path(), invalid.as_path()]);
+    let output = run_lint_plain([valid.as_path(), invalid.as_path()]);
 
     assert_failure(&output);
     assert_eq!(
@@ -1156,6 +1201,21 @@ where
         .args(args)
         .output()
         .unwrap()
+}
+
+fn run_lint_plain<I, P>(args: I) -> Output
+where
+    I: IntoIterator<Item = P>,
+    P: AsRef<OsStr>,
+{
+    let mut all_args = vec![
+        OsString::from("--lint"),
+        OsString::from("--lint-format"),
+        OsString::from("plain"),
+    ];
+    all_args.extend(args.into_iter().map(|arg| arg.as_ref().to_os_string()));
+
+    run(all_args)
 }
 
 fn run_in_dir<I, P>(args: I, directory: &PathBuf) -> Output

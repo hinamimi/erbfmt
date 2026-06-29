@@ -54,13 +54,14 @@ erbfmt init [--force]</code></pre>
           <div class="option"><dt><code>erbfmt FILE</code><span class="meta">標準出力 · 単一file</span></dt><dd><p>1つのfileをformatし、source fileを変更せず結果を標準出力へ表示します。</p></dd></div>
           <div class="option"><dt><code>--write</code><span class="meta">1つ以上のfile</span></dt><dd><p>各fileをformatして上書きします。成功するとfileごとに確認messageを表示します。</p></dd></div>
           <div class="option"><dt><code>--check</code><span class="meta">1つ以上のfile</span></dt><dd><p>fileを書き換えず、formatによる変更が必要か確認します。未formatのfileが1つでもあると失敗します。</p></dd></div>
-          <div class="option"><dt><code>--lint</code><span class="meta">1つ以上のfile</span></dt><dd><p>formatせずlint diagnosticsを実行します。errorがある場合は失敗し、warningだけの場合は成功します。</p></dd></div>
+          <div class="option"><dt><code>--lint</code><span class="meta">1つ以上のfile</span></dt><dd><p>formatせずlint diagnosticsを実行します。errorがある場合は失敗し、warningだけの場合は成功します。diagnosticsはデフォルトで人間向けの <code>pretty</code> formatを使います。</p></dd></div>
         </dl>
         <div class="callout"><p><code>--write</code>、<code>--check</code>、<code>--lint</code>は同時に指定できません。</p></div>
 
         <h2 id="options">オプション</h2>
         <dl class="option-list">
           <div class="option"><dt><code>--config PATH</code></dt><dd><p>指定した <code>erbfmt.json</code>を使います。指定しない場合はcurrent directoryから親directoryへ向かって検索し、見つからなければbuilt-in defaultを使います。</p></dd></div>
+          <div class="option"><dt><code>--lint-format pretty|plain</code></dt><dd><p>lint diagnosticの表示形式を指定します。defaultの <code>pretty</code> はseverity、source excerpt、caret、summaryを表示します。<code>plain</code> はscriptやeditor integration向けに、compactな <code>file: message at line, column</code> 形式を保ちます。</p></dd></div>
           <div class="option"><dt><code>-h, --help</code></dt><dd><p>command helpを表示して終了します。</p></dd></div>
           <div class="option"><dt><code>-V, --version</code></dt><dd><p>installされているerbfmtのversionを表示して終了します。</p></dd></div>
         </dl>

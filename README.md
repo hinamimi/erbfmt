@@ -105,6 +105,9 @@ Run the linter:
 erbfmt --lint app/views/users/show.html.erb
 ```
 
+Lint output defaults to a human-readable format with source excerpts. Use
+`--lint-format plain` when a script needs the compact legacy line format.
+
 `--write`, `--check`, and `--lint` are mutually exclusive. Check mode returns a
 nonzero status when formatting would change a file; lint mode does so when an
 error-level diagnostic is found.

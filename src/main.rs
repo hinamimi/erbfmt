@@ -7,7 +7,7 @@ mod linter;
 mod mixed_parser;
 
 use anyhow::{Context, Result, bail};
-use clap::{ArgGroup, Parser};
+use clap::{ArgGroup, Parser, ValueEnum};
 use std::ffi::OsString;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -75,8 +75,22 @@ struct Args {
     #[arg(long, help = "Run lint diagnostics instead of formatting")]
     lint: bool,
 
+    #[arg(
+        long,
+        value_enum,
+        default_value = "pretty",
+        help = "Set lint output format"
+    )]
+    lint_format: LintFormat,
+
     #[arg(long, value_name = "PATH", help = "Path to erbfmt.json")]
     config: Option<PathBuf>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+enum LintFormat {
+    Pretty,
+    Plain,
 }
 
 #[derive(Parser)]
@@ -169,7 +183,7 @@ fn run_file(args: &Args, config: &config::Config, file: &Path) -> Result<FileSta
         fs::read_to_string(file).with_context(|| format!("failed to read `{}`", file.display()))?;
 
     if args.lint {
-        return run_lint(file, &content, config);
+        return run_lint(file, &content, config, args.lint_format);
     }
 
     let formatted = format_content(file, &content, config)?;
@@ -199,7 +213,12 @@ fn run_file(args: &Args, config: &config::Config, file: &Path) -> Result<FileSta
     unreachable!("multiple files without a mode are rejected before processing")
 }
 
-fn run_lint(file: &Path, content: &str, config: &config::Config) -> Result<FileStatus> {
+fn run_lint(
+    file: &Path,
+    content: &str,
+    config: &config::Config,
+    lint_format: LintFormat,
+) -> Result<FileStatus> {
     let diagnostics = linter::lint_with_options(content, config.lint_options());
 
     if diagnostics.is_empty() {
@@ -209,7 +228,20 @@ fn run_lint(file: &Path, content: &str, config: &config::Config) -> Result<FileS
 
     let has_errors = diagnostics.iter().any(linter::Diagnostic::is_error);
 
-    for diagnostic in &diagnostics {
+    match lint_format {
+        LintFormat::Pretty => print_pretty_lint_diagnostics(file, content, &diagnostics),
+        LintFormat::Plain => print_plain_lint_diagnostics(file, &diagnostics),
+    }
+
+    Ok(if has_errors {
+        FileStatus::Failed
+    } else {
+        FileStatus::Passed
+    })
+}
+
+fn print_plain_lint_diagnostics(file: &Path, diagnostics: &[linter::Diagnostic]) {
+    for diagnostic in diagnostics {
         if diagnostic.severity == linter::DiagnosticSeverity::Warning {
             eprintln!(
                 "{}: warning: {}",
@@ -220,12 +252,71 @@ fn run_lint(file: &Path, content: &str, config: &config::Config) -> Result<FileS
             eprintln!("{}: {}", file.display(), diagnostic.message_with_location());
         }
     }
+}
 
-    Ok(if has_errors {
-        FileStatus::Failed
-    } else {
-        FileStatus::Passed
-    })
+fn print_pretty_lint_diagnostics(file: &Path, content: &str, diagnostics: &[linter::Diagnostic]) {
+    eprintln!("{}:", file.display());
+
+    for diagnostic in diagnostics {
+        eprintln!(
+            "  {}: {}",
+            lint_severity_label(diagnostic.severity),
+            diagnostic.message
+        );
+
+        if let Some(location) = diagnostic.location {
+            eprintln!("    --> {}", location);
+
+            if let Some(line) = source_line(content, location.line) {
+                eprintln!("     |");
+                eprintln!("{:>4} | {}", location.line, line);
+                eprintln!("     | {}^", caret_padding(line, location.column));
+            }
+        }
+
+        eprintln!();
+    }
+
+    let errors = diagnostics
+        .iter()
+        .filter(|diagnostic| diagnostic.severity == linter::DiagnosticSeverity::Error)
+        .count();
+    let warnings = diagnostics.len() - errors;
+
+    eprintln!(
+        "{} lint {} found ({} {}, {} {}).",
+        diagnostics.len(),
+        plural(diagnostics.len(), "issue", "issues"),
+        errors,
+        plural(errors, "error", "errors"),
+        warnings,
+        plural(warnings, "warning", "warnings")
+    );
+}
+
+fn lint_severity_label(severity: linter::DiagnosticSeverity) -> &'static str {
+    match severity {
+        linter::DiagnosticSeverity::Warning => "warning",
+        linter::DiagnosticSeverity::Error => "error",
+    }
+}
+
+fn source_line(content: &str, line: usize) -> Option<&str> {
+    line.checked_sub(1)
+        .and_then(|index| content.lines().nth(index))
+}
+
+fn caret_padding(line: &str, column: usize) -> String {
+    let column = column.saturating_sub(1);
+
+    line.chars()
+        .take(column)
+        .map(|ch| if ch == '\t' { '\t' } else { ' ' })
+        .collect()
+}
+
+fn plural(count: usize, singular: &'static str, plural: &'static str) -> &'static str {
+    if count == 1 { singular } else { plural }
 }
 
 fn format_content(file: &Path, content: &str, config: &config::Config) -> Result<String> {

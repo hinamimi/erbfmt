@@ -279,7 +279,12 @@ async function lintDocument(
 
   try {
     await fs.writeFile(tempFile, document.getText(), "utf8");
-    const args = await buildErbfmtArgs(context, document, ["--lint", tempFile]);
+    const args = await buildErbfmtArgs(context, document, [
+      "--lint",
+      "--lint-format",
+      "plain",
+      tempFile,
+    ]);
     const result = await execFile(context.command, args, { cwd: context.cwd }, token);
     const parsedDiagnostics = parseDiagnostics(document, tempFile, result.stderr);
 
