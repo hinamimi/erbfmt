@@ -124,8 +124,14 @@ fn main() -> Result<ExitCode> {
 
     let mut failed = false;
     for file in &files {
-        if run_file(&args, &config, file)? == FileStatus::Failed {
-            failed = true;
+        match run_file(&args, &config, file) {
+            Ok(FileStatus::Passed) => {}
+            Ok(FileStatus::Failed) => failed = true,
+            Err(error) if args.write || args.check || args.lint => {
+                eprintln!("Error: {error:#}");
+                failed = true;
+            }
+            Err(error) => return Err(error),
         }
     }
 

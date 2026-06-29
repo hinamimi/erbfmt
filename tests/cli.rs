@@ -184,6 +184,34 @@ fn write_formats_directory_recursively() {
 }
 
 #[test]
+fn write_directory_continues_after_parse_error() {
+    let dir = TestDir::new("write_directory_parse_error");
+    let views = dir.path.join("app/views");
+    let bad_input = "<div>\n  <% if user\n";
+    let bad = dir.write("app/views/a_bad.html.erb", bad_input);
+    let good = dir.write("app/views/z_good.html.erb", UNFORMATTED);
+
+    let output = run(["--write".as_ref(), views.as_path()]);
+
+    assert_failure(&output);
+    assert_eq!(fs::read_to_string(&bad).unwrap(), bad_input);
+    assert_eq!(fs::read_to_string(&good).unwrap(), FORMATTED);
+    assert_eq!(
+        stdout(&output),
+        format!("{}: wrote formatted file.\n", good.display())
+    );
+    let stderr = stderr(&output);
+    assert!(
+        stderr.contains(&format!("failed to lex `{}`", bad.display())),
+        "{stderr}"
+    );
+    assert!(
+        stderr.contains("unterminated ERB tag at line 2, column 3"),
+        "{stderr}"
+    );
+}
+
+#[test]
 fn directory_inputs_require_mode() {
     let dir = TestDir::new("directory_without_mode");
     dir.write("app/views/show.html.erb", FORMATTED);
