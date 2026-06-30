@@ -262,12 +262,29 @@ fn split_command_call(code: &str) -> Option<(&str, &str)> {
     if callee.is_empty()
         || arguments.is_empty()
         || arguments.starts_with('(')
+        || contains_top_level_newline(arguments)
         || !is_foldable_callee(callee)
     {
         return None;
     }
 
     Some((callee, arguments))
+}
+
+fn contains_top_level_newline(value: &str) -> bool {
+    let mut state = RubyScanState::default();
+
+    for ch in value.chars() {
+        if state.is_top_level() && ch == '\n' {
+            return true;
+        }
+
+        if !state.consume(ch) {
+            return true;
+        }
+    }
+
+    false
 }
 
 fn split_top_level_do_block(code: &str) -> Option<(&str, Option<&str>)> {
@@ -610,6 +627,16 @@ mod tests {
     #[test]
     fn does_not_fold_heredoc_expressions() {
         assert_eq!(fold_command_call("message = <<TEXT\nhello\nTEXT"), None);
+    }
+
+    #[test]
+    fn does_not_fold_multistatement_command_calls() {
+        assert_eq!(
+            fold_command_call(
+                "content_for :header, render(\"header\")\n  content_for :footer, render(\"footer\")"
+            ),
+            None
+        );
     }
 
     #[test]

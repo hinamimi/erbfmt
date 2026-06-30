@@ -833,6 +833,22 @@ fn wraps_long_erb_code_command_calls() {
 }
 
 #[test]
+fn preserves_multistatement_erb_code_tags_when_wrapping() {
+    let input = "<%\n  content_for :header, render(\"header\")\n  content_for :footer, render(\"footer\")\n%>\n";
+
+    assert_eq!(
+        format_source_with_options(
+            input,
+            FormatOptions {
+                line_width: 40,
+                ..FormatOptions::default()
+            }
+        ),
+        input
+    );
+}
+
+#[test]
 fn wraps_long_erb_output_command_calls_with_do_blocks() {
     assert_eq!(
         format_with_options(
