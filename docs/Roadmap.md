@@ -50,6 +50,7 @@ erbfmt は `*.html.erb` 向けの formatter / linter です。
 - list / table / paragraph nesting lint rules
 - unmatched HTML close tag diagnostics
 - pretty lint output
+- `--lint-format json` による machine-readable diagnostics
 - VSCode `html-erb` language id
 - VSCode TextMate syntax highlighting
 - VSCode document formatter wrapper
@@ -70,6 +71,7 @@ erbfmt は `*.html.erb` 向けの formatter / linter です。
 - [Distribution.md](Distribution.md): binary distribution strategy
 - [RubyGem.md](RubyGem.md): Ruby gem wrapper
 - [VSCode.md](VSCode.md): VSCode extension
+- [AI.md](AI.md): AI agent 向け command usage
 - [Development.md](Development.md): local development workflow
 
 主な sample:
@@ -89,6 +91,7 @@ erbfmt は `*.html.erb` 向けの formatter / linter です。
 - CSS の `display` や Rails helper の semantic analysis はしない。
 - crates.io、npm、Open VSX はまだ公開しない。
 - VSCode extension は Rust binary をまだ bundle / download しない。
+- AI agent 向けの出力は、stdout/stderr の文字列 parse に頼らず JSON へ寄せる。
 - formatter が安全に判断できない領域は、整形しないか lint / diagnostic に寄せる。
 
 ## 次にやる Milestone
@@ -187,7 +190,26 @@ VSCode で「入れたら動く」に近づけます。
 - local checkout 開発と installed extension の binary resolution が混ざらない。
 - Marketplace 版の user experience が説明できる。
 
-### Milestone F: remaining package registry strategy
+### Milestone F: AI-friendly interface
+
+Codex / Claude Code などの agent が、Rails view を安全に編集しやすい interface を整えます。
+
+やること:
+
+- `--lint-format json` の schema を安定させる。
+- lint / parse error の file、severity、message、line、column を継続的に維持する。
+- 複数 file 実行では agent が stream 処理しやすい出力形式にする。
+- AI agent 向けの短い運用ドキュメントを追加する。
+- Codex Skill / Claude Code Skill から呼びやすい command example を整理する。
+- formatter ignore / lint ignore の使いどころを agent 向けに説明する。
+
+完了条件:
+
+- agent が `erbfmt --lint --lint-format json` の結果から修正対象を特定できる。
+- AI 向け docs を読めば、Rails view 編集後に実行すべき command が分かる。
+- 人間向け CLI 出力と agent 向け JSON 出力が役割分担できている。
+
+### Milestone G: remaining package registry strategy
 
 未公開の registry へ進むか判断します。
 

@@ -70,7 +70,7 @@ erbfmt --lint app/views</code></pre>
         <h2 id="options">Options</h2>
         <dl class="option-list">
           <div class="option"><dt><code>--config PATH</code></dt><dd><p>Uses the specified <code>erbfmt.json</code>. Without this option, erbfmt searches the current directory and then its parents. If no config is found, built-in defaults are used.</p></dd></div>
-          <div class="option"><dt><code>--lint-format pretty|plain</code></dt><dd><p>Controls lint diagnostic output. <code>pretty</code> is the default and includes severity labels, source excerpts, carets, and a summary. <code>plain</code> preserves the compact <code>file: message at line, column</code> format for scripts and editor integrations.</p></dd></div>
+          <div class="option"><dt><code>--lint-format pretty|plain|json</code></dt><dd><p>Controls lint diagnostic output. <code>pretty</code> is the default and includes severity labels, source excerpts, carets, and a summary. <code>plain</code> preserves the compact <code>file: message at line, column</code> format. <code>json</code> emits one machine-readable JSON object per file for AI agents, scripts, and editor integrations.</p></dd></div>
           <div class="option"><dt><code>-h, --help</code></dt><dd><p>Prints command help and exits.</p></dd></div>
           <div class="option"><dt><code>-V, --version</code></dt><dd><p>Prints the installed erbfmt version and exits.</p></dd></div>
         </dl>

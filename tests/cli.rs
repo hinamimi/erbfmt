@@ -307,6 +307,24 @@ fn lint_passes_for_valid_file() {
 }
 
 #[test]
+fn lint_json_reports_no_issues_for_valid_file() {
+    let dir = TestDir::new("lint_json_pass");
+    let file = dir.write("input.html.erb", FORMATTED);
+
+    let output = run_lint_json([file.as_path()]);
+
+    assert_success(&output);
+    assert_eq!(stderr(&output), "");
+
+    let value: serde_json::Value = serde_json::from_str(stdout(&output).trim()).unwrap();
+    assert_eq!(value["file"], file.display().to_string());
+    assert_eq!(value["summary"]["issues"], 0);
+    assert_eq!(value["summary"]["errors"], 0);
+    assert_eq!(value["summary"]["warnings"], 0);
+    assert_eq!(value["diagnostics"].as_array().unwrap().len(), 0);
+}
+
+#[test]
 fn lint_fails_for_invalid_file() {
     let dir = TestDir::new("lint_fail");
     let file = dir.write("input.html.erb", "<% if show_empty_state %>\n<% end %>\n");
@@ -322,6 +340,32 @@ fn lint_fails_for_invalid_file() {
             file.display()
         )
     );
+}
+
+#[test]
+fn lint_json_reports_diagnostics_with_locations() {
+    let dir = TestDir::new("lint_json_fail");
+    let file = dir.write(
+        "input.html.erb",
+        "<article class=\"card\" id=\"one\" class=\"wide\"></article>\n",
+    );
+
+    let output = run_lint_json([file.as_path()]);
+
+    assert_failure(&output);
+    assert_eq!(stderr(&output), "");
+
+    let value: serde_json::Value = serde_json::from_str(stdout(&output).trim()).unwrap();
+    assert_eq!(value["file"], file.display().to_string());
+    assert_eq!(value["summary"]["issues"], 1);
+    assert_eq!(value["summary"]["errors"], 1);
+    assert_eq!(value["summary"]["warnings"], 0);
+
+    let diagnostic = &value["diagnostics"][0];
+    assert_eq!(diagnostic["severity"], "error");
+    assert_eq!(diagnostic["message"], "duplicate HTML attribute `class`");
+    assert_eq!(diagnostic["location"]["line"], 1);
+    assert_eq!(diagnostic["location"]["column"], 32);
 }
 
 #[test]
@@ -1307,6 +1351,21 @@ where
         OsString::from("--lint"),
         OsString::from("--lint-format"),
         OsString::from("plain"),
+    ];
+    all_args.extend(args.into_iter().map(|arg| arg.as_ref().to_os_string()));
+
+    run(all_args)
+}
+
+fn run_lint_json<I, P>(args: I) -> Output
+where
+    I: IntoIterator<Item = P>,
+    P: AsRef<OsStr>,
+{
+    let mut all_args = vec![
+        OsString::from("--lint"),
+        OsString::from("--lint-format"),
+        OsString::from("json"),
     ];
     all_args.extend(args.into_iter().map(|arg| arg.as_ref().to_os_string()));
 

@@ -91,6 +91,7 @@ struct Args {
 enum LintFormat {
     Pretty,
     Plain,
+    Json,
 }
 
 #[derive(Parser)]
@@ -278,6 +279,11 @@ fn run_lint(
     let diagnostics = linter::lint_with_options(content, config.lint_options());
 
     if diagnostics.is_empty() {
+        if lint_format == LintFormat::Json {
+            print_json_lint_diagnostics(file, &diagnostics)?;
+            return Ok(FileStatus::Passed);
+        }
+
         println!("{}: no lint issues found.", file.display());
         return Ok(FileStatus::Passed);
     }
@@ -287,6 +293,7 @@ fn run_lint(
     match lint_format {
         LintFormat::Pretty => print_pretty_lint_diagnostics(file, content, &diagnostics),
         LintFormat::Plain => print_plain_lint_diagnostics(file, &diagnostics),
+        LintFormat::Json => print_json_lint_diagnostics(file, &diagnostics)?,
     }
 
     Ok(if has_errors {
@@ -308,6 +315,44 @@ fn print_plain_lint_diagnostics(file: &Path, diagnostics: &[linter::Diagnostic])
             eprintln!("{}: {}", file.display(), diagnostic.message_with_location());
         }
     }
+}
+
+fn print_json_lint_diagnostics(file: &Path, diagnostics: &[linter::Diagnostic]) -> Result<()> {
+    let errors = diagnostics
+        .iter()
+        .filter(|diagnostic| diagnostic.severity == linter::DiagnosticSeverity::Error)
+        .count();
+    let warnings = diagnostics.len() - errors;
+    let diagnostics = diagnostics
+        .iter()
+        .map(|diagnostic| {
+            let location = diagnostic.location.map(|location| {
+                serde_json::json!({
+                    "line": location.line,
+                    "column": location.column,
+                })
+            });
+
+            serde_json::json!({
+                "severity": lint_severity_label(diagnostic.severity),
+                "message": diagnostic.message,
+                "location": location,
+            })
+        })
+        .collect::<Vec<_>>();
+
+    let payload = serde_json::json!({
+        "file": file.display().to_string(),
+        "summary": {
+            "issues": diagnostics.len(),
+            "errors": errors,
+            "warnings": warnings,
+        },
+        "diagnostics": diagnostics,
+    });
+
+    println!("{}", serde_json::to_string(&payload)?);
+    Ok(())
 }
 
 fn print_pretty_lint_diagnostics(file: &Path, content: &str, diagnostics: &[linter::Diagnostic]) {
