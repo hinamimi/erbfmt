@@ -1,4 +1,5 @@
 use std::{
+    collections::BTreeMap,
     fs,
     path::{Path, PathBuf},
 };
@@ -20,6 +21,7 @@ pub struct Config {
     pub parser: ParserConfig,
     pub formatter: FormatterConfig,
     pub linter: LinterConfig,
+    pub assist: AssistConfig,
 }
 
 impl Config {
@@ -38,6 +40,7 @@ impl Config {
             .into_config()
             .with_context(|| format!("failed to load config `{}`", path.display()))?;
         config.files.base_dir = path.parent().map(Path::to_path_buf);
+        config.assist.base_dir = path.parent().map(Path::to_path_buf);
 
         Ok(config)
     }
@@ -208,40 +211,44 @@ impl FilesConfig {
             return true;
         }
 
-        let normalized_path = normalize_path_for_match(path);
-        let relative_path = self.base_dir.as_deref().and_then(|base_dir| {
-            path.strip_prefix(base_dir)
-                .ok()
-                .map(normalize_path_for_match)
-        });
-        let has_positive = self
-            .includes
-            .iter()
-            .any(|pattern| !pattern.trim_start().starts_with('!'));
-        let mut included = !has_positive;
+        path_includes(path, self.base_dir.as_deref(), &self.includes)
+    }
+}
 
-        for pattern in &self.includes {
-            let pattern = pattern.trim();
-            if pattern.is_empty() {
-                continue;
-            }
+fn path_includes(path: &Path, base_dir: Option<&Path>, includes: &[String]) -> bool {
+    let normalized_path = normalize_path_for_match(path);
+    let relative_path = base_dir.and_then(|base_dir| {
+        path.strip_prefix(base_dir)
+            .ok()
+            .map(normalize_path_for_match)
+    });
 
-            let (exclude, pattern) = pattern
-                .strip_prefix('!')
-                .map_or((false, pattern), |pattern| (true, pattern));
-            let pattern = pattern.trim();
+    let has_positive = includes
+        .iter()
+        .any(|pattern| !pattern.trim_start().starts_with('!'));
+    let mut included = !has_positive;
 
-            if pattern.is_empty()
-                || !path_matches_pattern(path, relative_path.as_deref(), &normalized_path, pattern)
-            {
-                continue;
-            }
-
-            included = !exclude;
+    for pattern in includes {
+        let pattern = pattern.trim();
+        if pattern.is_empty() {
+            continue;
         }
 
-        included
+        let (exclude, pattern) = pattern
+            .strip_prefix('!')
+            .map_or((false, pattern), |pattern| (true, pattern));
+        let pattern = pattern.trim();
+
+        if pattern.is_empty()
+            || !path_matches_pattern(path, relative_path.as_deref(), &normalized_path, pattern)
+        {
+            continue;
+        }
+
+        included = !exclude;
     }
+
+    included
 }
 
 fn path_matches_pattern(
@@ -354,6 +361,14 @@ pub struct LinterConfig {
     pub options: LintOptions,
 }
 
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct AssistConfig {
+    pub enabled: bool,
+    pub includes: Vec<String>,
+    pub actions: BTreeMap<String, bool>,
+    base_dir: Option<PathBuf>,
+}
+
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct RawConfig {
@@ -361,6 +376,7 @@ struct RawConfig {
     parser: Option<RawParserConfig>,
     formatter: Option<RawFormatterConfig>,
     linter: Option<RawLinterConfig>,
+    assist: Option<RawAssistConfig>,
 }
 
 impl RawConfig {
@@ -383,6 +399,10 @@ impl RawConfig {
             config.linter = linter.into_config();
         }
 
+        if let Some(assist) = self.assist {
+            config.assist = assist.into_config();
+        }
+
         config.linter.options.parser = config.parser.options;
 
         Ok(config)
@@ -401,6 +421,35 @@ impl RawFilesConfig {
             includes: self.includes.unwrap_or_default(),
             base_dir: None,
         }
+    }
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct RawAssistConfig {
+    enabled: Option<bool>,
+    enable: Option<bool>,
+    includes: Option<Vec<String>>,
+    actions: Option<BTreeMap<String, bool>>,
+}
+
+impl RawAssistConfig {
+    fn into_config(self) -> AssistConfig {
+        let mut config = AssistConfig::default();
+
+        if let Some(enabled) = self.enabled.or(self.enable) {
+            config.enabled = enabled;
+        }
+
+        if let Some(includes) = self.includes {
+            config.includes = includes;
+        }
+
+        if let Some(actions) = self.actions {
+            config.actions = actions;
+        }
+
+        config
     }
 }
 
@@ -617,5 +666,92 @@ fn find_config() -> Option<PathBuf> {
         if !directory.pop() {
             return None;
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn assist_defaults_to_disabled() {
+        let raw: RawConfig = serde_json::from_str("{}").unwrap();
+        let config = raw.into_config().unwrap();
+
+        assert!(!config.assist.enabled);
+        assert!(config.assist.includes.is_empty());
+        assert!(config.assist.actions.is_empty());
+    }
+
+    #[test]
+    fn assist_config_accepts_includes_and_actions() {
+        let raw: RawConfig = serde_json::from_str(
+            r#"{
+              "assist": {
+                "enabled": true,
+                "includes": ["app/views/**/*.html.erb", "!app/views/generated/**"],
+                "actions": {
+                  "organizeErbOutput": true,
+                  "extractPartial": false
+                }
+              }
+            }"#,
+        )
+        .unwrap();
+        let config = raw.into_config().unwrap();
+
+        assert!(config.assist.enabled);
+        assert_eq!(
+            config.assist.includes,
+            vec![
+                "app/views/**/*.html.erb".to_string(),
+                "!app/views/generated/**".to_string()
+            ]
+        );
+        assert_eq!(config.assist.actions.get("organizeErbOutput"), Some(&true));
+        assert_eq!(config.assist.actions.get("extractPartial"), Some(&false));
+    }
+
+    #[test]
+    fn assist_config_accepts_enable_alias() {
+        let raw: RawConfig = serde_json::from_str(
+            r#"{
+              "assist": {
+                "enable": true
+              }
+            }"#,
+        )
+        .unwrap();
+        let config = raw.into_config().unwrap();
+
+        assert!(config.assist.enabled);
+    }
+
+    #[test]
+    fn assist_includes_filter_paths() {
+        let mut assist = AssistConfig {
+            includes: vec![
+                "app/views/**/*.html.erb".to_string(),
+                "!app/views/generated/**".to_string(),
+            ],
+            ..AssistConfig::default()
+        };
+        assist.base_dir = Some(PathBuf::from("/project"));
+
+        assert!(path_includes(
+            Path::new("/project/app/views/users/show.html.erb"),
+            assist.base_dir.as_deref(),
+            &assist.includes,
+        ));
+        assert!(!path_includes(
+            Path::new("/project/app/views/generated/show.html.erb"),
+            assist.base_dir.as_deref(),
+            &assist.includes,
+        ));
+        assert!(!path_includes(
+            Path::new("/project/app/models/user.rb"),
+            assist.base_dir.as_deref(),
+            &assist.includes,
+        ));
     }
 }

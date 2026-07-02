@@ -47,6 +47,11 @@ const DEFAULT_CONFIG: &str = r#"{
       "noSelfClosingHtmlTag": "error",
       "unsupportedErbBlockStarter": "error"
     }
+  },
+  "assist": {
+    "enabled": false,
+    "includes": ["**/*.html.erb"],
+    "actions": {}
   }
 }
 "#;

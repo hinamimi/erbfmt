@@ -40,6 +40,7 @@
             <a href="#formatter">Formatter</a>
             <a href="#linter">Linter</a>
             <a href="#rules">Rules</a>
+            <a href="#assist">Assist</a>
           </nav>
         </div>
       </aside>
@@ -92,6 +93,11 @@ erbfmt init --force</code></pre>
       "noSelfClosingHtmlTag": "error",
       "unsupportedErbBlockStarter": "error"
     }
+  },
+  "assist": {
+    "enabled": false,
+    "includes": ["**/*.html.erb"],
+    "actions": {}
   }
 }</code></pre>
 
@@ -135,6 +141,13 @@ erbfmt init --force</code></pre>
           <div class="option"><dt><code>noNonDoubleQuotedHtmlAttributeValue</code><span class="meta">off | warn | error</span></dt><dd><p><span class="rule-name">Requires double-quoted HTML attribute values.</span> Reports unquoted and single-quoted values such as <code>class=&lt;%= foo %&gt;</code> or <code>class='card'</code>; boolean attributes without values are allowed.</p></dd></div>
           <div class="option"><dt><code>noSelfClosingHtmlTag</code><span class="meta">off | warn | error</span></dt><dd><p><span class="rule-name">Disallows XML-style self-closing HTML syntax.</span> Reports <code>/&gt;</code> syntax where HTML5 expects a normal opening/closing pair or a void element without the slash.</p></dd></div>
           <div class="option"><dt><code>unsupportedErbBlockStarter</code><span class="meta">off | warn | error</span></dt><dd><p><span class="rule-name">Reports unsupported block starters.</span> Identifies Ruby control-flow forms that look like ERB blocks but are outside the formatter's supported block set.</p></dd></div>
+        </dl>
+
+        <h2 id="assist">Assist</h2>
+        <dl class="option-list">
+          <div class="option"><dt><code>assist.enabled</code><span class="meta">boolean · default: false</span></dt><dd><p>Enables or disables assist actions. <code>assist.enable</code> is also accepted as an alias. The configuration is parsed today, but erbfmt does not run assist actions from the CLI yet.</p></dd></div>
+          <div class="option"><dt><code>assist.includes</code><span class="meta">array of glob patterns</span></dt><dd><p>Filters files for future assist actions. Pattern syntax matches <code>files.includes</code>, including <code>!</code> exclusions.</p></dd></div>
+          <div class="option"><dt><code>assist.actions</code><span class="meta">object of action booleans</span></dt><dd><p>Maps future assist action names to booleans. No assist actions are executed by erbfmt yet.</p></dd></div>
         </dl>
 
         <footer class="footer">Configuration for erbfmt 0.2.1 · <a href="https://github.com/hinamimi/erbfmt/blob/main/docs/schema/erbfmt.schema.json">View schema source</a></footer>

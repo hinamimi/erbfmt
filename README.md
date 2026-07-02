@@ -162,8 +162,8 @@ erbfmt --config path/to/erbfmt.json app/views/users/show.html.erb
 ```
 
 Common options include indentation style and width, HTML indentation, line
-width, line endings, and per-rule lint severity. See
-[Configuration](docs/Configuration.md) for the complete format and
+width, line endings, per-rule lint severity, and future assist action settings.
+See [Configuration](docs/Configuration.md) for the complete format and
 [Lint Rules](docs/LintRules.md) for available diagnostics.
 
 `formatter.trailingNewline` defaults to `true`, which is appropriate for normal

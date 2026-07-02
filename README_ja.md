@@ -153,9 +153,10 @@ erbfmt init
 erbfmt --config path/to/erbfmt.json app/views/users/show.html.erb
 ```
 
-indent style/width、HTML indentation、line width、line ending、lint ruleごとのseverityを
-設定できます。全項目は [Configuration](docs/Configuration.md)、診断内容は
-[Lint Rules](docs/LintRules.md) を参照してください。
+indent style/width、HTML indentation、line width、line ending、lint ruleごとのseverity、
+将来のassist action設定を指定できます。全項目は
+[Configuration](docs/Configuration.md)、診断内容は [Lint Rules](docs/LintRules.md) を
+参照してください。
 
 `formatter.trailingNewline` はdefaultで `true` です。通常のtemplate fileではこの設定を
 推奨します。周囲のtextへinline partialとして差し込むERB fileで、末尾newlineを

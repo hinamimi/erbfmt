@@ -40,6 +40,7 @@
             <a href="#formatter">Formatter</a>
             <a href="#linter">Linter</a>
             <a href="#rules">Rules</a>
+            <a href="#assist">Assist</a>
           </nav>
         </div>
       </aside>
@@ -92,6 +93,11 @@ erbfmt init --force</code></pre>
       "noSelfClosingHtmlTag": "error",
       "unsupportedErbBlockStarter": "error"
     }
+  },
+  "assist": {
+    "enabled": false,
+    "includes": ["**/*.html.erb"],
+    "actions": {}
   }
 }</code></pre>
 
@@ -135,6 +141,13 @@ erbfmt init --force</code></pre>
           <div class="option"><dt><code>noNonDoubleQuotedHtmlAttributeValue</code><span class="meta">off | warn | error</span></dt><dd><p><span class="rule-name">HTML attribute valueにdouble quoteを要求します。</span> <code>class=&lt;%= foo %&gt;</code> や <code>class='card'</code> のような未quoted/single-quoted valueを報告します。値なしboolean attributeは許可します。</p></dd></div>
           <div class="option"><dt><code>noSelfClosingHtmlTag</code><span class="meta">off | warn | error</span></dt><dd><p><span class="rule-name">XML形式のself-closing HTML構文を禁止します。</span> HTML5で通常のopening/closing pair、またはslashなしのvoid elementを使う場所の <code>/&gt;</code>を報告します。</p></dd></div>
           <div class="option"><dt><code>unsupportedErbBlockStarter</code><span class="meta">off | warn | error</span></dt><dd><p><span class="rule-name">未対応のblock starterを検出します。</span> ERB blockに見えるものの、formatterの対応範囲外にあるRuby control-flow formを報告します。</p></dd></div>
+        </dl>
+
+        <h2 id="assist">Assist</h2>
+        <dl class="option-list">
+          <div class="option"><dt><code>assist.enabled</code><span class="meta">boolean · default: false</span></dt><dd><p>assist action全体を有効または無効にします。<code>assist.enable</code> もaliasとして受け付けます。この設定は現時点で読み込まれますが、erbfmt CLIからassist actionはまだ実行されません。</p></dd></div>
+          <div class="option"><dt><code>assist.includes</code><span class="meta">glob patternのarray</span></dt><dd><p>将来のassist action対象fileを絞り込みます。pattern構文は <code>files.includes</code> と同じで、<code>!</code> による除外も使えます。</p></dd></div>
+          <div class="option"><dt><code>assist.actions</code><span class="meta">action booleanのobject</span></dt><dd><p>将来のassist action名とbooleanを対応させるmapです。現時点でerbfmtはassist actionを実行しません。</p></dd></div>
         </dl>
 
         <footer class="footer">erbfmt 0.2.1 configuration · <a href="https://github.com/hinamimi/erbfmt/blob/main/docs/schema/erbfmt.schema.json">schema sourceを見る</a></footer>

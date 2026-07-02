@@ -16,9 +16,9 @@ You can also pass an explicit path:
 erbfmt --config path/to/erbfmt.json app/views/users/show.html.erb
 ```
 
-The shape is intentionally close to Biome's `formatter` and `linter`
-configuration sections, with a small erbfmt-specific `parser` section and
-`formatter.indentHtml` option for ERB and HTML-specific behavior.
+The shape is intentionally close to Biome's `formatter`, `linter`, and
+`assist` configuration sections, with a small erbfmt-specific `parser` section
+and `formatter.indentHtml` option for ERB and HTML-specific behavior.
 
 ## Example
 
@@ -54,6 +54,11 @@ configuration sections, with a small erbfmt-specific `parser` section and
       "noSelfClosingHtmlTag": "error",
       "unsupportedErbBlockStarter": "error"
     }
+  },
+  "assist": {
+    "enabled": false,
+    "includes": ["**/*.html.erb"],
+    "actions": {}
   }
 }
 ```
@@ -126,5 +131,18 @@ VSCode diagnostics use the matching warning or error severity.
 
 See [LintRules.md](LintRules.md) for the current lint rule design and the next
 planned rules.
+
+## Assist
+
+The `assist` section reserves configuration for future code actions and
+AI/editor-friendly transformations. It is parsed today, but erbfmt does not run
+assist actions from the CLI yet.
+
+- `assist.enabled`: enable or disable assist actions. The default is `false`.
+  `assist.enable` is also accepted as an alias.
+- `assist.includes`: file include and exclude patterns used by assist actions.
+  The pattern syntax matches `files.includes`.
+- `assist.actions`: action-name to boolean map for future assist actions. No
+  actions are executed by erbfmt yet.
 
 See [Ignore.md](Ignore.md) for `erbfmt-ignore` lint and formatter directives.

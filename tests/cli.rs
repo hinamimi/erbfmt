@@ -60,6 +60,9 @@ fn init_creates_default_config() {
     assert_eq!(value["formatter"]["indentWidth"], 2);
     assert_eq!(value["formatter"]["indentHtml"], true);
     assert_eq!(value["parser"]["allowHtmlOptionalClosingTags"], false);
+    assert_eq!(value["assist"]["enabled"], false);
+    assert_eq!(value["assist"]["includes"][0], "**/*.html.erb");
+    assert_eq!(value["assist"]["actions"].as_object().unwrap().len(), 0);
     assert_eq!(value["files"]["includes"][0], "**/*.html.erb");
     assert_eq!(
         value["linter"]["rules"]["noInvalidHtmlBooleanAttribute"],
