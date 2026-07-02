@@ -263,6 +263,32 @@ fn preserves_source_boundaries_between_opening_tags_and_inline_children() {
 }
 
 #[test]
+fn preserves_boundaries_when_wrapping_long_tags_with_inline_text_children() {
+    let options = FormatOptions {
+        line_width: 48,
+        ..FormatOptions::default()
+    };
+    let input = "<span class=\"very very very very very long class name\" data-controller=\"x\">Text</span>\n";
+    let expected = "<span\n  class=\"very very very very very long class name\"\n  data-controller=\"x\"\n>Text</span>\n";
+
+    assert_eq!(format_source_with_options(input, options), expected);
+    assert_eq!(format_source_with_options(expected, options), expected);
+}
+
+#[test]
+fn preserves_boundaries_when_wrapping_long_tags_with_inline_erb_children() {
+    let options = FormatOptions {
+        line_width: 48,
+        ..FormatOptions::default()
+    };
+    let input = "<div class=\"very very very very very long class name\" data-controller=\"x\"><%= helper %></div>\n";
+    let expected = "<div\n  class=\"very very very very very long class name\"\n  data-controller=\"x\"\n><%= helper %></div>\n";
+
+    assert_eq!(format_source_with_options(input, options), expected);
+    assert_eq!(format_source_with_options(expected, options), expected);
+}
+
+#[test]
 fn preserves_source_boundaries_between_closing_tags_and_inline_children() {
     let input = "<p>Lead\n<strong>Body</strong>\nTail</p>\n";
     let expected = "<p>Lead\n  <strong>Body</strong>\n  Tail</p>\n";
@@ -723,10 +749,10 @@ fn normalizes_existing_multiline_html_tags() {
 #[test]
 fn normalizes_multiline_html_tags_with_erb_attributes() {
     assert_eq!(
-        format(
+        format_source(
             "<a\nhref=\"/users/<%= user.id %>\"\naria-label=\"<%= user.name %>\"\n>Profile</a>\n"
         ),
-        "<a\n  href=\"/users/<%= user.id %>\"\n  aria-label=\"<%= user.name %>\"\n>\n  Profile\n</a>\n"
+        "<a\n  href=\"/users/<%= user.id %>\"\n  aria-label=\"<%= user.name %>\"\n>Profile</a>\n"
     );
 }
 
