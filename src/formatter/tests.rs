@@ -985,7 +985,7 @@ fn preserves_hashrocket_erb_output_when_expression_is_not_foldable() {
 }
 
 #[test]
-fn preserves_inline_symbol_adjacency_when_expression_is_not_foldable() {
+fn wraps_symbol_adjacent_helper_without_changing_inline_boundaries() {
     let options = FormatOptions {
         line_width: 48,
         ..FormatOptions::default()
@@ -993,7 +993,10 @@ fn preserves_inline_symbol_adjacency_when_expression_is_not_foldable() {
     let input = r#"<h4><%= if common_details.redacted? then t("redacted") else t("version") end %>#<%= link_to version, path %></h4>
 "#;
 
-    assert_eq!(format_source_with_options(input, options), input);
+    assert_eq!(
+        format_source_with_options(input, options),
+        "<h4><%= if common_details.redacted? then t(\"redacted\") else t(\"version\") end %>#<%= link_to(\n  version,\n  path\n) %></h4>\n"
+    );
 }
 
 #[test]
@@ -1008,7 +1011,23 @@ fn preserves_text_adjacent_to_foldable_erb_output_child() {
                 ..FormatOptions::default()
             }
         ),
-        input
+        "<p>Before <%= render(\n  partial: \"foo\",\n  locals: { key: \"value\" }\n) %> after</p>\n"
+    );
+}
+
+#[test]
+fn wraps_text_adjacent_helper_without_changing_inline_boundaries() {
+    let input = "<p>Location <%= link_to(t(\".coordinates_html\", latitude: lat, longitude: lon), root_path(anchor: \"map=18/35/139\")) %></p>\n";
+
+    assert_eq!(
+        format_source_with_options(
+            input,
+            FormatOptions {
+                line_width: 60,
+                ..FormatOptions::default()
+            }
+        ),
+        "<p>Location <%= link_to(\n  t(\".coordinates_html\", latitude: lat, longitude: lon),\n  root_path(anchor: \"map=18/35/139\")\n) %></p>\n"
     );
 }
 

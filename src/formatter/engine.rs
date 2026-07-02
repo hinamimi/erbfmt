@@ -236,27 +236,34 @@ impl<'a> Formatter<'a> {
             let inline = format!("{open}{content}{close}");
 
             if !self.can_keep_html_element_inline(&inline, depth)
-                && self.can_expand_single_foldable_erb_child(children)
-            {
-                if self.write_html_element_with_wrapped_erb_child(
+                && source_boundaries.preserve_inline_children()
+                && (self.write_html_element_with_wrapped_inline_erb_child(
                     open.as_str(),
                     close.as_str(),
                     children,
                     depth,
-                ) {
-                    return;
-                }
+                ) || self.write_html_element_with_wrapped_erb_child(
+                    open.as_str(),
+                    close.as_str(),
+                    children,
+                    depth,
+                ))
+            {
+                return;
+            }
 
-                if !source_boundaries.preserve_inline_children() {
-                    self.write_html_element_multiline(
-                        open.as_str(),
-                        close.as_str(),
-                        children,
-                        None,
-                        depth,
-                    );
-                    return;
-                }
+            if !self.can_keep_html_element_inline(&inline, depth)
+                && self.can_expand_single_foldable_erb_child(children)
+                && !source_boundaries.preserve_inline_children()
+            {
+                self.write_html_element_multiline(
+                    open.as_str(),
+                    close.as_str(),
+                    children,
+                    None,
+                    depth,
+                );
+                return;
             }
 
             let inline_width_target = if children.is_empty() {
@@ -419,6 +426,25 @@ impl<'a> Formatter<'a> {
         let open = normalize_tag(open).unwrap_or_else(|| open.to_string());
         let close = normalize_close_tag(close).unwrap_or_else(|| close.to_string());
         self.write_wrapped_erb_output_tag(depth, tag.syntax, &lines, &open, &close);
+        true
+    }
+
+    fn write_html_element_with_wrapped_inline_erb_child(
+        &mut self,
+        open: &str,
+        close: &str,
+        children: &[Node],
+        depth: usize,
+    ) -> bool {
+        let Some((index, tag, lines)) = single_foldable_erb_output_inline_child(children) else {
+            return false;
+        };
+
+        let prefix = render_inline_nodes_untrimmed(&children[..index]);
+        let suffix = render_inline_nodes_untrimmed(&children[index + 1..]);
+        let prefix = format!("{open}{prefix}");
+        let suffix = format!("{suffix}{close}");
+        self.write_wrapped_erb_output_tag(depth, tag.syntax, &lines, &prefix, &suffix);
         true
     }
 
@@ -798,6 +824,26 @@ fn single_foldable_erb_output_child(children: &[Node]) -> Option<&ErbTag> {
     }
 
     erb_output
+}
+
+fn single_foldable_erb_output_inline_child(
+    children: &[Node],
+) -> Option<(usize, &ErbTag, Vec<String>)> {
+    let mut foldable = None;
+
+    for (index, child) in children.iter().enumerate() {
+        if let Node::ErbOutput(tag) = child.unspanned() {
+            let Some(lines) = wrapped_erb_output_lines(tag.syntax, &tag.code) else {
+                continue;
+            };
+
+            if foldable.replace((index, tag, lines)).is_some() {
+                return None;
+            }
+        }
+    }
+
+    foldable
 }
 
 fn wrapped_erb_output_lines(syntax: ErbTagSyntax, code: &str) -> Option<Vec<String>> {
