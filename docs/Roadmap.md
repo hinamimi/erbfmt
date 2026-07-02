@@ -51,6 +51,7 @@ erbfmt は `*.html.erb` 向けの formatter / linter です。
 - unmatched HTML close tag diagnostics
 - pretty lint output
 - `--lint-format json` による machine-readable diagnostics
+- hosted `commands.md` による AI agent 向け command reference
 - VSCode `html-erb` language id
 - VSCode TextMate syntax highlighting
 - VSCode document formatter wrapper
@@ -72,6 +73,7 @@ erbfmt は `*.html.erb` 向けの formatter / linter です。
 - [RubyGem.md](RubyGem.md): Ruby gem wrapper
 - [VSCode.md](VSCode.md): VSCode extension
 - [AI.md](AI.md): AI agent 向け command usage
+- [commands.md](commands.md): hosted commands.md の source
 - [Development.md](Development.md): local development workflow
 
 主な sample:
@@ -199,7 +201,7 @@ Codex / Claude Code などの agent が、Rails view を安全に編集しやす
 - `--lint-format json` の schema を安定させる。
 - lint / parse error の file、severity、message、line、column を継続的に維持する。
 - 複数 file 実行では agent が stream 処理しやすい出力形式にする。
-- AI agent 向けの短い運用ドキュメントを追加する。
+- hosted `commands.md` を短く保ち、Codex / Claude Code から参照しやすくする。
 - Codex Skill / Claude Code Skill から呼びやすい command example を整理する。
 - formatter ignore / lint ignore の使いどころを agent 向けに説明する。
 

@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - ".github/workflows/docs.yml"
+      - "docs/commands.md"
       - "site/**"
       - "docs/schema/erbfmt.schema.json"
   workflow_dispatch:
@@ -38,6 +39,7 @@ jobs:
         run: |
           mkdir -p _site/schema
           cp -R site/. _site/
+          cp docs/commands.md _site/commands.md
           cp docs/schema/erbfmt.schema.json _site/schema/erbfmt.schema.json
           touch _site/.nojekyll
 

@@ -3,6 +3,12 @@
 This document describes the stable command surface intended for AI agents such
 as Codex and Claude Code.
 
+The hosted command reference for agents is also distributed as Markdown:
+
+```text
+https://hinamimi.github.io/erbfmt/commands.md
+```
+
 ## Recommended Workflow
 
 After editing Rails ERB templates, run:

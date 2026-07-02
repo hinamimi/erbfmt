@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Command reference for AI agents and editor integrations using erbfmt.">
+    <meta property="og:image" content="https://hinamimi.github.io/erbfmt/assets/og-image.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content="https://hinamimi.github.io/erbfmt/assets/og-image.png">
+    <title>Commands · erbfmt</title>
+    <link rel="icon" href="../assets/icon.png">
+    <link rel="stylesheet" href="../assets/styles.css">
+    <script defer src="../assets/highlight.js"></script>
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="../"><img src="../assets/icon.png" alt="">erbfmt</a>
+      <nav class="topnav" aria-label="Primary navigation">
+        <a aria-current="page" href="../">Docs</a>
+        <a class="optional" href="https://github.com/hinamimi/erbfmt">GitHub</a>
+        <a href="../ja/commands/" lang="ja">日本語</a>
+      </nav>
+    </header>
+    <div class="docs-layout">
+      <aside class="sidebar">
+        <p class="sidebar-title">Documentation</p>
+        <nav aria-label="Documentation">
+          <a href="../">Overview</a>
+          <a href="../cli/">CLI</a>
+          <a aria-current="page" href="./">Commands</a>
+          <a href="../configuration/">Configuration</a>
+        </nav>
+        <div class="on-page">
+          <p class="sidebar-title">On this page</p>
+          <nav aria-label="On this page">
+            <a href="#markdown">Markdown</a>
+            <a href="#workflow">Workflow</a>
+            <a href="#json">JSON lint</a>
+            <a href="#safety">Safety</a>
+          </nav>
+        </div>
+      </aside>
+      <main>
+        <p class="eyebrow">AI reference</p>
+        <h1 class="doc-title">Commands</h1>
+        <p class="lede">Stable command examples for AI agents, editor integrations, and scripts that work with Rails ERB templates.</p>
+
+        <h2 id="markdown">Hosted commands.md</h2>
+        <p>The canonical machine-readable command reference is distributed as Markdown:</p>
+        <pre><code class="language-text">https://hinamimi.github.io/erbfmt/commands.md</code></pre>
+        <div class="callout"><p>Use this URL from Codex Skills, Claude Code Skills, editor integrations, or project-specific agent instructions. The Markdown file is intentionally short and command-focused.</p></div>
+
+        <h2 id="workflow">Recommended workflow</h2>
+        <p>Prefer the project-pinned Bundler command when a Rails project has a <code>Gemfile</code>.</p>
+        <pre><code class="language-bash">bundle exec erbfmt --version</code></pre>
+        <p>After editing Rails views, run lint diagnostics with machine-readable output:</p>
+        <pre><code class="language-bash">bundle exec erbfmt --lint --lint-format json app/views</code></pre>
+        <p>Check formatting without modifying files:</p>
+        <pre><code class="language-bash">bundle exec erbfmt --check app/views</code></pre>
+        <p>Only write formatting changes when the user asks for formatting or accepts a formatter-driven edit:</p>
+        <pre><code class="language-bash">bundle exec erbfmt --write app/views</code></pre>
+
+        <h2 id="json">JSON lint output</h2>
+        <p><code>--lint-format json</code> emits one JSON object per processed file. This makes directory and multi-file runs easy to stream and parse.</p>
+        <pre><code class="language-json">{
+  "file": "app/views/users/show.html.erb",
+  "summary": {
+    "issues": 1,
+    "errors": 1,
+    "warnings": 0
+  },
+  "diagnostics": [
+    {
+      "severity": "error",
+      "message": "duplicate HTML attribute `class`",
+      "location": {
+        "line": 1,
+        "column": 32
+      }
+    }
+  ]
+}</code></pre>
+        <p><code>location</code> may be <code>null</code> for file-level diagnostics.</p>
+
+        <h2 id="safety">Safety rules for agents</h2>
+        <ul>
+          <li>Do not parse <code>pretty</code> output when <code>--lint-format json</code> is available.</li>
+          <li>Do not run <code>--write</code> unless formatting changes are requested or approved.</li>
+          <li>Preserve complex Ruby expressions when the safe edit is unclear.</li>
+          <li>Prefer fixing the source over adding ignore directives.</li>
+          <li>Use <code>erbfmt-ignore</code> only for intentionally unmanaged or generated markup.</li>
+        </ul>
+
+        <footer class="footer">Commands reference for erbfmt 0.2.1 · <a href="../commands.md">View commands.md</a></footer>
+      </main>
+    </div>
+  </body>
+</html>

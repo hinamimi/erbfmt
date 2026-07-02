@@ -1,6 +1,6 @@
 # erbfmt
 
-[ドキュメント](https://hinamimi.github.io/erbfmt/ja/) · [English](README.md)
+[ドキュメント](https://hinamimi.github.io/erbfmt/ja/) · [AI agent commands](https://hinamimi.github.io/erbfmt/commands.md) · [English](README.md)
 
 **ERBとHTML+ERB向けの高速な、Prettier/BiomeのようなFormatter/Linterです。**
 

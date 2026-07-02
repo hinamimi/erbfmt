@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="AI agentやeditor integration向けのerbfmt command referenceです。">
+    <meta property="og:image" content="https://hinamimi.github.io/erbfmt/assets/og-image.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content="https://hinamimi.github.io/erbfmt/assets/og-image.png">
+    <title>Commands · erbfmt</title>
+    <link rel="icon" href="../../assets/icon.png">
+    <link rel="stylesheet" href="../../assets/styles.css">
+    <script defer src="../../assets/highlight.js"></script>
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="../"><img src="../../assets/icon.png" alt="">erbfmt</a>
+      <nav class="topnav" aria-label="メインナビゲーション">
+        <a aria-current="page" href="../">Docs</a>
+        <a class="optional" href="https://github.com/hinamimi/erbfmt">GitHub</a>
+        <a href="../../commands/" lang="en">English</a>
+      </nav>
+    </header>
+    <div class="docs-layout">
+      <aside class="sidebar">
+        <p class="sidebar-title">ドキュメント</p>
+        <nav aria-label="ドキュメント">
+          <a href="../">概要</a>
+          <a href="../cli/">CLI</a>
+          <a aria-current="page" href="./">Commands</a>
+          <a href="../configuration/">設定</a>
+        </nav>
+        <div class="on-page">
+          <p class="sidebar-title">目次</p>
+          <nav aria-label="目次">
+            <a href="#markdown">Markdown</a>
+            <a href="#workflow">Workflow</a>
+            <a href="#json">JSON lint</a>
+            <a href="#safety">Safety</a>
+          </nav>
+        </div>
+      </aside>
+      <main>
+        <p class="eyebrow">AI reference</p>
+        <h1 class="doc-title">Commands</h1>
+        <p class="lede">Rails ERB templateを扱うAI agent、editor integration、script向けの安定したcommand例です。</p>
+
+        <h2 id="markdown">Hosted commands.md</h2>
+        <p>machine-readableなcommand referenceはMarkdownとして配布します。</p>
+        <pre><code class="language-text">https://hinamimi.github.io/erbfmt/commands.md</code></pre>
+        <div class="callout"><p>Codex Skills、Claude Code Skills、editor integration、project固有のagent instructionsからこのURLを参照できます。Markdownは短く、command中心に保っています。</p></div>
+
+        <h2 id="workflow">推奨workflow</h2>
+        <p>Rails projectに <code>Gemfile</code> がある場合は、projectでpinされたBundler commandを優先します。</p>
+        <pre><code class="language-bash">bundle exec erbfmt --version</code></pre>
+        <p>Rails viewsを編集した後は、machine-readable outputでlint diagnosticsを確認します。</p>
+        <pre><code class="language-bash">bundle exec erbfmt --lint --lint-format json app/views</code></pre>
+        <p>fileを変更せずformat状態を確認します。</p>
+        <pre><code class="language-bash">bundle exec erbfmt --check app/views</code></pre>
+        <p>format変更を書き込むのは、userがformatを求めたか、formatterによる編集を承認した場合だけにします。</p>
+        <pre><code class="language-bash">bundle exec erbfmt --write app/views</code></pre>
+
+        <h2 id="json">JSON lint output</h2>
+        <p><code>--lint-format json</code> はprocessed fileごとに1つのJSON objectを出力します。directoryやmulti-file runでもstream処理しやすい形式です。</p>
+        <pre><code class="language-json">{
+  "file": "app/views/users/show.html.erb",
+  "summary": {
+    "issues": 1,
+    "errors": 1,
+    "warnings": 0
+  },
+  "diagnostics": [
+    {
+      "severity": "error",
+      "message": "duplicate HTML attribute `class`",
+      "location": {
+        "line": 1,
+        "column": 32
+      }
+    }
+  ]
+}</code></pre>
+        <p>file-level diagnosticでは <code>location</code> が <code>null</code> になることがあります。</p>
+
+        <h2 id="safety">Agent向けの安全ルール</h2>
+        <ul>
+          <li><code>--lint-format json</code> が使える場合、<code>pretty</code> outputをparseしない。</li>
+          <li>format変更が求められていない、または承認されていない場合は <code>--write</code> を実行しない。</li>
+          <li>安全な編集が明確でない複雑なRuby expressionは保持する。</li>
+          <li>ignore directiveを追加するより、sourceの修正を優先する。</li>
+          <li><code>erbfmt-ignore</code> は意図的に管理外にするmarkupやgenerated markupにだけ使う。</li>
+        </ul>
+
+        <footer class="footer">erbfmt 0.2.1 commands reference · <a href="../../commands.md">commands.mdを見る</a></footer>
+      </main>
+    </div>
+  </body>
+</html>
