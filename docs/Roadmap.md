@@ -40,7 +40,7 @@ erbfmt は `*.html.erb` 向けの formatter / linter です。
 - HTML tag attribute wrapping
 - parenthesized Ruby helper call wrapping
 - 安全に扱える command-style Ruby helper call wrapping
-- formatter 未接続の lightweight Ruby AST parser
+- Ruby AST-assisted method call wrapping
 - Ruby assignment / operator expression AST
 - Ruby modifier / safe navigation / index access AST
 - Ruby ternary / range AST
@@ -123,8 +123,7 @@ erbfmt は `*.html.erb` 向けの formatter / linter です。
 
 ### Milestone B: Ruby AST foundation
 
-formatter へ接続する前に、ERB tag 内 Ruby expression を安全に理解するための
-AST 基盤を育てます。
+ERB tag 内 Ruby expression を安全に理解するための AST 基盤を育てます。
 
 やること:
 
@@ -134,12 +133,12 @@ AST 基盤を育てます。
   percent literal、safe navigation、index access、top-level multiple statements、
   nested call、`do |param|` suffix を扱う。
 - assignment は AST 化するが、formatter 対象からは外す。
-- operator expression は AST 化するが、formatter 接続は別 milestone で判断する。
+- operator expression は AST 化し、method call wrapping の安全判定に使う。
 - multiple statements は AST 化するが、formatter 対象からは外す。
 - modifier `if` / `unless` は AST 化するが、formatter 対象からは外す。
 - ternary は AST 化するが、formatter 対象からは外す。
 - parse できる / できない Ruby の fixture を追加する。
-- formatter から利用する前に、AST から wrapping plan を作る設計を決める。
+- formatter 出力生成へ完全接続する前に、AST から wrapping plan を作る設計を決める。
 
 完了条件:
 
@@ -153,11 +152,13 @@ AST 基盤を育てます。
 - semicolon / top-level newline で分かれた multiple statements を AST 化しつつ、
   format candidate ではないと判定できる。
 - 危険な Ruby expression を AST 化せず、明示的に error にできる。
-- formatter integration の前に、AST の責務と制約が test で固定されている。
+- formatter で使える AST の責務と制約が test で固定されている。
 
 ### Milestone C: Ruby wrapping AST integration
 
 Ruby AST を使って、既存の heuristic wrapping を段階的に置き換えます。
+現在は、method call を折りたためるかどうかの安全判定に AST を使い、
+出力生成は既存の conservative wrapper が担当しています。
 
 やること:
 

@@ -1,23 +1,27 @@
+use crate::ruby_ast::{Argument, Call, Expression, HashKey, HashPair, Program, parse};
+
 pub(super) fn fold_command_call(code: &str) -> Option<Vec<String>> {
     let code = code.trim();
 
-    if code.is_empty()
-        || code.contains('#')
-        || code.contains(';')
-        || code.contains("<<")
-        || contains_unquoted_slash(code)
-    {
+    if code.is_empty() || code.contains("<<") {
         return None;
     }
 
+    let program = parse(code).ok()?;
+    let parsed_call = foldable_call(&program)?;
     let (call, block_suffix) = split_top_level_do_block(code)?;
     let (callee, arguments) = split_call(call)?;
     let arguments = split_top_level_arguments(arguments)?;
 
+    if parsed_call.callee != callee {
+        return None;
+    }
+
     let can_fold_single_argument = arguments.len() >= 2
-        || arguments
+        || parsed_call
+            .arguments
             .iter()
-            .any(|argument| fold_keyword_hash_argument(argument).is_some());
+            .any(argument_contains_foldable_keyword_hash);
 
     if !can_fold_single_argument {
         return None;
@@ -42,6 +46,86 @@ pub(super) fn fold_command_call(code: &str) -> Option<Vec<String>> {
     Some(lines)
 }
 
+fn foldable_call(program: &Program) -> Option<&Call> {
+    if !program.is_format_candidate() {
+        return None;
+    }
+
+    let [Expression::Call(call)] = program.statements.as_slice() else {
+        return None;
+    };
+
+    if call.arguments.iter().all(argument_is_foldable) {
+        Some(call)
+    } else {
+        None
+    }
+}
+
+fn argument_is_foldable(argument: &Argument) -> bool {
+    match argument {
+        Argument::Block(expression)
+        | Argument::KeywordSplat(expression)
+        | Argument::Positional(expression)
+        | Argument::Splat(expression) => expression_is_foldable(expression),
+        Argument::Keyword { value, .. } => expression_is_foldable(value),
+    }
+}
+
+fn argument_contains_foldable_keyword_hash(argument: &Argument) -> bool {
+    matches!(
+        argument,
+        Argument::Keyword {
+            value: Expression::Hash(pairs),
+            ..
+        } if pairs.len() >= 2
+    )
+}
+
+fn expression_is_foldable(expression: &Expression) -> bool {
+    match expression {
+        Expression::Assignment(_) | Expression::Modifier(_) | Expression::Ternary(_) => false,
+        Expression::Array(values) => values.iter().all(expression_is_foldable),
+        Expression::Binary(binary) => {
+            expression_is_foldable(&binary.left) && expression_is_foldable(&binary.right)
+        }
+        Expression::Call(call) => call.arguments.iter().all(argument_is_foldable),
+        Expression::Grouped(expression) => expression_is_foldable(expression),
+        Expression::Unary(unary) => expression_is_foldable(&unary.expression),
+        Expression::Index(index) => {
+            expression_is_foldable(&index.receiver)
+                && index.arguments.iter().all(expression_is_foldable)
+        }
+        Expression::Hash(pairs) => pairs.iter().all(hash_pair_is_foldable),
+        Expression::MemberAccess(access) => expression_is_foldable(&access.receiver),
+        Expression::Range(range) => {
+            expression_is_foldable(&range.start) && expression_is_foldable(&range.end)
+        }
+        Expression::Identifier(_)
+        | Expression::ConstantPath(_)
+        | Expression::Literal(_)
+        | Expression::PercentLiteral(_)
+        | Expression::String(_)
+        | Expression::Symbol(_) => true,
+    }
+}
+
+fn hash_pair_is_foldable(pair: &HashPair) -> bool {
+    match pair {
+        HashPair::KeyValue { key, value } => {
+            hash_key_is_foldable(key) && expression_is_foldable(value)
+        }
+        HashPair::KeywordSplat(expression) => expression_is_foldable(expression),
+    }
+}
+
+fn hash_key_is_foldable(key: &HashKey) -> bool {
+    match key {
+        HashKey::Label(_) => true,
+        HashKey::Expression(expression) => expression_is_foldable(expression),
+    }
+}
+
 fn format_argument_lines(argument: &str, comma: bool) -> Vec<String> {
     let mut lines = fold_keyword_hash_argument(argument)
         .unwrap_or_else(|| normalize_multiline_argument(argument));
@@ -56,22 +140,6 @@ fn format_argument_lines(argument: &str, comma: bool) -> Vec<String> {
     }
 
     lines
-}
-
-fn contains_unquoted_slash(value: &str) -> bool {
-    let mut state = RubyScanState::default();
-
-    for ch in value.chars() {
-        if state.string.is_none() && ch == '/' {
-            return true;
-        }
-
-        if !state.consume(ch) {
-            return true;
-        }
-    }
-
-    false
 }
 
 fn fold_keyword_hash_argument(argument: &str) -> Option<Vec<String>> {
@@ -593,6 +661,73 @@ mod tests {
     }
 
     #[test]
+    fn folds_arguments_with_hash_characters_inside_strings() {
+        assert_eq!(
+            fold_command_call(r##"link_to "Issue #1", issue_path(issue), class: "link""##),
+            Some(vec![
+                "link_to(".to_string(),
+                r##"  "Issue #1","##.to_string(),
+                "  issue_path(issue),".to_string(),
+                r#"  class: "link""#.to_string(),
+                ")".to_string(),
+            ])
+        );
+    }
+
+    #[test]
+    fn folds_binary_division_arguments_when_ast_can_parse_them() {
+        assert_eq!(
+            fold_command_call(r#"number_to_percentage completed / total, precision: 2"#),
+            Some(vec![
+                "number_to_percentage(".to_string(),
+                "  completed / total,".to_string(),
+                "  precision: 2".to_string(),
+                ")".to_string(),
+            ])
+        );
+    }
+
+    #[test]
+    fn folds_percent_regex_literals() {
+        assert_eq!(
+            fold_command_call(r#"highlight body, pattern: %r{/users/\d+}"#),
+            Some(vec![
+                "highlight(".to_string(),
+                "  body,".to_string(),
+                r#"  pattern: %r{/users/\d+}"#.to_string(),
+                ")".to_string(),
+            ])
+        );
+    }
+
+    #[test]
+    fn folds_splat_keyword_splat_and_block_arguments() {
+        assert_eq!(
+            fold_command_call("render(*partials, **options, &block)"),
+            Some(vec![
+                "render(".to_string(),
+                "  *partials,".to_string(),
+                "  **options,".to_string(),
+                "  &block".to_string(),
+                ")".to_string(),
+            ])
+        );
+    }
+
+    #[test]
+    fn folds_constant_paths_and_keyword_names_that_are_ruby_keywords() {
+        assert_eq!(
+            fold_command_call(r#"component Admin::UserCard, class: "card""#),
+            Some(vec![
+                "component(".to_string(),
+                "  Admin::UserCard,".to_string(),
+                r#"  class: "card""#.to_string(),
+                ")".to_string(),
+            ])
+        );
+    }
+
+    #[test]
     fn does_not_fold_control_flow() {
         assert_eq!(
             fold_command_call("if current_user.admin? && account.active?"),
@@ -612,14 +747,6 @@ mod tests {
     fn does_not_fold_regex_literal_arguments() {
         assert_eq!(
             fold_command_call(r#"helper /a,b/, class: "button button--primary""#),
-            None
-        );
-    }
-
-    #[test]
-    fn does_not_fold_unquoted_slash_expressions() {
-        assert_eq!(
-            fold_command_call(r#"number_to_percentage completed / total, precision: 2"#),
             None
         );
     }

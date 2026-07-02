@@ -7,3 +7,6 @@ mod parser;
 
 #[cfg(test)]
 mod tests;
+
+pub(crate) use ast::*;
+pub(crate) use parser::parse;
