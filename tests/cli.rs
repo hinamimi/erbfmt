@@ -648,7 +648,7 @@ fn config_controls_erb_tag_line_width() {
     assert_success(&output);
     assert_eq!(
         stdout(&output),
-        "<%=\n  link_to(\n    \"Edit profile\",\n    edit_user_path(user),\n    class: \"button button--primary\",\n    data: { turbo_frame: \"_top\" }\n  )\n%>\n"
+        "<%= link_to(\n  \"Edit profile\",\n  edit_user_path(user),\n  class: \"button button--primary\",\n  data: { turbo_frame: \"_top\" }\n) %>\n"
     );
     assert_eq!(stderr(&output), "");
 }
@@ -667,7 +667,7 @@ fn config_wraps_parenthesized_erb_call_at_line_width() {
     assert_success(&output);
     assert_eq!(
         stdout(&output),
-        "<%=\n  image_tag(\n    \"user-placeholder.png\",\n    alt: \"User profile image\",\n    class: \"avatar avatar--large\"\n  )\n%>\n"
+        "<%= image_tag(\n  \"user-placeholder.png\",\n  alt: \"User profile image\",\n  class: \"avatar avatar--large\"\n) %>\n"
     );
     assert_eq!(stderr(&output), "");
 }

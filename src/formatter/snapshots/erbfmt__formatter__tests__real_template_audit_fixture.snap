@@ -1,6 +1,6 @@
 ---
-source: src/formatter.rs
-assertion_line: 1060
+source: src/formatter/tests.rs
+assertion_line: 1121
 expression: format(real_template_audit_fixture())
 ---
 <section
@@ -14,13 +14,11 @@ expression: format(real_template_audit_fixture())
       <h1 id="orders-title">Orders for <%= current_account.name %></h1>
       <p>Showing <%= orders.size %> orders updated <%= time_ago_in_words(updated_at) %> ago.</p>
     </div>
-    <%=
-      render(
-        "orders/filter_button",
-        selected_status: selected_status,
-        account: current_account
-      )
-    %>
+    <%= render(
+      "orders/filter_button",
+      selected_status: selected_status,
+      account: current_account
+    ) %>
   </header>
   <turbo-frame
     id="orders"
@@ -50,15 +48,13 @@ expression: format(real_template_audit_fixture())
               class="<%= order.cancelled? ? "is-muted" : "" %>"
             >
               <td>
-                <%=
-                  render(
-                    partial: "customers/name",
-                    locals: {
-                      customer: order.customer,
-                      account: current_account
-                    }
-                  )
-                %>
+                <%= render(
+                  partial: "customers/name",
+                  locals: {
+                    customer: order.customer,
+                    account: current_account
+                  }
+                ) %>
                 <span class="muted"><%= order.customer.email %></span>
               </td>
               <td><%= order.status.humanize %></td>
@@ -69,25 +65,21 @@ expression: format(real_template_audit_fixture())
         </tbody>
       </table>
     <% else %>
-      <%=
-        render(
-          "orders/empty_state",
-          status: selected_status,
-          account: current_account
-        )
-      %>
+      <%= render(
+        "orders/empty_state",
+        status: selected_status,
+        account: current_account
+      ) %>
     <% end %>
   </turbo-frame>
   <footer>
-    <%=
-      render(
-        partial: "orders/summary",
-        locals: {
-          orders: orders,
-          selected_status: selected_status,
-          current_user: current_user
-        }
-      )
-    %>
+    <%= render(
+      partial: "orders/summary",
+      locals: {
+        orders: orders,
+        selected_status: selected_status,
+        current_user: current_user
+      }
+    ) %>
   </footer>
 </section>

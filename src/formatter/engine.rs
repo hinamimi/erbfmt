@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use crate::mixed_parser::{Document, Node, SourceRange};
 
-use crate::lexer::{ErbTag, ErbTagSyntax};
+use crate::lexer::{ErbTag, ErbTagOpen, ErbTagSyntax};
 
 use super::erb::{format_erb_comment, format_erb_tag_inline, formatted_erb_code_lines};
 use super::erb_block::ErbBlockParts;
@@ -207,8 +207,29 @@ impl<'a> Formatter<'a> {
             return;
         }
 
+        let source_boundaries = self.html_element_boundaries(range, open, close);
+
+        if !open.contains('\n')
+            && source_boundaries.preserve_inline_children()
+            && self.can_expand_single_foldable_erb_child(children)
+        {
+            let open = normalize_tag(open).unwrap_or_else(|| open.to_string());
+            let close = normalize_close_tag(close).unwrap_or_else(|| close.to_string());
+            let inline = format!("{open}{}{close}", render_inline_nodes_untrimmed(children));
+
+            if !self.can_keep_html_element_inline(&inline, depth)
+                && self.write_html_element_with_wrapped_erb_child(
+                    open.as_str(),
+                    close.as_str(),
+                    children,
+                    depth,
+                )
+            {
+                return;
+            }
+        }
+
         if !open.contains('\n') && can_render_inline(children) {
-            let source_boundaries = self.html_element_boundaries(range, open, close);
             let content = render_inline_nodes_untrimmed(children);
             let open = normalize_tag(open).unwrap_or_else(|| open.to_string());
             let close = normalize_close_tag(close).unwrap_or_else(|| close.to_string());
@@ -216,16 +237,26 @@ impl<'a> Formatter<'a> {
 
             if !self.can_keep_html_element_inline(&inline, depth)
                 && self.can_expand_single_foldable_erb_child(children)
-                && !source_boundaries.preserve_inline_children()
             {
-                self.write_html_element_multiline(
+                if self.write_html_element_with_wrapped_erb_child(
                     open.as_str(),
                     close.as_str(),
                     children,
-                    None,
                     depth,
-                );
-                return;
+                ) {
+                    return;
+                }
+
+                if !source_boundaries.preserve_inline_children() {
+                    self.write_html_element_multiline(
+                        open.as_str(),
+                        close.as_str(),
+                        children,
+                        None,
+                        depth,
+                    );
+                    return;
+                }
             }
 
             let inline_width_target = if children.is_empty() {
@@ -371,6 +402,26 @@ impl<'a> Formatter<'a> {
         foldable_erb_children == 1
     }
 
+    fn write_html_element_with_wrapped_erb_child(
+        &mut self,
+        open: &str,
+        close: &str,
+        children: &[Node],
+        depth: usize,
+    ) -> bool {
+        let Some(tag) = single_foldable_erb_output_child(children) else {
+            return false;
+        };
+        let Some(lines) = wrapped_erb_output_lines(tag.syntax, &tag.code) else {
+            return false;
+        };
+
+        let open = normalize_tag(open).unwrap_or_else(|| open.to_string());
+        let close = normalize_close_tag(close).unwrap_or_else(|| close.to_string());
+        self.write_wrapped_erb_output_tag(depth, tag.syntax, &lines, &open, &close);
+        true
+    }
+
     fn write_tag(&mut self, raw: &str, depth: usize) {
         self.write_tag_with_suffix(raw, depth, "");
     }
@@ -430,6 +481,11 @@ impl<'a> Formatter<'a> {
             return;
         }
 
+        if let Some(lines) = wrapped_erb_output_lines(syntax, code) {
+            self.write_wrapped_erb_output_tag(depth, syntax, &lines, "", "");
+            return;
+        }
+
         self.write_indented_line(depth, syntax.open.as_str());
 
         for line in formatted_erb_code_lines(code) {
@@ -437,6 +493,49 @@ impl<'a> Formatter<'a> {
         }
 
         self.write_indented_line(depth, syntax.close.as_str());
+    }
+
+    fn write_wrapped_erb_output_tag(
+        &mut self,
+        depth: usize,
+        syntax: ErbTagSyntax,
+        lines: &[String],
+        prefix: &str,
+        suffix: &str,
+    ) {
+        let Some((first, remaining)) = lines.split_first() else {
+            return;
+        };
+        let Some((last, middle)) = remaining.split_last() else {
+            self.write_indented_line(
+                depth,
+                &format!(
+                    "{prefix}{} {} {}{suffix}",
+                    syntax.open.as_str(),
+                    first.trim(),
+                    syntax.close.as_str()
+                ),
+            );
+            return;
+        };
+
+        self.output.push_str(&self.indent(depth));
+        self.output.push_str(prefix);
+        self.output.push_str(syntax.open.as_str());
+        self.output.push(' ');
+        self.output.push_str(first.trim_start());
+        self.output.push_str(self.options.line_ending.as_str());
+
+        for line in middle {
+            self.write_indented_code_line(depth, line);
+        }
+
+        self.output.push_str(&self.indent(depth));
+        self.output.push_str(last.trim_end());
+        self.output.push(' ');
+        self.output.push_str(syntax.close.as_str());
+        self.output.push_str(suffix);
+        self.output.push_str(self.options.line_ending.as_str());
     }
 
     fn html_child_depth(&self, depth: usize) -> usize {
@@ -681,6 +780,33 @@ fn has_inline_boundary_content(node: &Node) -> bool {
         Node::HtmlText(text) => !text.trim().is_empty(),
         _ => true,
     }
+}
+
+fn single_foldable_erb_output_child(children: &[Node]) -> Option<&ErbTag> {
+    let mut erb_output = None;
+
+    for child in children {
+        match child.unspanned() {
+            Node::HtmlText(text) if text.trim().is_empty() => {}
+            Node::ErbOutput(tag) if wrapped_erb_output_lines(tag.syntax, &tag.code).is_some() => {
+                if erb_output.replace(tag).is_some() {
+                    return None;
+                }
+            }
+            _ => return None,
+        }
+    }
+
+    erb_output
+}
+
+fn wrapped_erb_output_lines(syntax: ErbTagSyntax, code: &str) -> Option<Vec<String>> {
+    if !matches!(syntax.open, ErbTagOpen::Output | ErbTagOpen::RawOutput) {
+        return None;
+    }
+
+    let lines = formatted_erb_code_lines(code.trim());
+    (lines.len() > 1).then_some(lines)
 }
 
 fn is_line_ending_char(ch: char) -> bool {

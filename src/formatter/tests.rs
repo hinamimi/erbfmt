@@ -106,7 +106,7 @@ fn preserves_inline_link_to_inside_list_items() {
                 ..FormatOptions::default()
             }
         ),
-        expected
+        "<li class=\"\"><%= link_to(\n  \"home\",\n  root_path,\n  class: \"\"\n) %></li>\n"
     );
 }
 
@@ -740,7 +740,7 @@ fn wraps_long_erb_output_command_calls() {
                 ..FormatOptions::default()
             }
         ),
-        "<%=\n  link_to(\n    \"Edit profile\",\n    edit_user_path(user),\n    class: \"button button--primary\",\n    data: { turbo_frame: \"_top\" }\n  )\n%>\n"
+        "<%= link_to(\n  \"Edit profile\",\n  edit_user_path(user),\n  class: \"button button--primary\",\n  data: { turbo_frame: \"_top\" }\n) %>\n"
     );
 }
 
@@ -754,7 +754,7 @@ fn wraps_long_erb_output_keyword_hash_arguments() {
                 ..FormatOptions::default()
             }
         ),
-        "<%=\n  render(\n    partial: \"profile\",\n    locals: {\n      current_user: current_user,\n      account: account,\n      selected_status: selected_status\n    }\n  )\n%>\n"
+        "<%= render(\n  partial: \"profile\",\n  locals: {\n    current_user: current_user,\n    account: account,\n    selected_status: selected_status\n  }\n) %>\n"
     );
 }
 
@@ -768,7 +768,7 @@ fn wraps_long_erb_output_single_keyword_hash_argument() {
                 ..FormatOptions::default()
             }
         ),
-        "<%=\n  render(\n    locals: {\n      current_user: current_user,\n      account: account,\n      selected_status: selected_status\n    }\n  )\n%>\n"
+        "<%= render(\n  locals: {\n    current_user: current_user,\n    account: account,\n    selected_status: selected_status\n  }\n) %>\n"
     );
 }
 
@@ -858,7 +858,7 @@ fn wraps_long_erb_output_command_calls_with_do_blocks() {
                 ..FormatOptions::default()
             }
         ),
-        "<%=\n  form_with(\n    model: user,\n    url: user_path(user),\n    data: { turbo_frame: \"profile\" }\n  ) do |form|\n%>\n  <div></div>\n<% end %>\n"
+        "<%= form_with(\n  model: user,\n  url: user_path(user),\n  data: { turbo_frame: \"profile\" }\n) do |form| %>\n  <div></div>\n<% end %>\n"
     );
 }
 
@@ -872,7 +872,7 @@ fn wraps_long_link_to_output_command_calls_with_do_blocks() {
                 ..FormatOptions::default()
             }
         ),
-        "<%=\n  link_to(\n    \"Edit profile\",\n    edit_user_path(user),\n    class: \"button button--primary\",\n    data: {\n      turbo_frame: \"_top\",\n      controller: \"profile-link\"\n    }\n  ) do\n%>\n  <span>Edit</span>\n<% end %>\n"
+        "<%= link_to(\n  \"Edit profile\",\n  edit_user_path(user),\n  class: \"button button--primary\",\n  data: {\n    turbo_frame: \"_top\",\n    controller: \"profile-link\"\n  }\n) do %>\n  <span>Edit</span>\n<% end %>\n"
     );
 }
 
@@ -888,7 +888,7 @@ fn wraps_long_parenthesized_rails_helper_calls() {
             r#"<%= image_tag("user-placeholder.png", alt: "User profile image", class: "avatar avatar--large") %>"#,
             options
         ),
-        "<%=\n  image_tag(\n    \"user-placeholder.png\",\n    alt: \"User profile image\",\n    class: \"avatar avatar--large\"\n  )\n%>\n"
+        "<%= image_tag(\n  \"user-placeholder.png\",\n  alt: \"User profile image\",\n  class: \"avatar avatar--large\"\n) %>\n"
     );
 
     assert_eq!(
@@ -896,14 +896,14 @@ fn wraps_long_parenthesized_rails_helper_calls() {
             r#"<%= video_tag(["intro.mp4", "intro.webm"], controls: true, autoplay: false, class: "hero-video") %>"#,
             options
         ),
-        "<%=\n  video_tag(\n    [\"intro.mp4\", \"intro.webm\"],\n    controls: true,\n    autoplay: false,\n    class: \"hero-video\"\n  )\n%>\n"
+        "<%= video_tag(\n  [\"intro.mp4\", \"intro.webm\"],\n  controls: true,\n  autoplay: false,\n  class: \"hero-video\"\n) %>\n"
     );
 
     let formatted = format_with_options(
         r#"<%= form_with(model: user, url: user_path(user), data: { turbo_frame: "profile" }) do |form| %><div></div><% end %>"#,
         options,
     );
-    let expected = "<%=\n  form_with(\n    model: user,\n    url: user_path(user),\n    data: { turbo_frame: \"profile\" }\n  ) do |form|\n%>\n  <div></div>\n<% end %>\n";
+    let expected = "<%= form_with(\n  model: user,\n  url: user_path(user),\n  data: { turbo_frame: \"profile\" }\n) do |form| %>\n  <div></div>\n<% end %>\n";
 
     assert_eq!(formatted, expected);
     assert_eq!(format_with_options(&formatted, options), expected);
@@ -929,25 +929,69 @@ fn preserves_existing_multiline_erb_output_shape() {
         format(
             "<%=\n  link_to(\n    \"Edit profile\",\n    edit_user_path(user),\n    class: \"button\"\n  )\n%>\n"
         ),
-        "<%=\n  link_to(\n    \"Edit profile\",\n    edit_user_path(user),\n    class: \"button\"\n  )\n%>\n"
+        "<%= link_to(\n  \"Edit profile\",\n  edit_user_path(user),\n  class: \"button\"\n) %>\n"
     );
 }
 
 #[test]
 fn normalizes_multiline_erb_output_opening_marker_inside_html() {
     assert_eq!(
-        format("<p><%= render(\n  partial: \"partial\",\n  locals: {key: \"value\"}\n) %></p>\n"),
-        "<p>\n  <%=\n    render(\n      partial: \"partial\",\n      locals: {key: \"value\"}\n    )\n  %>\n</p>\n"
+        format_source(
+            "<p><%= render(\n  partial: \"partial\",\n  locals: {key: \"value\"}\n) %></p>\n"
+        ),
+        "<p><%= render(\n  partial: \"partial\",\n  locals: {key: \"value\"}\n) %></p>\n"
     );
 }
 
 #[test]
-fn preserves_inline_single_foldable_erb_output_child_at_line_width() {
+fn wraps_inline_single_foldable_erb_output_child_without_changing_boundaries() {
     let options = FormatOptions {
         line_width: 40,
         ..FormatOptions::default()
     };
     let input = "<p><%= render(partial: \"foo\", locals: { key: \"value\" }) %></p>\n";
+
+    assert_eq!(
+        format_source_with_options(input, options),
+        "<p><%= render(\n  partial: \"foo\",\n  locals: { key: \"value\" }\n) %></p>\n"
+    );
+}
+
+#[test]
+fn wraps_text_like_element_erb_output_without_inserting_outer_whitespace() {
+    let options = FormatOptions {
+        line_width: 48,
+        ..FormatOptions::default()
+    };
+    let input = r#"<h2><%= t ".comment", author: comment.author.display_name, changeset_id: comment.changeset.id.to_s %></h2>
+"#;
+
+    assert_eq!(
+        format_source_with_options(input, options),
+        "<h2><%= t(\n  \".comment\",\n  author: comment.author.display_name,\n  changeset_id: comment.changeset.id.to_s\n) %></h2>\n"
+    );
+}
+
+#[test]
+fn preserves_hashrocket_erb_output_when_expression_is_not_foldable() {
+    let options = FormatOptions {
+        line_width: 48,
+        ..FormatOptions::default()
+    };
+    let input = r#"<h2><%= t ".comment", :author => comment.author.display_name, :changeset_id => comment.changeset.id.to_s %></h2>
+"#;
+
+    assert_eq!(format_source_with_options(input, options), input);
+}
+
+#[test]
+fn preserves_inline_symbol_adjacency_when_expression_is_not_foldable() {
+    let options = FormatOptions {
+        line_width: 48,
+        ..FormatOptions::default()
+    };
+    let input = r#"<h4><%= if common_details.redacted? then t("redacted") else t("version") end %>#<%= link_to version, path %></h4>
+"#;
 
     assert_eq!(format_source_with_options(input, options), input);
 }
@@ -974,7 +1018,7 @@ fn normalizes_existing_multiline_parenthesized_erb_output_arguments() {
         format(
             "<%= react_component(\"ReactComponent\",\n  props: {\n    key1: \"value1\",\n    key2: \"value2\"\n  }\n) %>\n"
         ),
-        "<%=\n  react_component(\n    \"ReactComponent\",\n    props: {\n      key1: \"value1\",\n      key2: \"value2\"\n    }\n  )\n%>\n"
+        "<%= react_component(\n  \"ReactComponent\",\n  props: {\n    key1: \"value1\",\n    key2: \"value2\"\n  }\n) %>\n"
     );
 }
 
