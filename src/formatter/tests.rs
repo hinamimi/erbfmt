@@ -919,7 +919,41 @@ fn preserves_long_erb_output_when_expression_is_not_safely_splittable() {
                 ..FormatOptions::default()
             }
         ),
-        "<%=\n  current_user.admin? ? link_to(\"Admin\", admin_path) : link_to(\"Home\", root_path)\n%>\n"
+        "<%= current_user.admin? ? link_to(\"Admin\", admin_path) : link_to(\"Home\", root_path) %>\n"
+    );
+}
+
+#[test]
+fn preserves_long_modifier_erb_output_without_multiline_delimiters() {
+    let input =
+        r#"<%= hidden_field_tag("referer", h(params[:referer])) unless params[:referer].nil? %>"#;
+
+    assert_eq!(
+        format_with_options(
+            input,
+            FormatOptions {
+                line_width: 48,
+                ..FormatOptions::default()
+            }
+        ),
+        "<%= hidden_field_tag(\"referer\", h(params[:referer])) unless params[:referer].nil? %>\n"
+    );
+}
+
+#[test]
+fn preserves_inline_modifier_erb_output_without_multiline_delimiters() {
+    let input =
+        r#"<p>Back to <%= link_to("previous page", back_path) unless back_path.nil? %></p>"#;
+
+    assert_eq!(
+        format_with_options(
+            input,
+            FormatOptions {
+                line_width: 48,
+                ..FormatOptions::default()
+            }
+        ),
+        "<p>Back to <%= link_to(\"previous page\", back_path) unless back_path.nil? %></p>\n"
     );
 }
 

@@ -512,6 +512,11 @@ impl<'a> Formatter<'a> {
             return;
         }
 
+        if is_erb_output_syntax(syntax) && !code.contains('\n') {
+            self.write_indented_line(depth, &inline);
+            return;
+        }
+
         self.write_indented_line(depth, syntax.open.as_str());
 
         for line in formatted_erb_code_lines(code) {
@@ -847,12 +852,16 @@ fn single_foldable_erb_output_inline_child(
 }
 
 fn wrapped_erb_output_lines(syntax: ErbTagSyntax, code: &str) -> Option<Vec<String>> {
-    if !matches!(syntax.open, ErbTagOpen::Output | ErbTagOpen::RawOutput) {
+    if !is_erb_output_syntax(syntax) {
         return None;
     }
 
     let lines = formatted_erb_code_lines(code.trim());
     (lines.len() > 1).then_some(lines)
+}
+
+fn is_erb_output_syntax(syntax: ErbTagSyntax) -> bool {
+    matches!(syntax.open, ErbTagOpen::Output | ErbTagOpen::RawOutput)
 }
 
 fn is_line_ending_char(ch: char) -> bool {
