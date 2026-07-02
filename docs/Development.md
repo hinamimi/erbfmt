@@ -76,9 +76,14 @@ The core implementation is developed incrementally:
 4. `src/formatter/` produces formatted output.
 5. `src/linter/` reports configurable diagnostics.
 
-Ruby expressions are still treated conservatively. `src/formatter/ruby_wrap.rs`
-recognizes only the narrow command-call shapes that can be wrapped without a
-full Ruby AST.
+Ruby expressions are still treated conservatively. `src/ruby_ast/` provides the
+first internal AST layer for simple helper calls, keyword arguments, arrays,
+hashes, assignments, unary/binary operators, grouped expressions, modifier
+`if` / `unless`, ternary expressions, ranges, splat arguments, constant paths,
+percent literals, safe navigation, index access, and `do |param|` block suffixes.
+Formatter integration is intentionally separate: `src/formatter/ruby_wrap.rs`
+still owns current wrapping behavior until the AST layer is broad enough to
+replace those heuristics safely.
 
 ## Refactoring TODO
 

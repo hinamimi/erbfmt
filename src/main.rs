@@ -5,6 +5,7 @@ mod ignore;
 mod lexer;
 mod linter;
 mod mixed_parser;
+mod ruby_ast;
 
 use anyhow::{Context, Result, bail};
 use clap::{ArgGroup, Parser, ValueEnum};

@@ -14,7 +14,7 @@ erbfmt は `*.html.erb` 向けの formatter / linter です。
 
 - formatter / linter engine は Rust に置く。
 - VSCode extension、Ruby gem、将来の npm package は薄い wrapper として扱う。
-- Ruby AST parsing はまだ前提にしない。
+- Ruby AST parsing は formatter から独立した基盤として段階的に育てる。
 - HTML / ERB の構造を安全に扱い、semantic を壊しそうな場合は無理に整形しない。
 - 実テンプレートでの安全性を、見た目のきれいさより優先する。
 
@@ -40,6 +40,11 @@ erbfmt は `*.html.erb` 向けの formatter / linter です。
 - HTML tag attribute wrapping
 - parenthesized Ruby helper call wrapping
 - 安全に扱える command-style Ruby helper call wrapping
+- formatter 未接続の lightweight Ruby AST parser
+- Ruby assignment / operator expression AST
+- Ruby modifier / safe navigation / index access AST
+- Ruby ternary / range AST
+- Ruby splat / constant path / percent literal AST
 - top-level multi-statement ERB code の preservation
 - inline whitespace を壊さない formatter safety
 - `<%- %>`, `<% -%>`, `<%== %>` の marker preservation
@@ -88,7 +93,7 @@ erbfmt は `*.html.erb` 向けの formatter / linter です。
 
 ## 現在の制約
 
-- Ruby AST はまだ使っていない。
+- Ruby AST は基盤実装を開始したが、formatter の出力変更にはまだ使っていない。
 - Ruby expression の folding は、構文的に安全に分割できる範囲だけ扱う。
 - CSS の `display` や Rails helper の semantic analysis はしない。
 - crates.io、npm、Open VSX はまだ公開しない。
@@ -116,20 +121,51 @@ erbfmt は `*.html.erb` 向けの formatter / linter です。
 - RubyGems.org、GitHub Release、VSCode Marketplace の公開状態を短時間で確認できる。
 - release docs に古い version 固定の説明が残りにくい。
 
-### Milestone B: Ruby wrapping safety hardening
+### Milestone B: Ruby AST foundation
 
-Ruby AST なしで安全に扱える ERB tag 内 expression wrapping を広げつつ、
-危険な Ruby は確実に保持します。
+formatter へ接続する前に、ERB tag 内 Ruby expression を安全に理解するための
+AST 基盤を育てます。
 
 やること:
 
-- 複数 statement、assignment、modifier `if` / `unless`、method chain、block 渡しの
-  危険パターンを fixture 化する。
-- command-style call wrapping が semantic を変えそうな場合は wrapping しない。
+- `src/ruby_ast/` の lexer / parser / AST を小さく保つ。
+- helper call、keyword argument、array、hash、assignment、operator expression、
+  modifier `if` / `unless`、ternary、range、splat、constant path、
+  percent literal、safe navigation、index access、top-level multiple statements、
+  nested call、`do |param|` suffix を扱う。
+- assignment は AST 化するが、formatter 対象からは外す。
+- operator expression は AST 化するが、formatter 接続は別 milestone で判断する。
+- multiple statements は AST 化するが、formatter 対象からは外す。
+- modifier `if` / `unless` は AST 化するが、formatter 対象からは外す。
+- ternary は AST 化するが、formatter 対象からは外す。
+- parse できる / できない Ruby の fixture を追加する。
+- formatter から利用する前に、AST から wrapping plan を作る設計を決める。
+
+完了条件:
+
+- Rails helper で頻出する simple call を AST 化できる。
+- assignment を AST 化しつつ、format candidate ではないと判定できる。
+- `&&`, `||`, comparison, arithmetic, unary, grouped expression を AST 化できる。
+- modifier `if` / `unless`、safe navigation、index access を AST 化できる。
+- ternary と inclusive / exclusive range を AST 化できる。
+- `*args` / `**options` / `&block`、`Admin::User`、`%w[]` / `%i[]`
+  などを AST 化できる。
+- semicolon / top-level newline で分かれた multiple statements を AST 化しつつ、
+  format candidate ではないと判定できる。
+- 危険な Ruby expression を AST 化せず、明示的に error にできる。
+- formatter integration の前に、AST の責務と制約が test で固定されている。
+
+### Milestone C: Ruby wrapping AST integration
+
+Ruby AST を使って、既存の heuristic wrapping を段階的に置き換えます。
+
+やること:
+
 - `render(...)`, `form_with(...)`, `link_to(...)`, `image_tag(...)`,
-  `video_tag(...)`, `react_component(...)` の parenthesized call を安定させる。
-- top-level argument split の安全性を上げる。
-- hash / array / keyword arguments の indentation を読みやすくする。
+  `video_tag(...)`, `react_component(...)` の AST-based wrapping を設計する。
+- command-style call wrapping が semantic を変えそうな場合は wrapping しない。
+- hash / array / keyword arguments の indentation を AST から生成する。
+- 既存 `ruby_wrap.rs` の fixture を AST-based formatter plan へ移す。
 
 完了条件:
 
@@ -138,7 +174,7 @@ Ruby AST なしで安全に扱える ERB tag 内 expression wrapping を広げ�
 - Ruby semantic を変える変換をしない。
 - 危険な変換は test fixture で regression として検出できる。
 
-### Milestone C: formatter safety fixture expansion
+### Milestone D: formatter safety fixture expansion
 
 実テンプレートで design を壊しそうな formatter behavior を fixture に寄せます。
 
@@ -156,7 +192,7 @@ Ruby AST なしで安全に扱える ERB tag 内 expression wrapping を広げ�
 - 実テンプレート sample に対する format が idempotent である。
 - formatter が壊しそうなケースを Roadmap ではなく test fixture で管理できる。
 
-### Milestone D: linter quality
+### Milestone E: linter quality
 
 HTML / ERB の lint を、実用上の発見力と誤検知の少なさの両方で改善します。
 
@@ -174,7 +210,7 @@ HTML / ERB の lint を、実用上の発見力と誤検知の少なさの両方
 - HTML-only rule と ERB-aware rule の責務が分かれている。
 - `samples/lint-next.html.erb` が lint rule の代表例として使える。
 
-### Milestone E: VSCode extension UX
+### Milestone F: VSCode extension UX
 
 VSCode で「入れたら動く」に近づけます。
 
@@ -192,7 +228,7 @@ VSCode で「入れたら動く」に近づけます。
 - local checkout 開発と installed extension の binary resolution が混ざらない。
 - Marketplace 版の user experience が説明できる。
 
-### Milestone F: AI-friendly interface
+### Milestone G: AI-friendly interface
 
 Codex / Claude Code などの agent が、Rails view を安全に編集しやすい interface を整えます。
 
@@ -211,7 +247,7 @@ Codex / Claude Code などの agent が、Rails view を安全に編集しやす
 - AI 向け docs を読めば、Rails view 編集後に実行すべき command が分かる。
 - 人間向け CLI 出力と agent 向け JSON 出力が役割分担できている。
 
-### Milestone G: remaining package registry strategy
+### Milestone H: remaining package registry strategy
 
 未公開の registry へ進むか判断します。
 
