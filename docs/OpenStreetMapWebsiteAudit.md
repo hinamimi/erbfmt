@@ -57,9 +57,20 @@ Note: the counts above are from the initial `erbfmt 0.3.0-dev` audit run. Later
 parser and formatter safety work has mitigated several issues recorded below;
 this document keeps both the original finding and the current status.
 
+Current verification:
+
+```bash
+cargo run --quiet -- --check external/rails-repos/openstreetmap-website/app/views
+```
+
+now reports only normal formatted / not formatted results for the view corpus.
+The two parser failures from the initial audit no longer reproduce.
+
 ## Parser issues found
 
 ### Multiline ERB block opener with Ruby setup
+
+Status: fixed.
 
 `app/views/layers_panes/show.html.erb` contains an ERB block opener where the
 Ruby code spans multiple lines and performs setup before the ERB tag closes.
@@ -84,17 +95,33 @@ The current parser treats the outer `<div>` as unclosed. This suggests that the
 mixed parser is not recognizing this multiline `<% ... do |layer| ... %>` as an
 ERB block opener.
 
-Safety impact:
+Original safety impact:
 
 - Formatter does not run for the file.
 - This is safer than rewriting incorrectly, but the diagnostic points at the
   outer HTML tag instead of the unsupported ERB block shape.
 
-Follow-up:
+Fix:
 
-- Support multiline ERB block openers whose tag body contains setup statements.
-- If that is too broad, emit a clearer unsupported-ERB diagnostic without
-  blaming the surrounding HTML.
+- Recognize an ERB code tag as a `Do` block opener when its first non-empty
+  line ends with a `do` block opener, even if later setup statements remain in
+  the same ERB tag.
+- Keep self-contained Ruby control flow with an internal `end` as plain ERB
+  code.
+- Preserve the full ERB tag body, so the formatter can remain conservative
+  about the setup statements.
+
+Verification:
+
+```bash
+cargo run --quiet -- --check external/rails-repos/openstreetmap-website/app/views/layers_panes/show.html.erb
+```
+
+now reaches the normal format-check result:
+
+```text
+external/rails-repos/openstreetmap-website/app/views/layers_panes/show.html.erb: file is not formatted.
+```
 
 ### Trim marker confused with an HTML close tag
 
@@ -340,28 +367,26 @@ preserved:
 
 ## Remaining proposed fixtures
 
-Add parser fixtures for:
-
-```erb
-<% items.each do |item|
-     options = { :class => "form-check" }
-     options[:title] = item.title if item.title? %>
-  <%= tag.div(**options) do %>
-    <%= item.name %>
-  <% end %>
-<% end %>
-```
+No parser fixtures from the initial OpenStreetMap audit remain unimplemented.
+Future audit runs should move any new parser or formatter safety findings into
+unit tests as they are discovered.
 
 ## Summary
 
-`erbfmt 0.3.0-dev` can process most OpenStreetMap Rails views. The original
+`erbfmt 0.3.0-dev` can process the OpenStreetMap Rails view corpus without the
+two parser failures found in the initial audit. The original
 audit showed two categories of risk:
 
-1. Parser gaps around multiline ERB block openers.
+1. Parser gaps around multiline ERB block openers and conditional attributes
+   after HTML tag names.
 2. Formatter whitespace changes around inline ERB output.
+
+The parser gaps from this audit have been fixed. The full `app/views` check now
+continues through the corpus and reports only formatted / not formatted files.
 
 The second category has largely been mitigated by preserving inline boundaries,
 wrapping only foldable Ruby calls inside ERB delimiters, and leaving
 non-foldable expressions inline. The `</tr<%>` parse error from conditional
-attributes has also been fixed. The main remaining audit follow-up is parser
-support and clearer diagnostics for multiline ERB block openers.
+attributes has also been fixed. The main remaining audit follow-up is to rerun
+the external diff review periodically and promote any new safety concerns into
+fixtures.

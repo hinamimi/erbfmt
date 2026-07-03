@@ -279,6 +279,56 @@ fn preserves_erb_control_attribute_after_html_tag_name() {
 }
 
 #[test]
+fn parses_multiline_erb_block_opener_with_setup_statements() {
+    let input = r#"<div>
+  <% @overlay_layers.each do |layer|
+       options = { :data => layer, :class => "form-check" }
+       options[:title] = t(".tooltip") if layer[:max_area] %>
+    <%= tag.div(**options) do %>
+      <span><%= layer[:name] %></span>
+    <% end %>
+  <% end %>
+</div>"#;
+    let tokens = tokenize(input).unwrap();
+    let document = parse(&tokens).unwrap();
+
+    let Document { children } = document;
+    let [container] = children.as_slice() else {
+        panic!("root container expected");
+    };
+    let Node::HtmlElement { name, children, .. } = container else {
+        panic!("HTML container expected");
+    };
+    assert_eq!(name, "div");
+
+    let block = children
+        .iter()
+        .find(|node| matches!(node, Node::ErbBlock { .. }))
+        .expect("multiline ERB opener should be parsed as a block");
+
+    let Node::ErbBlock {
+        kind,
+        tag,
+        end_tag,
+        children,
+        ..
+    } = block
+    else {
+        unreachable!("block already matched");
+    };
+
+    assert_eq!(*kind, ErbBlockKind::Do);
+    assert!(tag.code.starts_with("@overlay_layers.each do |layer|"));
+    assert!(tag.code.contains("options[:title]"));
+    assert_eq!(end_tag.code, "end");
+    assert!(
+        children
+            .iter()
+            .any(|node| matches!(node, Node::ErbBlock { .. }))
+    );
+}
+
+#[test]
 fn keeps_erb_blocks_with_html_children() {
     let tokens = tokenize("<% if user %><ul><li>Hello</li></ul><% end %>").unwrap();
     let document = parse(&tokens).unwrap();

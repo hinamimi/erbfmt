@@ -225,6 +225,24 @@ fn tokenizes_do_block_expression() {
 }
 
 #[test]
+fn tokenizes_multiline_erb_block_opener_with_setup_statements() {
+    let input = r#"<% @overlay_layers.each do |layer|
+     options = { :data => layer, :class => "form-check" }
+     options[:title] = t(".tooltip") if layer[:max_area] %>"#;
+
+    assert_eq!(
+        tokenize(input).unwrap(),
+        vec![Token::ErbBlockStart {
+            kind: ErbBlockKind::Do,
+            tag: code_tag(
+                "@overlay_layers.each do |layer|\n     options = { :data => layer, :class => \"form-check\" }\n     options[:title] = t(\".tooltip\") if layer[:max_area]"
+            ),
+            output: false
+        }]
+    );
+}
+
+#[test]
 fn tokenizes_erb_output_do_block_expression() {
     let tokens = tokenize("<%= form_with model: user do |form| %>").unwrap();
 
