@@ -377,8 +377,7 @@ Examples:
 +      <i
 +        class="bi bi-chat<%= num_comments.zero? ? "" : "-fill" %> small"
 +        aria-hidden="true"
-+      >
-+      </i>
++      ></i>
 ```
 
 ```diff
@@ -390,17 +389,26 @@ Examples:
 +        ><%= t ".more" %></button>
 ```
 
-The button case keeps the `>` and text child adjacent, which is the desired
-safety shape. The empty `<i></i>` case is more questionable: adding a newline
-between an inline icon open and close tag creates a whitespace text child. This
-usually has no visible effect for Bootstrap icon elements, but it is still a
-real inline-whitespace risk.
+Status: fixed. The formatter now keeps empty element close tags adjacent to the
+wrapped opening tag. This avoids introducing a whitespace text child between an
+empty inline element's open and close tags.
 
-Priority:
+Preferred shapes:
 
-- Keep empty inline elements inline when the original tag had no children.
-- If the opening tag must wrap, prefer `<i ...></i>`-style boundary preservation
-  over inserting a whitespace child.
+```erb
+<i
+  class="very very very very very long icon name"
+  aria-hidden="true"
+></i>
+```
+
+```erb
+<button
+  class="button button--primary button--wide"
+  data-controller="confirm"
+  type="button"
+>Save</button>
+```
 
 ### Old-style hashrocket helper continuation indentation
 
@@ -419,11 +427,18 @@ stays inline. It is still a readability regression. It also shows that
 hashrocket-style helper calls are being preserved, but their continuation
 indentation is not.
 
-Priority:
+Status: fixed. Existing multiline ERB output inside inline-sensitive HTML is now
+preserved when the Ruby expression is not safely foldable. This keeps old-style
+hashrocket continuation indentation intact:
 
-- Preserve original multiline ERB output indentation when the expression is not
-  foldable.
-- Later, teach Ruby AST / wrapping to handle old-style hash arguments safely.
+```erb
+<h2><%= t ".comment",
+          :author => comment.author.display_name,
+          :changeset_id => comment.changeset.id.to_s %></h2>
+```
+
+Future Ruby AST work can still teach the wrapper to format old-style hash
+arguments safely, but until then this shape is intentionally preserved.
 
 ### Standalone long ERB control tags expanded to delimiter lines
 
@@ -474,12 +489,26 @@ preserved:
 >Text</span>
 ```
 
+```erb
+<i
+  class="very very very very very long icon name"
+  aria-hidden="true"
+></i>
+```
+
+```erb
+<h2><%= t ".comment",
+          :author => user.name,
+          :id => id %></h2>
+```
+
 ## Remaining proposed fixtures
 
 No parser fixtures from the initial OpenStreetMap audit remain unimplemented.
 Future parser audit findings should move into unit tests as they are discovered.
-For formatter safety, the next fixtures should cover empty inline elements and
-hashrocket continuation preservation.
+For formatter safety, empty inline elements and hashrocket continuation
+preservation are now covered. Future fixtures should come from a fresh external
+diff review.
 
 ## Summary
 
@@ -499,5 +528,4 @@ wrapping only foldable Ruby calls inside ERB delimiters, and leaving
 non-foldable expressions inline. The `</tr<%>` parse error from conditional
 attributes has also been fixed. The main remaining audit follow-up is to rerun
 the external diff review periodically and promote any new safety concerns into
-fixtures. The next high-priority formatter candidates are empty inline element
-boundary preservation and old-style hashrocket helper indentation preservation.
+fixtures.

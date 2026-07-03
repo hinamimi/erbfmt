@@ -14,6 +14,7 @@ use super::inline::{
 };
 use super::options::{FormatOptions, IndentStyle};
 use super::preserve::{is_format_sensitive_html_element, render_preserved_nodes};
+use super::ruby_wrap;
 use super::tag::{
     TagRenderContext, normalize_close_tag, normalize_tag, render_tag,
     should_expand_tag_with_erb_attributes,
@@ -209,6 +210,14 @@ impl<'a> Formatter<'a> {
 
         let source_boundaries = self.html_element_boundaries(range, open, close);
 
+        if source_boundaries.preserve_inline_children()
+            && has_multiline_unfoldable_erb_output_child(children)
+            && let Some(raw) = self.raw_source_for_range(range).map(str::to_string)
+        {
+            self.write_indented_raw(&raw, depth);
+            return;
+        }
+
         if !open.contains('\n')
             && source_boundaries.preserve_inline_children()
             && self.can_expand_single_foldable_erb_child(children)
@@ -297,6 +306,11 @@ impl<'a> Formatter<'a> {
     ) {
         let boundaries = self.html_element_boundaries(range, open, close);
         let close = normalize_close_tag(close).unwrap_or_else(|| close.to_string());
+        if children.is_empty() {
+            self.write_tag_with_suffix(open, depth, &close);
+            return;
+        }
+
         let children = split_formatting_nodes(children, &self.preserved_ranges);
         let prefix_count = if boundaries.open_child_same_line {
             leading_inline_boundary_nodes(&children)
@@ -825,6 +839,16 @@ fn has_inline_boundary_content(node: &Node) -> bool {
         Node::HtmlText(text) => !text.trim().is_empty(),
         _ => true,
     }
+}
+
+fn has_multiline_unfoldable_erb_output_child(children: &[Node]) -> bool {
+    children.iter().any(|child| {
+        matches!(
+            child.unspanned(),
+            Node::ErbOutput(tag)
+                if tag.code.contains('\n') && ruby_wrap::fold_command_call(&tag.code).is_none()
+        )
+    })
 }
 
 fn single_foldable_erb_output_child(children: &[Node]) -> Option<&ErbTag> {

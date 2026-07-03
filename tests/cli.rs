@@ -629,7 +629,7 @@ fn config_accepts_jsonc_comments_and_trailing_commas() {
     assert_success(&output);
     assert_eq!(
         stdout(&output),
-        "<div\n  class=\"a-long-long-class-name\"\n  style=\"<%= long_logic %>\"\n>\n</div>\n"
+        "<div\n  class=\"a-long-long-class-name\"\n  style=\"<%= long_logic %>\"\n></div>\n"
     );
     assert_eq!(stderr(&output), "");
 }

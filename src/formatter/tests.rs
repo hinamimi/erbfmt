@@ -88,7 +88,7 @@ fn wraps_standalone_erb_attributes_in_long_html_tags() {
                 ..FormatOptions::default()
             }
         ),
-        "<details\n  <%= \"open\" unless request.user_agent&.match?(/Mobile|Android|iPhone|iPad/) %>\n  class=\"\"\n>\n</details>\n"
+        "<details\n  <%= \"open\" unless request.user_agent&.match?(/Mobile|Android|iPhone|iPad/) %>\n  class=\"\"\n></details>\n"
     );
 }
 
@@ -289,6 +289,33 @@ fn preserves_boundaries_when_wrapping_long_tags_with_inline_erb_children() {
 }
 
 #[test]
+fn preserves_empty_element_boundaries_when_wrapping_long_tags() {
+    let options = FormatOptions {
+        line_width: 48,
+        ..FormatOptions::default()
+    };
+    let input = "<i class=\"very very very very very long icon name\" aria-hidden=\"true\"></i>\n";
+    let expected =
+        "<i\n  class=\"very very very very very long icon name\"\n  aria-hidden=\"true\"\n></i>\n";
+
+    assert_eq!(format_source_with_options(input, options), expected);
+    assert_eq!(format_source_with_options(expected, options), expected);
+}
+
+#[test]
+fn preserves_inline_child_boundaries_when_wrapping_long_button_tags() {
+    let options = FormatOptions {
+        line_width: 48,
+        ..FormatOptions::default()
+    };
+    let input = "<button class=\"button button--primary button--wide\" data-controller=\"confirm\" type=\"button\">Save</button>\n";
+    let expected = "<button\n  class=\"button button--primary button--wide\"\n  data-controller=\"confirm\"\n  type=\"button\"\n>Save</button>\n";
+
+    assert_eq!(format_source_with_options(input, options), expected);
+    assert_eq!(format_source_with_options(expected, options), expected);
+}
+
+#[test]
 fn preserves_source_boundaries_between_closing_tags_and_inline_children() {
     let input = "<p>Lead\n<strong>Body</strong>\nTail</p>\n";
     let expected = "<p>Lead\n  <strong>Body</strong>\n  Tail</p>\n";
@@ -418,7 +445,7 @@ fn falls_back_when_formatter_ignore_target_is_not_on_the_next_line() {
                 ..FormatOptions::default()
             }
         ),
-        "<!-- erbfmt-ignore format: separated -->\n\n<article\n  class=\"card\"\n  data-controller=\"profile\"\n  aria-label=\"Profile card\"\n>\n</article>\n"
+        "<!-- erbfmt-ignore format: separated -->\n\n<article\n  class=\"card\"\n  data-controller=\"profile\"\n  aria-label=\"Profile card\"\n></article>\n"
     );
 }
 
@@ -595,7 +622,7 @@ fn preserves_conditional_erb_attribute_blocks_even_when_long() {
                 ..FormatOptions::default()
             }
         ),
-        "<tr <% if clickable? %>class=\"clickable cursor-pointer\" data-controller=\"row-link\" data-action=\"click->row-link#open\"<% end %>>\n</tr>\n"
+        "<tr <% if clickable? %>class=\"clickable cursor-pointer\" data-controller=\"row-link\" data-action=\"click->row-link#open\"<% end %>></tr>\n"
     );
 }
 
@@ -676,7 +703,7 @@ fn wraps_long_inline_html_elements_by_attribute() {
                 ..FormatOptions::default()
             }
         ),
-        "<div\n  class=\"a-long-long-class-name\"\n  style=\"<%= long_logic %>\"\n>\n</div>\n"
+        "<div\n  class=\"a-long-long-class-name\"\n  style=\"<%= long_logic %>\"\n></div>\n"
     );
 }
 
@@ -706,7 +733,7 @@ fn normalizes_single_quoted_html_attributes_when_wrapping_tags() {
                 ..FormatOptions::default()
             }
         ),
-        "<div\n  class=\"a-long-long-class-name\"\n  style=\"<%= long_logic %>\"\n>\n</div>\n"
+        "<div\n  class=\"a-long-long-class-name\"\n  style=\"<%= long_logic %>\"\n></div>\n"
     );
 }
 
@@ -832,16 +859,16 @@ fn preserves_self_contained_multiline_erb_case_tags() {
 
 #[test]
 fn preserves_long_erb_block_opening_tags_when_they_are_control_flow() {
-    assert_eq!(
-        format_with_options(
-            "<% if current_user.admin? && feature_enabled?(:new_dashboard) && account.active? %>\n<p>Hello</p>\n<% end %>\n",
-            FormatOptions {
-                line_width: 60,
-                ..FormatOptions::default()
-            }
-        ),
-        "<%\n  if current_user.admin? && feature_enabled?(:new_dashboard) && account.active?\n%>\n  <p>Hello</p>\n<% end %>\n"
-    );
+    let options = FormatOptions {
+        line_width: 60,
+        ..FormatOptions::default()
+    };
+    let input = "<% if current_user.admin? && feature_enabled?(:new_dashboard) && account.active? %>\n<p>Hello</p>\n<% end %>\n";
+    let expected = "<%\n  if current_user.admin? && feature_enabled?(:new_dashboard) && account.active?\n%>\n  <p>Hello</p>\n<% end %>\n";
+
+    assert_eq!(format_with_options(input, options), expected);
+    assert_eq!(format_source_with_options(input, options), expected);
+    assert_eq!(format_source_with_options(expected, options), expected);
 }
 
 #[test]
@@ -1058,6 +1085,20 @@ fn preserves_hashrocket_erb_output_when_expression_is_not_foldable() {
         ..FormatOptions::default()
     };
     let input = r#"<h2><%= t ".comment", :author => comment.author.display_name, :changeset_id => comment.changeset.id.to_s %></h2>
+"#;
+
+    assert_eq!(format_source_with_options(input, options), input);
+}
+
+#[test]
+fn preserves_hashrocket_multiline_erb_output_indentation_when_not_foldable() {
+    let options = FormatOptions {
+        line_width: 48,
+        ..FormatOptions::default()
+    };
+    let input = r#"<h2><%= t ".comment",
+          :author => comment.author.display_name,
+          :changeset_id => comment.changeset.id.to_s %></h2>
 "#;
 
     assert_eq!(format_source_with_options(input, options), input);
