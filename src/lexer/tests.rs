@@ -96,6 +96,48 @@ fn tokenizes_erb_after_non_tag_less_than_sign() {
 }
 
 #[test]
+fn keeps_erb_output_inside_script_raw_text_as_html() {
+    let input = r#"<script>
+  if (size < 1024) {
+    window.asset = "<%= asset_path "icon.png" %>";
+  }
+</script>"#;
+
+    assert_eq!(
+        tokenize(input).unwrap(),
+        vec![Token::Html(input.to_string())]
+    );
+}
+
+#[test]
+fn keeps_erb_code_inside_script_raw_text_as_html() {
+    let input = r#"<script>
+  <% if enabled? %>
+    window.enabled = true;
+  <% end %>
+</script>"#;
+
+    assert_eq!(
+        tokenize(input).unwrap(),
+        vec![Token::Html(input.to_string())]
+    );
+}
+
+#[test]
+fn keeps_erb_output_inside_style_raw_text_as_html() {
+    let input = r#"<style>
+  :root {
+    --brand-rgb: <%= brand_color %>;
+  }
+</style>"#;
+
+    assert_eq!(
+        tokenize(input).unwrap(),
+        vec![Token::Html(input.to_string())]
+    );
+}
+
+#[test]
 fn tokenizes_supported_erb_control_tags() {
     let cases = [
         ("<% if user %>", ErbBlockKind::If, "if user"),
