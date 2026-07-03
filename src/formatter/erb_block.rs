@@ -9,6 +9,7 @@ use super::inline::{
     FormattingNode, is_inline_formatting_node, render_inline_formatting_nodes_untrimmed,
 };
 use super::preserve::render_preserved_node;
+use super::ruby_wrap;
 
 pub(super) struct ErbBlockParts<'a> {
     pub(super) tag: &'a ErbTag,
@@ -116,7 +117,7 @@ impl<'a> Formatter<'a> {
         }
 
         if prefix.is_empty()
-            && should_preserve_multiline_setup_do_block_opener(parts.tag)
+            && should_preserve_raw_multiline_erb_block_opener(parts.tag)
             && let Some(raw) = self
                 .raw_erb_block_open_tag(parts.range, parts.tag)
                 .map(str::to_string)
@@ -167,6 +168,11 @@ impl<'a> Formatter<'a> {
     }
 }
 
+fn should_preserve_raw_multiline_erb_block_opener(tag: &ErbTag) -> bool {
+    should_preserve_multiline_setup_do_block_opener(tag)
+        || should_preserve_multiline_unfoldable_do_block_opener(tag)
+}
+
 fn should_preserve_multiline_setup_do_block_opener(tag: &ErbTag) -> bool {
     if !tag.code.contains('\n') {
         return false;
@@ -177,6 +183,12 @@ fn should_preserve_multiline_setup_do_block_opener(tag: &ErbTag) -> bool {
     };
 
     line_ends_with_do_block_opener(first_line)
+}
+
+fn should_preserve_multiline_unfoldable_do_block_opener(tag: &ErbTag) -> bool {
+    tag.code.contains('\n')
+        && line_ends_with_do_block_opener(tag.code.trim_end())
+        && ruby_wrap::fold_command_call(&tag.code).is_none()
 }
 
 fn line_ends_with_do_block_opener(line: &str) -> bool {

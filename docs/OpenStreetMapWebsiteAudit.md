@@ -86,6 +86,26 @@ Result after parser fixes and multiline setup-opener preservation:
 4693 unified diff lines.
 ```
 
+Third diff audit after inline-safety and hashrocket preservation fixes:
+
+```bash
+rm -rf /tmp/erbfmt-osm-audit
+mkdir -p /tmp/erbfmt-osm-audit/original /tmp/erbfmt-osm-audit/formatted
+cp -a external/rails-repos/openstreetmap-website/app/views /tmp/erbfmt-osm-audit/original/views
+cp -a external/rails-repos/openstreetmap-website/app/views /tmp/erbfmt-osm-audit/formatted/views
+cargo run --quiet -- --write /tmp/erbfmt-osm-audit/formatted/views
+diff -ru /tmp/erbfmt-osm-audit/original/views /tmp/erbfmt-osm-audit/formatted/views > /tmp/erbfmt-osm-audit/views.diff
+diff -qr /tmp/erbfmt-osm-audit/original/views /tmp/erbfmt-osm-audit/formatted/views > /tmp/erbfmt-osm-audit/changed-files.txt
+```
+
+Result after the latest safety fixes:
+
+```text
+0 files failed to parse.
+88 files changed by formatting.
+2689 unified diff lines.
+```
+
 ## Parser issues found
 
 ### Multiline ERB block opener with Ruby setup
@@ -440,6 +460,44 @@ hashrocket continuation indentation intact:
 Future Ruby AST work can still teach the wrapper to format old-style hash
 arguments safely, but until then this shape is intentionally preserved.
 
+The same preservation applies to multiline output helpers and ERB block openers
+that use old-style hash arguments:
+
+```erb
+<%= inline_svg_tag "auth_providers/example.svg",
+                   :class => "rounded-1 text-body-emphasis",
+                   :title => t("application.auth_providers.example.alt"),
+                   :size => "36" %>
+```
+
+```erb
+<%= link_to auth_path(:provider => provider),
+            :method => :post,
+            :class => ["auth_button btn btn-outline-secondary border p-2", { "px-4 d-flex gap-3 justify-content-center align-items-center" => preferred }],
+            :title => t("application.auth_providers.#{provider}.title") do %>
+  <span>Sign in</span>
+<% end %>
+```
+
+### Punctuation adjacency around multiline ERB output
+
+Initial risk from `app/views/browse/_way.html.erb`:
+
+```diff
+-                (<%= t ".also_part_of_html",
+-                       :count => related_ways.size,
+-                       :related_ways => to_sentence(related_ways.map { |w| element_icon("way", w) + icon_connector + element_single_current_link("way", w) }) %>)
++                (
++                <%= t ".also_part_of_html",
++                :count => related_ways.size,
++                :related_ways => to_sentence(related_ways.map { |w| element_icon("way", w) + icon_connector + element_single_current_link("way", w) }) %>
++                )
+```
+
+Status: fixed. A multiline, non-foldable ERB output tag that shares a source
+line with inline text or punctuation is preserved with that boundary. This
+avoids inserting literal whitespace around punctuation such as parentheses.
+
 ### Standalone long ERB control tags expanded to delimiter lines
 
 Example:
@@ -502,13 +560,20 @@ preserved:
           :id => id %></h2>
 ```
 
+```erb
+(<%= t ".also_part_of_html",
+       :count => related_ways.size,
+       :related_ways => to_sentence(related_ways) %>)
+```
+
 ## Remaining proposed fixtures
 
 No parser fixtures from the initial OpenStreetMap audit remain unimplemented.
 Future parser audit findings should move into unit tests as they are discovered.
-For formatter safety, empty inline elements and hashrocket continuation
-preservation are now covered. Future fixtures should come from a fresh external
-diff review.
+For formatter safety, empty inline elements, hashrocket continuation
+preservation, and punctuation adjacency around non-foldable multiline ERB
+output are now covered. Future fixtures should come from a fresh external diff
+review.
 
 ## Summary
 
@@ -528,4 +593,7 @@ wrapping only foldable Ruby calls inside ERB delimiters, and leaving
 non-foldable expressions inline. The `</tr<%>` parse error from conditional
 attributes has also been fixed. The main remaining audit follow-up is to rerun
 the external diff review periodically and promote any new safety concerns into
-fixtures.
+fixtures. The latest diff audit changed 88 files and 2689 unified diff lines;
+the remaining sampled changes are mostly block indentation, long opening tag
+wrapping, and foldable ERB helper wrapping rather than known inline-whitespace
+risks.

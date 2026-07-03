@@ -1105,6 +1105,44 @@ fn preserves_hashrocket_multiline_erb_output_indentation_when_not_foldable() {
 }
 
 #[test]
+fn preserves_standalone_hashrocket_multiline_erb_output_indentation_when_not_foldable() {
+    let input = r#"<%= inline_svg_tag "auth_providers/example.svg",
+                   :class => "rounded-1 text-body-emphasis",
+                   :title => t("application.auth_providers.example.alt"),
+                   :size => "36" %>
+"#;
+
+    assert_eq!(format_source(input), input);
+}
+
+#[test]
+fn preserves_hashrocket_multiline_erb_output_when_adjacent_to_text_boundaries() {
+    let options = FormatOptions {
+        line_width: 48,
+        ..FormatOptions::default()
+    };
+    let input = r#"(<%= t ".also_part_of_html",
+       :count => related_ways.size,
+       :related_ways => to_sentence(related_ways) %>)
+"#;
+
+    assert_eq!(format_source_with_options(input, options), input);
+}
+
+#[test]
+fn preserves_hashrocket_multiline_erb_block_opener_indentation_when_not_foldable() {
+    let input = r#"<%= link_to auth_path(:provider => provider),
+            :method => :post,
+            :class => ["auth_button btn btn-outline-secondary border p-2", { "px-4 d-flex gap-3 justify-content-center align-items-center" => preferred }],
+            :title => t("application.auth_providers.#{provider}.title") do %>
+  <span>Sign in</span>
+<% end %>
+"#;
+
+    assert_eq!(format_source(input), input);
+}
+
+#[test]
 fn wraps_symbol_adjacent_helper_without_changing_inline_boundaries() {
     let options = FormatOptions {
         line_width: 48,

@@ -85,6 +85,13 @@ impl<'a> Formatter<'a> {
                 continue;
             }
 
+            if let Some(next_index) =
+                self.write_unfoldable_erb_output_with_inline_boundaries(nodes, index, depth)
+            {
+                index = next_index;
+                continue;
+            }
+
             if is_inline_formatting_node(nodes[index]) {
                 let start = index;
 
@@ -504,6 +511,13 @@ impl<'a> Formatter<'a> {
             return;
         }
 
+        if is_multiline_unfoldable_erb_output_tag(tag)
+            && let Some(raw) = self.raw_source_for_range(range).map(str::to_string)
+        {
+            self.write_indented_raw(&raw, depth);
+            return;
+        }
+
         self.write_erb_tag_with_syntax(depth, tag.syntax, &tag.code);
     }
 
@@ -744,6 +758,67 @@ impl<'a> Formatter<'a> {
         self.source_ranges_share_line(left, right)
     }
 
+    fn write_unfoldable_erb_output_with_inline_boundaries(
+        &mut self,
+        nodes: &[FormattingNode<'_>],
+        index: usize,
+        depth: usize,
+    ) -> Option<usize> {
+        let (prefix_start, prefix_end, tag_index) = if is_inline_formatting_node(nodes[index]) {
+            let start = index;
+            let mut end = index;
+
+            while end < nodes.len() && is_inline_formatting_node(nodes[end]) {
+                end += 1;
+            }
+
+            if end >= nodes.len()
+                || !self.formatting_nodes_share_source_line(nodes[end - 1], nodes[end])
+            {
+                return None;
+            }
+
+            (start, end, end)
+        } else {
+            (index, index, index)
+        };
+
+        let FormattingNode::Node(tag_node) = nodes[tag_index] else {
+            return None;
+        };
+        let Node::ErbOutput(tag) = tag_node.unspanned() else {
+            return None;
+        };
+        if !is_multiline_unfoldable_erb_output_tag(tag) {
+            return None;
+        }
+
+        let mut suffix_start = tag_index + 1;
+        let mut suffix_end = suffix_start;
+
+        if suffix_start < nodes.len()
+            && self.formatting_nodes_share_source_line(nodes[tag_index], nodes[suffix_start])
+        {
+            while suffix_end < nodes.len() && is_inline_formatting_node(nodes[suffix_end]) {
+                suffix_end += 1;
+            }
+        } else {
+            suffix_start = suffix_end;
+        }
+
+        if prefix_start == prefix_end && suffix_start == suffix_end {
+            return None;
+        }
+
+        let source = self.source?;
+        let start_range = formatting_node_source_range(nodes[prefix_start])?;
+        let end_range = formatting_node_source_range(nodes[suffix_end.saturating_sub(1)])?;
+        let raw = source.get(start_range.start..end_range.end)?.to_string();
+
+        self.write_indented_raw(&raw, depth);
+        Some(suffix_end)
+    }
+
     fn has_erb_block_inline_child_boundary(&self, children: &[Node]) -> bool {
         children.iter().enumerate().any(|(index, child)| {
             if !matches!(child.unspanned(), Node::ErbBlock { .. }) {
@@ -845,10 +920,13 @@ fn has_multiline_unfoldable_erb_output_child(children: &[Node]) -> bool {
     children.iter().any(|child| {
         matches!(
             child.unspanned(),
-            Node::ErbOutput(tag)
-                if tag.code.contains('\n') && ruby_wrap::fold_command_call(&tag.code).is_none()
+            Node::ErbOutput(tag) if is_multiline_unfoldable_erb_output_tag(tag)
         )
     })
+}
+
+fn is_multiline_unfoldable_erb_output_tag(tag: &ErbTag) -> bool {
+    tag.code.contains('\n') && ruby_wrap::fold_command_call(&tag.code).is_none()
 }
 
 fn single_foldable_erb_output_child(children: &[Node]) -> Option<&ErbTag> {
