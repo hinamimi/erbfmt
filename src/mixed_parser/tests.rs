@@ -232,6 +232,31 @@ fn allows_unbalanced_html_fragments_when_configured() {
 }
 
 #[test]
+fn still_rejects_cross_erb_block_html_when_fragments_are_allowed() {
+    let tokens = tokenize(
+        "<% unless internal_navigation? %>\n<body>\n<% end %>\n<%= yield %>\n<% unless internal_navigation? %>\n</body>\n<% end %>",
+    )
+    .unwrap();
+    let error = parse_with_options(
+        &tokens,
+        ParserOptions {
+            allow_unbalanced_html_fragments: true,
+            ..ParserOptions::default()
+        },
+    )
+    .unwrap_err();
+
+    assert_eq!(
+        error,
+        ParseError::UnclosedHtmlTag {
+            name: "body".to_string(),
+            raw: "<body>".to_string(),
+            location: None
+        }
+    );
+}
+
+#[test]
 fn rejects_unbalanced_html_fragments_by_default() {
     let tokens = tokenize("</section><div>Hello").unwrap();
     let error = parse(&tokens).unwrap_err();

@@ -89,6 +89,9 @@ and `formatter.indentHtml` option for ERB and HTML-specific behavior.
   The default is `false`. When set to `true`, erbfmt preserves unmatched close
   tags as text and allows unclosed HTML tags at the end of the file. Internal
   mismatched tags still fail because they are unsafe to reformat structurally.
+  This option is not intended for HTML open/close pairs that cross separate ERB
+  blocks; those templates should remain parse failures or be handled with
+  `erbfmt-ignore`.
 
 ## Formatter
 

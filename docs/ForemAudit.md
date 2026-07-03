@@ -146,6 +146,12 @@ Observed in:
 
 - `app/views/layouts/application.html.erb`
 
+Formatter policy: do not format these structures by inferring rendered control
+flow. They should remain parse failures, or users should opt out with
+`erbfmt-ignore` when the pattern is intentional. `parser.allowUnbalancedHtmlFragments`
+is for partial fragments at file boundaries and should not be used to make
+cross-ERB-block HTML structures parseable.
+
 ### Invalid or Non-Canonical HTML
 
 Some failures appear to be real HTML structure issues or intentional legacy
