@@ -1,7 +1,7 @@
 use super::ast::{
     Argument, Assignment, AssignmentOperator, Binary, BinaryOperator, Block, Call, CallStyle,
-    ConstantPath, Expression, HashKey, HashPair, Index, MemberAccess, MemberOperator, Modifier,
-    ModifierKeyword, Program, Range, RangeOperator, Ternary, Unary, UnaryOperator,
+    ConstantPath, Expression, HashKey, HashPair, Index, MemberAccess, MemberOperator, MethodCall,
+    Modifier, ModifierKeyword, Program, Range, RangeOperator, Ternary, Unary, UnaryOperator,
 };
 use super::error::RubyAstError;
 use super::lexer::{Token, TokenKind, tokenize};
@@ -64,13 +64,15 @@ impl Parser {
         &mut self,
         block: Option<Block>,
     ) -> Result<Expression, RubyAstError> {
-        let expression = if self.is_parenthesized_call_start() || self.is_command_call_start() {
-            self.parse_call(block).map(Expression::Call)?
-        } else {
-            if block.is_some() {
+        let expression = if block.is_some() {
+            if !(self.is_parenthesized_call_start() || self.is_command_call_start()) {
                 return Err(self.error("do blocks require a method call"));
             }
 
+            self.parse_call(block).map(Expression::Call)?
+        } else if self.is_command_call_start() {
+            self.parse_call(None).map(Expression::Call)?
+        } else {
             self.parse_ternary_expression()?
         };
 
@@ -176,21 +178,27 @@ impl Parser {
         let mut expression = self.parse_primary_expression()?;
 
         loop {
-            if self.consume_punct('.') {
-                expression = Expression::MemberAccess(MemberAccess {
-                    receiver: Box::new(expression),
-                    operator: MemberOperator::Dot,
-                    member: self.expect_identifier()?,
-                });
-                continue;
-            }
+            if let Some(operator) = self.consume_member_operator() {
+                let member = self.expect_member_name()?;
 
-            if self.consume_safe_navigation() {
-                expression = Expression::MemberAccess(MemberAccess {
-                    receiver: Box::new(expression),
-                    operator: MemberOperator::SafeNavigation,
-                    member: self.expect_identifier()?,
-                });
+                expression = if self.consume_punct('(') {
+                    let arguments = self.parse_argument_list_until(')')?;
+                    self.expect_punct(')')?;
+
+                    Expression::MethodCall(MethodCall {
+                        receiver: Box::new(expression),
+                        operator,
+                        method: member,
+                        arguments,
+                    })
+                } else {
+                    Expression::MemberAccess(MemberAccess {
+                        receiver: Box::new(expression),
+                        operator,
+                        member,
+                    })
+                };
+
                 continue;
             }
 
@@ -501,6 +509,14 @@ impl Parser {
         }
     }
 
+    fn expect_member_name(&mut self) -> Result<String, RubyAstError> {
+        match self.advance().map(|token| token.kind.clone()) {
+            Some(TokenKind::Identifier(value)) => Ok(value),
+            Some(kind) => Err(self.error(format!("expected Ruby member name, found {kind:?}"))),
+            None => Err(self.error("expected Ruby member name")),
+        }
+    }
+
     fn parse_index_arguments(&mut self) -> Result<Vec<Expression>, RubyAstError> {
         let mut arguments = Vec::new();
 
@@ -621,6 +637,15 @@ impl Parser {
         } else {
             false
         }
+    }
+
+    fn consume_member_operator(&mut self) -> Option<MemberOperator> {
+        if self.consume_punct('.') {
+            return Some(MemberOperator::Dot);
+        }
+
+        self.consume_safe_navigation()
+            .then_some(MemberOperator::SafeNavigation)
     }
 
     fn check_punct(&self, punct: char) -> bool {

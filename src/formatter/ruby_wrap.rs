@@ -101,6 +101,10 @@ fn expression_is_foldable(expression: &Expression) -> bool {
         }
         Expression::Hash(pairs) => pairs.iter().all(hash_pair_is_foldable),
         Expression::MemberAccess(access) => expression_is_foldable(&access.receiver),
+        Expression::MethodCall(call) => {
+            expression_is_foldable(&call.receiver)
+                && call.arguments.iter().all(argument_is_foldable)
+        }
         Expression::Range(range) => {
             expression_is_foldable(&range.start) && expression_is_foldable(&range.end)
         }
@@ -131,6 +135,7 @@ fn hash_key_is_foldable(key: &HashKey) -> bool {
 
 fn format_argument_lines(argument: &str, comma: bool) -> Vec<String> {
     let mut lines = fold_keyword_hash_argument(argument)
+        .or_else(|| fold_chained_method_argument(argument))
         .unwrap_or_else(|| normalize_multiline_argument(argument));
     let last_index = lines.len().saturating_sub(1);
 
@@ -143,6 +148,151 @@ fn format_argument_lines(argument: &str, comma: bool) -> Vec<String> {
     }
 
     lines
+}
+
+fn fold_chained_method_argument(argument: &str) -> Option<Vec<String>> {
+    if argument.contains('\n') || argument.len() <= 80 {
+        return None;
+    }
+
+    let (prefix, expression) = split_keyword_value_argument(argument)
+        .map(|(keyword, value)| (format!("{keyword}: "), value))
+        .unwrap_or_else(|| (String::new(), argument.trim()));
+
+    let program = parse(expression).ok()?;
+    if !program.is_format_candidate() || !program.statements.iter().all(expression_is_foldable) {
+        return None;
+    }
+
+    let parts = split_top_level_method_chain(expression)?;
+    if parts.len() < 3 {
+        return None;
+    }
+
+    let parts = compact_chained_method_segments(parts);
+    let mut lines = Vec::with_capacity(parts.len());
+    lines.push(format!("{prefix}{}", parts[0]));
+    lines.extend(parts.into_iter().skip(1).map(|part| format!("  {part}")));
+
+    Some(lines)
+}
+
+fn compact_chained_method_segments(parts: Vec<&str>) -> Vec<String> {
+    let Some((base, segments)) = parts.split_first() else {
+        return Vec::new();
+    };
+
+    let mut result = vec![(*base).to_string()];
+    let mut index = 0;
+
+    while index < segments.len() {
+        let segment = segments[index];
+
+        if index + 1 < segments.len()
+            && is_plain_method_segment(segment)
+            && method_segment_has_arguments(segments[index + 1])
+        {
+            result.push(format!("{segment}{}", segments[index + 1]));
+            index += 2;
+            continue;
+        }
+
+        result.push(segment.to_string());
+        index += 1;
+    }
+
+    result
+}
+
+fn is_plain_method_segment(segment: &str) -> bool {
+    segment
+        .strip_prefix('.')
+        .is_some_and(|name| is_keyword_argument_name(name))
+}
+
+fn method_segment_has_arguments(segment: &str) -> bool {
+    segment.contains('(')
+}
+
+fn split_keyword_value_argument(argument: &str) -> Option<(&str, &str)> {
+    let mut state = RubyScanState::default();
+
+    for (index, ch) in argument.char_indices() {
+        if state.is_top_level() && ch == ':' {
+            let keyword = argument[..index].trim();
+            let value = argument[index + ch.len_utf8()..].trim();
+
+            return (is_keyword_argument_name(keyword) && !value.is_empty())
+                .then_some((keyword, value));
+        }
+
+        if !state.consume(ch) {
+            return None;
+        }
+    }
+
+    None
+}
+
+fn split_top_level_method_chain(expression: &str) -> Option<Vec<&str>> {
+    let mut state = RubyScanState::default();
+    let mut parts = Vec::new();
+    let mut segment_start = 0;
+
+    for (index, ch) in expression.char_indices() {
+        if state.is_top_level() && ch == '.' && is_method_chain_dot(expression, index) {
+            if parts.is_empty() {
+                let base = expression[..index].trim();
+                if base.is_empty() {
+                    return None;
+                }
+
+                parts.push(base);
+            } else {
+                let segment = expression[segment_start..index].trim();
+                if !is_method_chain_segment(segment) {
+                    return None;
+                }
+
+                parts.push(segment);
+            }
+
+            segment_start = index;
+        }
+
+        if !state.consume(ch) {
+            return None;
+        }
+    }
+
+    if parts.is_empty() || !state.is_balanced() {
+        return None;
+    }
+
+    let last = expression[segment_start..].trim();
+    if !is_method_chain_segment(last) {
+        return None;
+    }
+
+    parts.push(last);
+    Some(parts)
+}
+
+fn is_method_chain_dot(expression: &str, index: usize) -> bool {
+    let previous = expression[..index].chars().next_back();
+    let next = expression[index + '.'.len_utf8()..].chars().next();
+
+    !matches!(previous, Some('.')) && !matches!(next, Some('.'))
+}
+
+fn is_method_chain_segment(segment: &str) -> bool {
+    let Some(rest) = segment.strip_prefix('.') else {
+        return false;
+    };
+
+    rest.chars()
+        .next()
+        .is_some_and(|ch| matches!(ch, 'a'..='z' | 'A'..='Z' | '_'))
 }
 
 fn fold_keyword_hash_argument(argument: &str) -> Option<Vec<String>> {

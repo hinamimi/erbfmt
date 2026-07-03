@@ -199,6 +199,36 @@ the OpenStreetMap audit:
 The raw text fix specifically reduces risk by keeping `script` and `style`
 contents intact when they contain ERB.
 
+## Formatter Coverage Improvements
+
+After reviewing long lines that remained in the formatted Forem copy, one safe
+formatting gap stood out: Rails helper arguments that contain Active Record style
+method chains.
+
+Example:
+
+```erb
+<%= render partial: "layouts/sidebar_nav_link", collection: NavigationLink.where(id: @navigation_links[:default_nav_ids]).where.not(name: ["Home", "Reading List"]).ordered, as: :link %>
+```
+
+The Ruby AST now accepts receiver method calls such as `.where.not(...)`, and the
+formatter can wrap long method-chain arguments while keeping the helper call
+safe and readable:
+
+```erb
+<%= render(
+  partial: "layouts/sidebar_nav_link",
+  collection: NavigationLink
+    .where(id: @navigation_links[:default_nav_ids])
+    .where.not(name: ["Home", "Reading List"])
+    .ordered,
+  as: :link
+) %>
+```
+
+In the local Forem audit copy, this reduced long Rails-helper lines from 133 to
+124 with the same filter used during the review.
+
 ## Next Candidates
 
 The remaining Forem failures are not all good formatter targets. The most useful

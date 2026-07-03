@@ -1265,6 +1265,17 @@ fn preserves_forem_svg_child_boundary_when_wrapping_opening_tag() {
 }
 
 #[test]
+fn wraps_forem_render_with_chained_collection_scope() {
+    let input = r#"<%= render partial: "layouts/sidebar_nav_link", collection: NavigationLink.where(id: @navigation_links[:default_nav_ids]).where.not(name: ["Home", "Reading List"]).ordered, as: :link %>
+"#;
+
+    assert_eq!(
+        format_source(input),
+        "<%= render(\n  partial: \"layouts/sidebar_nav_link\",\n  collection: NavigationLink\n    .where(id: @navigation_links[:default_nav_ids])\n    .where.not(name: [\"Home\", \"Reading List\"])\n    .ordered,\n  as: :link\n) %>\n"
+    );
+}
+
+#[test]
 fn normalizes_existing_multiline_parenthesized_erb_output_arguments() {
     assert_eq!(
         format(

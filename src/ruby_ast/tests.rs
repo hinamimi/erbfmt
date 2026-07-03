@@ -383,6 +383,30 @@ fn parses_chained_safe_navigation_and_index_access() {
 }
 
 #[test]
+fn parses_chained_method_calls_on_receivers() {
+    let program =
+        parse(r#"NavigationLink.where(id: ids).where.not(name: ["Home", "Reading List"]).ordered"#)
+            .unwrap();
+
+    let Expression::MemberAccess(ordered) = single_statement(&program) else {
+        panic!("expected member access");
+    };
+
+    assert_eq!(ordered.member, "ordered");
+
+    let Expression::MethodCall(not_call) = &*ordered.receiver else {
+        panic!("expected method call");
+    };
+
+    assert_eq!(not_call.method, "not");
+    assert_eq!(not_call.arguments.len(), 1);
+    assert!(matches!(
+        &*not_call.receiver,
+        Expression::MemberAccess(access) if access.member == "where"
+    ));
+}
+
+#[test]
 fn parses_ternary_expression_without_formatting_it() {
     let program = parse(r#"user.admin? ? "admin" : "user""#).unwrap();
 

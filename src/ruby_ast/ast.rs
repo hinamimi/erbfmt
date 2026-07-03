@@ -25,6 +25,7 @@ pub enum Expression {
     Index(Index),
     Literal(String),
     MemberAccess(MemberAccess),
+    MethodCall(MethodCall),
     Modifier(Modifier),
     PercentLiteral(String),
     Range(Range),
@@ -103,6 +104,14 @@ pub struct MemberAccess {
     pub receiver: Box<Expression>,
     pub operator: MemberOperator,
     pub member: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MethodCall {
+    pub receiver: Box<Expression>,
+    pub operator: MemberOperator,
+    pub method: String,
+    pub arguments: Vec<Argument>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
