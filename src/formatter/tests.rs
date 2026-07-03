@@ -1226,6 +1226,45 @@ fn wraps_text_adjacent_helper_without_changing_inline_boundaries() {
 }
 
 #[test]
+fn preserves_forem_text_boundaries_after_folded_erb_output() {
+    let heading = r#"<h4><%= pluralize(@automation.errors.count, "error") %> prohibited this automation from being saved:</h4>
+"#;
+    let button = r#"<button aria-label="Confirm user <%= r.username %> deleted" data-username="<%= r.username %>" data-gdpr-form-action="<%= url_for(action: :destroy, id: r.id) %>" class="c-btn"> <%= crayons_icon_tag("checkmark", aria_hidden: true) %> Deleted</button>
+"#;
+
+    assert_eq!(
+        format_source(heading),
+        "<h4><%= pluralize(\n  @automation.errors.count,\n  \"error\"\n) %> prohibited this automation from being saved:</h4>\n"
+    );
+    assert_eq!(
+        format_source(button),
+        "<button aria-label=\"Confirm user <%= r.username %> deleted\" data-username=\"<%= r.username %>\" data-gdpr-form-action=\"<%= url_for(action: :destroy, id: r.id) %>\" class=\"c-btn\"> <%= crayons_icon_tag(\n  \"checkmark\",\n  aria_hidden: true\n) %> Deleted</button>\n"
+    );
+}
+
+#[test]
+fn preserves_forem_closing_tag_boundaries_after_folded_erb_output() {
+    let input = r#"<td><%= link_to("@#{user.username}", user.path, class: "crayons-link fw-bold") %></td>
+"#;
+
+    assert_eq!(
+        format_source(input),
+        "<td><%= link_to(\n  \"@#{user.username}\",\n  user.path,\n  class: \"crayons-link fw-bold\"\n) %></td>\n"
+    );
+}
+
+#[test]
+fn preserves_forem_svg_child_boundary_when_wrapping_opening_tag() {
+    let input = r#"<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+"#;
+
+    assert_eq!(
+        format_source(input),
+        "<svg\n  xmlns=\"http://www.w3.org/2000/svg\"\n  width=\"14\"\n  height=\"14\"\n  viewBox=\"0 0 24 24\"\n  fill=\"none\"\n  stroke=\"currentColor\"\n  stroke-width=\"2\"\n  stroke-linecap=\"round\"\n  stroke-linejoin=\"round\"\n><line x1=\"18\" y1=\"6\" x2=\"6\" y2=\"18\"></line><line x1=\"6\" y1=\"6\" x2=\"18\" y2=\"18\"></line></svg>\n"
+    );
+}
+
+#[test]
 fn normalizes_existing_multiline_parenthesized_erb_output_arguments() {
     assert_eq!(
         format(
