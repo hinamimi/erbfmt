@@ -106,6 +106,17 @@ Result after the latest safety fixes:
 2689 unified diff lines.
 ```
 
+Fourth diff audit after legacy hash option folding:
+
+```text
+0 files failed to parse.
+160 files changed by formatting.
+6839 unified diff lines.
+```
+
+This increased the diff size because single-line old-style hash option helpers
+are now folded when the Ruby AST can classify them as safe call arguments.
+
 ## Parser issues found
 
 ### Multiline ERB block opener with Ruby setup
@@ -447,9 +458,11 @@ stays inline. It is still a readability regression. It also shows that
 hashrocket-style helper calls are being preserved, but their continuation
 indentation is not.
 
-Status: fixed. Existing multiline ERB output inside inline-sensitive HTML is now
-preserved when the Ruby expression is not safely foldable. This keeps old-style
-hashrocket continuation indentation intact:
+Status: fixed. Existing multiline ERB output inside inline-sensitive HTML is
+preserved when the expression is not safely foldable. Single-line old-style
+hash option helpers can now be folded when the Ruby AST recognizes them as safe
+call arguments. Multiline old-style helpers keep their original continuation
+indentation intact:
 
 ```erb
 <h2><%= t ".comment",
@@ -457,11 +470,18 @@ hashrocket continuation indentation intact:
           :changeset_id => comment.changeset.id.to_s %></h2>
 ```
 
-Future Ruby AST work can still teach the wrapper to format old-style hash
-arguments safely, but until then this shape is intentionally preserved.
+Single-line old-style option helpers now fold while preserving the `=>` syntax:
 
-The same preservation applies to multiline output helpers and ERB block openers
-that use old-style hash arguments:
+```erb
+<h2><%= t(
+  ".comment",
+  :author => comment.author.display_name,
+  :changeset_id => comment.changeset.id.to_s
+) %></h2>
+```
+
+Preservation still applies to multiline output helpers and ERB block openers
+that use old-style hash arguments and cannot be safely normalized:
 
 ```erb
 <%= inline_svg_tag "auth_providers/example.svg",
@@ -519,7 +539,11 @@ The following audit-driven formatter cases are now covered or intentionally
 preserved:
 
 ```erb
-<h2><%= t ".comment", :author => user.name, :id => id %></h2>
+<h2><%= t(
+  ".comment",
+  :author => user.name,
+  :id => id
+) %></h2>
 ```
 
 ```erb
@@ -593,7 +617,8 @@ wrapping only foldable Ruby calls inside ERB delimiters, and leaving
 non-foldable expressions inline. The `</tr<%>` parse error from conditional
 attributes has also been fixed. The main remaining audit follow-up is to rerun
 the external diff review periodically and promote any new safety concerns into
-fixtures. The latest diff audit changed 88 files and 2689 unified diff lines;
-the remaining sampled changes are mostly block indentation, long opening tag
-wrapping, and foldable ERB helper wrapping rather than known inline-whitespace
-risks.
+fixtures. The latest diff audit after legacy hash option folding changed 160
+files and 6839 unified diff lines; the increase is expected because more
+old-style Rails helpers can now be folded. The remaining sampled changes are
+mostly block indentation, long opening tag wrapping, and foldable ERB helper
+wrapping rather than known inline-whitespace risks.

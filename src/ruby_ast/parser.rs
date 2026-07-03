@@ -345,7 +345,17 @@ impl Parser {
             return Ok(Argument::Keyword { name, value });
         }
 
-        Ok(Argument::Positional(self.parse_modifier_expression()?))
+        let expression = self.parse_modifier_expression()?;
+
+        if self.consume_operator("=>") {
+            let value = self.parse_modifier_expression()?;
+            return Ok(Argument::HashPair {
+                key: expression,
+                value,
+            });
+        }
+
+        Ok(Argument::Positional(expression))
     }
 
     fn parse_array(&mut self) -> Result<Expression, RubyAstError> {

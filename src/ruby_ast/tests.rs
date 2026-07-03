@@ -41,6 +41,35 @@ fn parses_command_style_call_with_do_block() {
 }
 
 #[test]
+fn parses_command_style_call_with_legacy_hash_pair_arguments() {
+    let program =
+        parse(r#"link_to "Edit", edit_user_path(user), :method => :post, :class => "button""#)
+            .unwrap();
+
+    let Expression::Call(call) = single_statement(&program) else {
+        panic!("expected call expression");
+    };
+
+    assert_eq!(call.callee, "link_to");
+    assert_eq!(call.style, CallStyle::Command);
+    assert_eq!(call.arguments.len(), 4);
+    assert!(matches!(
+        &call.arguments[2],
+        Argument::HashPair {
+            key: Expression::Symbol(key),
+            value: Expression::Symbol(value),
+        } if key == ":method" && value == ":post"
+    ));
+    assert!(matches!(
+        &call.arguments[3],
+        Argument::HashPair {
+            key: Expression::Symbol(key),
+            value: Expression::String(value),
+        } if key == ":class" && value == "\"button\""
+    ));
+}
+
+#[test]
 fn parses_nested_array_and_hash_arguments() {
     let program = parse(
         r#"video_tag(["intro.mp4", "intro.webm"], data: { controller: :player, enabled: true })"#,

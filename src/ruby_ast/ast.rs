@@ -172,6 +172,7 @@ pub enum CallStyle {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Argument {
     Block(Expression),
+    HashPair { key: Expression, value: Expression },
     Keyword { name: String, value: Expression },
     KeywordSplat(Expression),
     Positional(Expression),

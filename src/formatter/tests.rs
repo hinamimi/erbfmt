@@ -1079,7 +1079,7 @@ fn wraps_text_like_element_erb_output_without_inserting_outer_whitespace() {
 }
 
 #[test]
-fn preserves_hashrocket_erb_output_when_expression_is_not_foldable() {
+fn wraps_hashrocket_erb_output_when_expression_is_safely_foldable() {
     let options = FormatOptions {
         line_width: 48,
         ..FormatOptions::default()
@@ -1087,7 +1087,10 @@ fn preserves_hashrocket_erb_output_when_expression_is_not_foldable() {
     let input = r#"<h2><%= t ".comment", :author => comment.author.display_name, :changeset_id => comment.changeset.id.to_s %></h2>
 "#;
 
-    assert_eq!(format_source_with_options(input, options), input);
+    assert_eq!(
+        format_source_with_options(input, options),
+        "<h2><%= t(\n  \".comment\",\n  :author => comment.author.display_name,\n  :changeset_id => comment.changeset.id.to_s\n) %></h2>\n"
+    );
 }
 
 #[test]
@@ -1140,6 +1143,25 @@ fn preserves_hashrocket_multiline_erb_block_opener_indentation_when_not_foldable
 "#;
 
     assert_eq!(format_source(input), input);
+}
+
+#[test]
+fn wraps_hashrocket_erb_block_opener_when_expression_is_safely_foldable() {
+    let input = r#"<%= link_to auth_path(:provider => provider), :method => :post, :class => "button" do %>
+<span>Sign in</span>
+<% end %>
+"#;
+    let expected = r#"<%= link_to(
+  auth_path(:provider => provider),
+  :method => :post,
+  :class => "button"
+) do %>
+  <span>Sign in</span>
+<% end %>
+"#;
+
+    assert_eq!(format_source(input), expected);
+    assert_eq!(format_source(expected), expected);
 }
 
 #[test]

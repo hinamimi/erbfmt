@@ -68,6 +68,9 @@ fn argument_is_foldable(argument: &Argument) -> bool {
         | Argument::KeywordSplat(expression)
         | Argument::Positional(expression)
         | Argument::Splat(expression) => expression_is_foldable(expression),
+        Argument::HashPair { key, value } => {
+            expression_is_foldable(key) && expression_is_foldable(value)
+        }
         Argument::Keyword { value, .. } => expression_is_foldable(value),
     }
 }
@@ -559,6 +562,39 @@ mod tests {
                 "  model: user,".to_string(),
                 "  url: user_path(user)".to_string(),
                 ") do |form|".to_string(),
+            ])
+        );
+    }
+
+    #[test]
+    fn folds_command_call_with_legacy_hash_pair_arguments() {
+        assert_eq!(
+            fold_command_call(
+                r#"link_to "Edit", edit_user_path(user), :method => :post, :class => "button""#
+            ),
+            Some(vec![
+                "link_to(".to_string(),
+                r#"  "Edit","#.to_string(),
+                "  edit_user_path(user),".to_string(),
+                "  :method => :post,".to_string(),
+                r#"  :class => "button""#.to_string(),
+                ")".to_string(),
+            ])
+        );
+    }
+
+    #[test]
+    fn folds_command_call_with_legacy_hash_pair_do_block_arguments() {
+        assert_eq!(
+            fold_command_call(
+                r#"link_to auth_path(:provider => provider), :method => :post, :class => "button" do"#
+            ),
+            Some(vec![
+                "link_to(".to_string(),
+                "  auth_path(:provider => provider),".to_string(),
+                "  :method => :post,".to_string(),
+                r#"  :class => "button""#.to_string(),
+                ") do".to_string(),
             ])
         );
     }
