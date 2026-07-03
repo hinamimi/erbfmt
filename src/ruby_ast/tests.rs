@@ -41,6 +41,33 @@ fn parses_command_style_call_with_do_block() {
 }
 
 #[test]
+fn parses_parenthesized_helper_call_with_brace_block() {
+    let program = parse(r#"content_tag(:span, class: "label") { t(".label") }"#).unwrap();
+
+    let Expression::Call(call) = single_statement(&program) else {
+        panic!("expected call expression");
+    };
+
+    assert_eq!(call.callee, "content_tag");
+    assert_eq!(call.style, CallStyle::Parenthesized);
+    assert_eq!(call.arguments.len(), 2);
+    assert!(call.block.is_some());
+}
+
+#[test]
+fn parses_parenthesized_helper_call_with_brace_block_params() {
+    let program = parse(r#"tag.ul(items) { |item| tag.li(item.name) }"#).unwrap();
+
+    let Expression::Call(call) = single_statement(&program) else {
+        panic!("expected call expression");
+    };
+
+    assert_eq!(call.callee, "tag.ul");
+    assert_eq!(call.style, CallStyle::Parenthesized);
+    assert_eq!(call.block.unwrap().params, vec!["item"]);
+}
+
+#[test]
 fn parses_command_style_call_with_legacy_hash_pair_arguments() {
     let program =
         parse(r#"link_to "Edit", edit_user_path(user), :method => :post, :class => "button""#)
@@ -67,6 +94,41 @@ fn parses_command_style_call_with_legacy_hash_pair_arguments() {
             value: Expression::String(value),
         } if key == ":class" && value == "\"button\""
     ));
+}
+
+#[test]
+fn parses_trailing_commas_in_helper_arguments_and_literals() {
+    let program = parse(
+        r#"render(partial: "profile", locals: { current_user: current_user, account: account, }, formats: [:html, :turbo_stream,],)"#,
+    )
+    .unwrap();
+
+    let Expression::Call(call) = single_statement(&program) else {
+        panic!("expected call expression");
+    };
+
+    assert_eq!(call.callee, "render");
+    assert_eq!(call.arguments.len(), 3);
+
+    let Argument::Keyword {
+        value: Expression::Hash(pairs),
+        ..
+    } = &call.arguments[1]
+    else {
+        panic!("expected keyword hash argument");
+    };
+
+    assert_eq!(pairs.len(), 2);
+
+    let Argument::Keyword {
+        value: Expression::Array(values),
+        ..
+    } = &call.arguments[2]
+    else {
+        panic!("expected keyword array argument");
+    };
+
+    assert_eq!(values.len(), 2);
 }
 
 #[test]

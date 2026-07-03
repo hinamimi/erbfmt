@@ -9,7 +9,7 @@ pub(super) fn fold_command_call(code: &str) -> Option<Vec<String>> {
 
     let program = parse(code).ok()?;
     let parsed_call = foldable_call(&program)?;
-    let (call, block_suffix) = split_top_level_do_block(code)?;
+    let (call, block_suffix) = split_top_level_block_suffix(code)?;
     let (callee, arguments) = split_call(call)?;
     let arguments = split_top_level_arguments(arguments)?;
 
@@ -358,7 +358,7 @@ fn contains_top_level_newline(value: &str) -> bool {
     false
 }
 
-fn split_top_level_do_block(code: &str) -> Option<(&str, Option<&str>)> {
+fn split_top_level_block_suffix(code: &str) -> Option<(&str, Option<&str>)> {
     let mut state = RubyScanState::default();
 
     for (index, ch) in code.char_indices() {
@@ -373,6 +373,14 @@ fn split_top_level_do_block(code: &str) -> Option<(&str, Option<&str>)> {
                     .is_balanced()
                     .then(|| (code[..index].trim_end(), Some(trimmed.trim())));
             }
+
+            let before = code[..index].trim_end();
+            if before.ends_with(')')
+                && trimmed.starts_with('{')
+                && is_single_balanced_brace_suffix(trimmed)
+            {
+                return state.is_balanced().then(|| (before, Some(trimmed.trim())));
+            }
         }
 
         if !state.consume(ch) {
@@ -383,6 +391,26 @@ fn split_top_level_do_block(code: &str) -> Option<(&str, Option<&str>)> {
     state.is_balanced().then_some((code, None))
 }
 
+fn is_single_balanced_brace_suffix(value: &str) -> bool {
+    if !value.starts_with('{') || !value.ends_with('}') {
+        return false;
+    }
+
+    let mut state = RubyScanState::default();
+
+    for (offset, ch) in value.char_indices() {
+        if offset > 0 && state.is_top_level() {
+            return false;
+        }
+
+        if !state.consume(ch) {
+            return false;
+        }
+    }
+
+    state.is_balanced()
+}
+
 fn split_top_level_arguments(arguments: &str) -> Option<Vec<String>> {
     let mut state = RubyScanState::default();
     let mut start = 0;
@@ -390,7 +418,12 @@ fn split_top_level_arguments(arguments: &str) -> Option<Vec<String>> {
 
     for (index, ch) in arguments.char_indices() {
         if state.is_top_level() && ch == ',' {
-            result.push(arguments[start..index].trim().to_string());
+            let argument = arguments[start..index].trim();
+            if argument.is_empty() {
+                return None;
+            }
+
+            result.push(argument.to_string());
             start = index + ch.len_utf8();
             continue;
         }
@@ -404,9 +437,12 @@ fn split_top_level_arguments(arguments: &str) -> Option<Vec<String>> {
         return None;
     }
 
-    result.push(arguments[start..].trim().to_string());
+    let last = arguments[start..].trim();
+    if !last.is_empty() {
+        result.push(last.to_string());
+    }
 
-    if result.iter().any(String::is_empty) {
+    if result.is_empty() || result.iter().any(String::is_empty) {
         return None;
     }
 
@@ -629,6 +665,32 @@ mod tests {
     }
 
     #[test]
+    fn folds_parenthesized_call_with_brace_block() {
+        assert_eq!(
+            fold_command_call(r#"content_tag(:span, class: "label") { t(".label") }"#),
+            Some(vec![
+                "content_tag(".to_string(),
+                "  :span,".to_string(),
+                r#"  class: "label""#.to_string(),
+                r#") { t(".label") }"#.to_string(),
+            ])
+        );
+    }
+
+    #[test]
+    fn folds_parenthesized_call_with_brace_block_params() {
+        assert_eq!(
+            fold_command_call(r#"tag.ul(items, class: "list") { |item| tag.li(item.name) }"#),
+            Some(vec![
+                "tag.ul(".to_string(),
+                "  items,".to_string(),
+                r#"  class: "list""#.to_string(),
+                r#") { |item| tag.li(item.name) }"#.to_string(),
+            ])
+        );
+    }
+
+    #[test]
     fn folds_keyword_hash_arguments() {
         assert_eq!(
             fold_command_call(
@@ -642,6 +704,25 @@ mod tests {
                 "    account: account,".to_string(),
                 "    selected_status: selected_status".to_string(),
                 "  }".to_string(),
+                ")".to_string(),
+            ])
+        );
+    }
+
+    #[test]
+    fn folds_parenthesized_call_with_trailing_commas() {
+        assert_eq!(
+            fold_command_call(
+                r#"render(partial: "profile", locals: { current_user: current_user, account: account, }, formats: [:html, :turbo_stream,],)"#
+            ),
+            Some(vec![
+                "render(".to_string(),
+                r#"  partial: "profile","#.to_string(),
+                "  locals: {".to_string(),
+                "    current_user: current_user,".to_string(),
+                "    account: account".to_string(),
+                "  },".to_string(),
+                "  formats: [:html, :turbo_stream,]".to_string(),
                 ")".to_string(),
             ])
         );

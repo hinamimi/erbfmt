@@ -320,6 +320,10 @@ impl Parser {
             }
 
             self.expect_punct(',')?;
+
+            if self.check_punct(close) {
+                break;
+            }
         }
 
         Ok(arguments)
@@ -371,6 +375,10 @@ impl Parser {
                 }
 
                 self.expect_punct(',')?;
+
+                if self.check_punct(']') {
+                    break;
+                }
             }
         }
 
@@ -391,6 +399,10 @@ impl Parser {
                 }
 
                 self.expect_punct(',')?;
+
+                if self.check_punct('}') {
+                    break;
+                }
             }
         }
 
@@ -504,6 +516,10 @@ impl Parser {
             }
 
             self.expect_punct(',')?;
+
+            if self.check_punct(']') {
+                break;
+            }
         }
 
         Ok(arguments)
@@ -678,7 +694,7 @@ impl Parser {
 
 fn split_do_block(source: &str) -> Result<(&str, Option<Block>), RubyAstError> {
     let mut scanner = Scanner::default();
-    let mut do_start = None;
+    let mut block_start = None;
 
     for (offset, ch) in source.char_indices() {
         if scanner.is_top_level()
@@ -690,20 +706,34 @@ fn split_do_block(source: &str) -> Result<(&str, Option<Block>), RubyAstError> {
             let after_do = &source[candidate + "do".len()..];
 
             if after_do.is_empty() || after_do.chars().next().is_some_and(char::is_whitespace) {
-                do_start = Some(candidate);
+                block_start = Some(candidate);
+            }
+        }
+
+        if scanner.is_top_level() && ch.is_whitespace() {
+            let leading = source[offset..].len() - source[offset..].trim_start().len();
+            let candidate = offset + leading;
+            let before = source[..candidate].trim_end();
+            let suffix = source[candidate..].trim();
+
+            if before.ends_with(')')
+                && suffix.starts_with('{')
+                && is_balanced_brace_block_suffix(suffix)
+            {
+                block_start = Some(candidate);
             }
         }
 
         scanner.consume(ch)?;
     }
 
-    let Some(do_start) = do_start else {
+    let Some(block_start) = block_start else {
         return Ok((source, None));
     };
 
-    let call = source[..do_start].trim_end();
-    let suffix = source[do_start..].trim();
-    let block = parse_block_suffix(suffix, do_start)?;
+    let call = source[..block_start].trim_end();
+    let suffix = source[block_start..].trim();
+    let block = parse_block_suffix(suffix, block_start)?;
 
     Ok((call, Some(block)))
 }
@@ -800,6 +830,10 @@ fn is_assignment_boundary(source: &str, offset: usize, len: usize) -> bool {
 }
 
 fn parse_block_suffix(suffix: &str, offset: usize) -> Result<Block, RubyAstError> {
+    if suffix.starts_with('{') {
+        return parse_brace_block_suffix(suffix, offset);
+    }
+
     let rest = suffix
         .strip_prefix("do")
         .ok_or_else(|| RubyAstError::new("expected `do` block suffix", offset))?
@@ -824,6 +858,53 @@ fn parse_block_suffix(suffix: &str, offset: usize) -> Result<Block, RubyAstError
         .collect();
 
     Ok(Block { params })
+}
+
+fn parse_brace_block_suffix(suffix: &str, offset: usize) -> Result<Block, RubyAstError> {
+    if !is_balanced_brace_block_suffix(suffix) {
+        return Err(RubyAstError::new("unbalanced `{` block suffix", offset));
+    }
+
+    let body = suffix[1..suffix.len() - 1].trim();
+    if !body.starts_with('|') {
+        return Ok(Block { params: Vec::new() });
+    }
+
+    let Some(end) = body[1..].find('|').map(|index| index + 1) else {
+        return Err(RubyAstError::new(
+            "unterminated `{ |param| }` block parameters",
+            offset,
+        ));
+    };
+
+    let params = body[1..end]
+        .split(',')
+        .map(str::trim)
+        .filter(|param| !param.is_empty())
+        .map(ToString::to_string)
+        .collect();
+
+    Ok(Block { params })
+}
+
+fn is_balanced_brace_block_suffix(suffix: &str) -> bool {
+    if !suffix.starts_with('{') || !suffix.ends_with('}') {
+        return false;
+    }
+
+    let mut scanner = Scanner::default();
+
+    for (offset, ch) in suffix.char_indices() {
+        if offset > 0 && scanner.is_top_level() {
+            return false;
+        }
+
+        if scanner.consume(ch).is_err() {
+            return false;
+        }
+    }
+
+    scanner.is_top_level()
 }
 
 fn is_keyword(value: &str) -> bool {

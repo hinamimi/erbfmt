@@ -949,6 +949,20 @@ fn wraps_long_link_to_output_command_calls_with_do_blocks() {
 }
 
 #[test]
+fn wraps_long_parenthesized_erb_output_with_brace_block_suffix() {
+    assert_eq!(
+        format_with_options(
+            r#"<%= content_tag(:span, class: "status-label status-label--active") { t(".active") } %>"#,
+            FormatOptions {
+                line_width: 60,
+                ..FormatOptions::default()
+            }
+        ),
+        "<%= content_tag(\n  :span,\n  class: \"status-label status-label--active\"\n) { t(\".active\") } %>\n"
+    );
+}
+
+#[test]
 fn wraps_long_parenthesized_rails_helper_calls() {
     let options = FormatOptions {
         line_width: 60,

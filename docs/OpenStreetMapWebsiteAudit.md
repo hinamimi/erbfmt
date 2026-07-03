@@ -116,6 +116,10 @@ Fourth diff audit after legacy hash option folding:
 
 This increased the diff size because single-line old-style hash option helpers
 are now folded when the Ruby AST can classify them as safe call arguments.
+Additional support for parenthesized helper calls with brace block suffixes and
+trailing commas did not change these aggregate OpenStreetMap counts, but it
+expands the set of Rails helper calls that can be folded in projects that use
+patterns such as `content_tag(...) { ... }` or Ruby trailing commas.
 
 ## Parser issues found
 
@@ -619,6 +623,7 @@ attributes has also been fixed. The main remaining audit follow-up is to rerun
 the external diff review periodically and promote any new safety concerns into
 fixtures. The latest diff audit after legacy hash option folding changed 160
 files and 6839 unified diff lines; the increase is expected because more
-old-style Rails helpers can now be folded. The remaining sampled changes are
-mostly block indentation, long opening tag wrapping, and foldable ERB helper
-wrapping rather than known inline-whitespace risks.
+old-style Rails helpers can now be folded. Brace block suffix and trailing comma
+support did not increase the latest OpenStreetMap diff count. The remaining
+sampled changes are mostly block indentation, long opening tag wrapping, and
+foldable ERB helper wrapping rather than known inline-whitespace risks.
