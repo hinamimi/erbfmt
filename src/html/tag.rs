@@ -30,7 +30,7 @@ pub(super) fn find_tag_end(input: &str, start: usize) -> Option<usize> {
 }
 
 pub(super) fn tag_name(body: &str) -> &str {
-    body.split(|c: char| c.is_whitespace() || c == '/')
+    body.split(|c: char| c.is_whitespace() || matches!(c, '/' | '<'))
         .next()
         .unwrap_or("")
 }

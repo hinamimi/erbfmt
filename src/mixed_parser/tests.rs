@@ -235,6 +235,50 @@ fn preserves_erb_output_inside_html_attributes() {
 }
 
 #[test]
+fn preserves_erb_control_attribute_after_html_tag_name() {
+    let tokens = tokenize(
+        r#"<table><% items.each do |item| %><tr<% if item.selected? %> class="active"<% end %>><td><%= item.name %></td></tr><% end -%></table>"#,
+    )
+    .unwrap();
+    let document = parse(&tokens).unwrap();
+
+    assert_eq!(
+        document,
+        Document {
+            children: vec![Node::HtmlElement {
+                name: "table".to_string(),
+                open: "<table>".to_string(),
+                close: "</table>".to_string(),
+                children: vec![Node::ErbBlock {
+                    kind: ErbBlockKind::Do,
+                    tag: tag("items.each do |item|"),
+                    output: false,
+                    end_tag: ErbTag::new(
+                        "end".to_string(),
+                        ErbTagSyntax {
+                            open: ErbTagOpen::Code,
+                            close: ErbTagClose::Trim,
+                        },
+                    ),
+                    children: vec![Node::HtmlElement {
+                        name: "tr".to_string(),
+                        open: r#"<tr<% if item.selected? %> class="active"<% end %>>"#.to_string(),
+                        close: "</tr>".to_string(),
+                        children: vec![Node::HtmlElement {
+                            name: "td".to_string(),
+                            open: "<td>".to_string(),
+                            close: "</td>".to_string(),
+                            children: vec![Node::ErbOutput(output_tag("item.name"))]
+                        }]
+                    }],
+                    branches: vec![]
+                }]
+            }]
+        }
+    );
+}
+
+#[test]
 fn keeps_erb_blocks_with_html_children() {
     let tokens = tokenize("<% if user %><ul><li>Hello</li></ul><% end %>").unwrap();
     let document = parse(&tokens).unwrap();

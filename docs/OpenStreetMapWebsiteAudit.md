@@ -43,7 +43,7 @@ diff -ru /tmp/erbfmt-osm-audit/original/views /tmp/erbfmt-osm-audit/formatted/vi
 2 files failed to parse.
 ```
 
-The parse errors were:
+The initial parse errors were:
 
 ```text
 Error: failed to parse `app/views/layers_panes/show.html.erb`: unclosed HTML tag `<div class="overlay-layers p-3">` at line 20, column 3
@@ -52,6 +52,10 @@ Error: failed to parse `app/views/notes/index.html.erb`: mismatched HTML close t
 
 Running `--write` on a temporary copy wrote 239 files, failed on the same 2
 files, and changed 166 files.
+
+Note: the counts above are from the initial `erbfmt 0.3.0-dev` audit run. Later
+parser and formatter safety work has mitigated several issues recorded below;
+this document keeps both the original finding and the current status.
 
 ## Parser issues found
 
@@ -94,8 +98,18 @@ Follow-up:
 
 ### Trim marker confused with an HTML close tag
 
-`app/views/notes/index.html.erb` contains a table row loop ending with
-`<% end -%>`.
+Status: fixed. The original diagnosis blamed a table row loop ending with
+`<% end -%>`, but the actual trigger was a conditional attribute immediately
+after the tag name:
+
+```erb
+<tr<% if note.author == @user %> class="table-primary"<% end %>>
+```
+
+Before the fix, the HTML tokenizer read the opening tag name as `tr<%`. The
+later `</tr>` close tag then failed with `expected </tr<%>`.
+
+The row later closes its ERB loop with trim syntax:
 
 ```erb
   <td><%= friendly_date_ago(note.updated_at) %></td>
@@ -104,33 +118,42 @@ Follow-up:
 </table>
 ```
 
-The parser reports:
+The initial parser error was:
 
 ```text
 mismatched HTML close tag `</tr>`, expected `</tr<%>` at line 61, column 5
 ```
 
-This looks like the ERB trim marker or ERB boundary leaked into the HTML tag
-stack.
+Fix:
 
-Safety impact:
+- Treat `<` as a tag-name boundary when tokenizing HTML tags.
+- Preserve the full raw opening tag so the formatter can continue to keep
+  conditional-attribute ERB tags unchanged.
+- Add regression coverage for `<tr<% if ... %> ... <% end %>>` followed by
+  `<% end -%>`.
 
-- Formatter does not run for the file.
-- The error message is misleading and makes the actual source hard to identify.
+Verification:
 
-Follow-up:
+```bash
+cargo run --quiet -- --check external/rails-repos/openstreetmap-website/app/views/notes/index.html.erb
+```
 
-- Normalize `<% ... -%>` boundaries before HTML stack comparison.
-- Add a regression fixture for table row loops using trim markers.
+now reaches the normal format-check result:
+
+```text
+external/rails-repos/openstreetmap-website/app/views/notes/index.html.erb: file is not formatted.
+```
 
 ## Formatter risks found
 
 These are changes where formatted output may preserve Ruby meaning but still
-change rendered HTML whitespace or visual layout.
+change rendered HTML whitespace or visual layout. The initial audit found
+several inline-sensitive cases. Current formatter work has since moved these
+cases toward safer output.
 
-### Inline ERB output expanded inside text-like elements
+### Inline ERB output inside text-like elements
 
-Example from `app/views/changeset_comments/feeds/_comment.html.erb`:
+Initial risk from `app/views/changeset_comments/feeds/_comment.html.erb`:
 
 ```diff
 -<h2><%= t ".comment",
@@ -145,80 +168,68 @@ Example from `app/views/changeset_comments/feeds/_comment.html.erb`:
 +</h2>
 ```
 
-The Ruby output is equivalent, but the formatter introduces literal whitespace
-around the heading content. Browsers usually collapse this whitespace, but it can
-still matter for inline layout, exact text rendering, copy/paste behavior, and
-CSS that depends on whitespace-sensitive contexts.
+Status: mitigated for foldable Ruby calls. The formatter now keeps the HTML
+boundary inline and wraps the Ruby call inside the ERB output tag when it can do
+so safely:
 
-Recommendation:
-
-- If an element was originally a single-line text-like wrapper around one ERB
-  output, keep it inline even when the ERB expression is long.
-- Prefer preserving `<h2><%= ... %></h2>` over aggressive line wrapping.
-
-### Text and helper output separated by inserted newlines
-
-Example from `app/views/browse/_common_details.html.erb`:
-
-```diff
- <div>
-   <%= t "browse.location" %>
--  <%= link_to(t(".coordinates_html",
--                :latitude => tag.span(number_with_delimiter(common_details.lat), :class => "latitude"),
--                :longitude => tag.span(number_with_delimiter(common_details.lon), :class => "longitude")),
--              root_path(:anchor => "map=18/#{common_details.lat}/#{common_details.lon}")) %>
-+  <%=
-+    link_to(t(".coordinates_html",
-+      :latitude => tag.span(number_with_delimiter(common_details.lat), :class => "latitude"),
-+      :longitude => tag.span(number_with_delimiter(common_details.lon), :class => "longitude")),
-+    root_path(:anchor => "map=18/#{common_details.lat}/#{common_details.lon}"))
-+  %>
- </div>
+```erb
+<h2><%= t(
+  ".comment",
+  author: comment.author.display_name,
+  changeset_id: comment.changeset.id.to_s
+) %></h2>
 ```
 
-The formatter moves the link helper to a multiline ERB output tag. In a block
-context this is often acceptable, but it still adds literal whitespace around an
-inline link after translated text.
+If the Ruby expression is not safely foldable, such as old-style hashrocket
+options, the output is preserved inline instead of being expanded into
+standalone ERB delimiters:
 
-Recommendation:
-
-- Treat adjacent text/helper output inside the same parent as inline-sensitive.
-- Avoid expanding the ERB tag if the output participates in a sentence or inline
-  phrase.
-
-### Inline heading prefix separated from ERB output
-
-Example from `app/views/browse/_common_details.html.erb`:
-
-```diff
- <h4>
--  <%= if common_details.redacted?
--        t "browse.redacted_version"
--      else
--        t "browse.version"
--      end %>
-+  <%=
-+    if common_details.redacted?
-+      t "browse.redacted_version"
-+    else
-+      t "browse.version"
-+    end
-+  %>
-   #<%= link_to_unless_current common_details.version, ... %>
- </h4>
+```erb
+<h2><%= t ".comment", :author => user.name, :changeset_id => id %></h2>
 ```
 
-The inserted newlines can affect the spacing before the `#` prefix. This is a
-stronger visual-risk signal than a standalone block-level helper call.
+This avoids adding literal whitespace around heading content.
 
-Recommendation:
+### Text and helper output adjacency
 
-- Preserve inline adjacency between ERB output and following text or symbols.
-- Add a fixture for `<h4><%= ... %>#<%= ... %></h4>` and similar heading labels.
+Initial risk from `app/views/browse/_common_details.html.erb`: translated text
+and a following `link_to` helper could be separated by ERB delimiter newlines,
+adding literal whitespace around an inline phrase.
+
+Status: mitigated. The formatter now treats text/helper adjacency as
+inline-sensitive and keeps the surrounding text boundary intact while still
+wrapping a foldable helper call:
+
+```erb
+<p>Location <%= link_to(
+  t(".coordinates_html", latitude: lat, longitude: lon),
+  root_path(anchor: "map=18/35/139")
+) %></p>
+```
+
+If the helper is not foldable, it stays inline.
+
+### Inline heading prefix adjacency
+
+Initial risk from `app/views/browse/_common_details.html.erb`: a heading label
+was followed by a literal `#` and another ERB output. Expanding either side into
+standalone multiline ERB can change spacing around the `#` prefix.
+
+Status: mitigated. Non-foldable expressions stay inline, and foldable helpers
+after a text or symbol boundary wrap internally:
+
+```erb
+<h4><%= if redacted? then t("redacted") else t("version") end %>#<%= link_to(
+  version,
+  path
+) %></h4>
+```
+
+The important safety property is that the `#<%=` boundary remains adjacent.
 
 ### Modifier output expanded into multiline ERB
 
-Example from `app/views/accounts/terms/show.html.erb`:
+Initial risk from `app/views/accounts/terms/show.html.erb`:
 
 ```diff
 -<%= hidden_field_tag("referer", h(params[:referer])) unless params[:referer].nil? %>
@@ -227,17 +238,18 @@ Example from `app/views/accounts/terms/show.html.erb`:
 +%>
 ```
 
-This is probably safe inside the current block, but modifier expressions are
-commonly used inline. Expanding them can add whitespace even when the expression
-does not output anything.
+Status: fixed. Output ERB tags whose Ruby body is a modifier expression
+(`expr if cond`, `expr unless cond`) are no longer expanded into standalone ERB
+delimiters:
 
-Recommendation:
+```erb
+<%= hidden_field_tag("referer", h(params[:referer])) unless params[:referer].nil? %>
+```
 
-- Do not wrap output ERB tags whose Ruby body is a modifier expression
-  (`expr if cond`, `expr unless cond`) unless the surrounding HTML context is
-  known to be block-safe.
+This is intentionally conservative because modifier expressions are commonly
+used inline.
 
-### Long HTML tag wrapping appears mostly safe here
+### Long HTML tag wrapping
 
 Example from `app/views/changeset_comments/feeds/_comment.html.erb`:
 
@@ -249,14 +261,29 @@ Example from `app/views/changeset_comments/feeds/_comment.html.erb`:
 +><%= t ".commented_at_by_html", :when => friendly_date_ago(comment.created_at), :user => comment.author.display_name %></div>
 ```
 
-This preserves the `>` and `<%=` boundary on the same line, so it does not insert
-whitespace before the inline content. This is the desired safety shape for long
-opening tags with inline children.
+Status: verified and covered by regression tests. This is the preferred safety
+shape for long opening tags with inline children: attributes wrap, but the
+closing `>` remains adjacent to the inline child.
 
-Recommendation:
+The same rule applies to text children:
 
-- Keep this behavior.
-- Ensure future tag wrapping does not turn this into:
+```erb
+<span
+  class="very very very very very long class name"
+  data-controller="x"
+>Text</span>
+```
+
+and ERB children:
+
+```erb
+<div
+  class="very very very very very long class name"
+  data-controller="x"
+><%= helper %></div>
+```
+
+Future tag wrapping should avoid turning these into:
 
 ```erb
 >
@@ -274,28 +301,46 @@ The audit also found many changes that look safe and useful:
 - Normalizing extra spaces inside HTML tags.
 - Wrapping standalone helper calls in block-level form containers.
 
-These should remain supported, but regression tests should distinguish them from
-inline-sensitive cases.
+These should remain supported, but regression tests should continue to
+distinguish them from inline-sensitive cases.
 
-## Proposed fixtures
+## Covered formatter fixtures
 
-Add formatter fixtures for:
+The following audit-driven formatter cases are now covered or intentionally
+preserved:
 
 ```erb
 <h2><%= t ".comment", :author => user.name, :id => id %></h2>
 ```
 
 ```erb
-<h4><%= if redacted? then t("redacted") else t("version") end %>#<%= link_to version, path %></h4>
+<h4><%= if redacted? then t("redacted") else t("version") end %>#<%= link_to(
+  version,
+  path
+) %></h4>
 ```
 
 ```erb
-<div><%= t "browse.location" %> <%= link_to(t(".coordinates_html", :latitude => lat, :longitude => lon), root_path) %></div>
+<p>Location <%= link_to(
+  t(".coordinates_html", latitude: lat, longitude: lon),
+  root_path(anchor: "map=18/35/139")
+) %></p>
 ```
 
 ```erb
 <%= hidden_field_tag("referer", h(params[:referer])) unless params[:referer].nil? %>
 ```
+
+```erb
+<span
+  class="very very very very very long class name"
+  data-controller="x"
+>Text</span>
+```
+
+## Remaining proposed fixtures
+
+Add parser fixtures for:
 
 ```erb
 <% items.each do |item|
@@ -307,21 +352,16 @@ Add formatter fixtures for:
 <% end %>
 ```
 
-```erb
-<tr>
-  <td><%= value %></td>
-</tr>
-<% end -%>
-```
-
 ## Summary
 
-`erbfmt 0.3.0-dev` can process most OpenStreetMap Rails views, but the audit
-shows two immediate safety priorities:
+`erbfmt 0.3.0-dev` can process most OpenStreetMap Rails views. The original
+audit showed two categories of risk:
 
-1. Improve parser handling for multiline ERB block openers and trim markers.
-2. Make ERB wrapping more conservative when the output is adjacent to inline
-   text, symbols, or single-line text-like elements.
+1. Parser gaps around multiline ERB block openers.
+2. Formatter whitespace changes around inline ERB output.
 
-The second item is the main visual-regression risk. Even when Ruby meaning is
-unchanged, inserted ERB tag newlines can alter rendered whitespace.
+The second category has largely been mitigated by preserving inline boundaries,
+wrapping only foldable Ruby calls inside ERB delimiters, and leaving
+non-foldable expressions inline. The `</tr<%>` parse error from conditional
+attributes has also been fixed. The main remaining audit follow-up is parser
+support and clearer diagnostics for multiline ERB block openers.
