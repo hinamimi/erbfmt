@@ -106,6 +106,7 @@ fn allows_html_optional_closing_tags_when_configured() {
         &tokens,
         ParserOptions {
             allow_html_optional_closing_tags: true,
+            ..ParserOptions::default()
         },
     )
     .unwrap();
@@ -143,6 +144,7 @@ fn allows_paragraph_optional_close_before_block_elements_when_configured() {
         &tokens,
         ParserOptions {
             allow_html_optional_closing_tags: true,
+            ..ParserOptions::default()
         },
     )
     .unwrap();
@@ -180,6 +182,7 @@ fn still_rejects_invalid_close_tags_when_optional_close_is_allowed() {
         &tokens,
         ParserOptions {
             allow_html_optional_closing_tags: true,
+            ..ParserOptions::default()
         },
     )
     .unwrap_err();
@@ -190,6 +193,54 @@ fn still_rejects_invalid_close_tags_when_optional_close_is_allowed() {
             expected: "p".to_string(),
             found: "span".to_string(),
             raw: "</span>".to_string(),
+            location: None
+        }
+    );
+}
+
+#[test]
+fn allows_unbalanced_html_fragments_when_configured() {
+    let tokens = tokenize("</section><div><span>Hello</span>").unwrap();
+    let document = parse_with_options(
+        &tokens,
+        ParserOptions {
+            allow_unbalanced_html_fragments: true,
+            ..ParserOptions::default()
+        },
+    )
+    .unwrap();
+
+    assert_eq!(
+        document,
+        Document {
+            children: vec![
+                Node::HtmlText("</section>".to_string()),
+                Node::HtmlElement {
+                    name: "div".to_string(),
+                    open: "<div>".to_string(),
+                    close: String::new(),
+                    children: vec![Node::HtmlElement {
+                        name: "span".to_string(),
+                        open: "<span>".to_string(),
+                        close: "</span>".to_string(),
+                        children: vec![Node::HtmlText("Hello".to_string())]
+                    }]
+                }
+            ]
+        }
+    );
+}
+
+#[test]
+fn rejects_unbalanced_html_fragments_by_default() {
+    let tokens = tokenize("</section><div>Hello").unwrap();
+    let error = parse(&tokens).unwrap_err();
+
+    assert_eq!(
+        error,
+        ParseError::UnexpectedHtmlCloseTag {
+            name: "section".to_string(),
+            raw: "</section>".to_string(),
             location: None
         }
     );

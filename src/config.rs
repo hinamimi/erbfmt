@@ -457,6 +457,7 @@ impl RawAssistConfig {
 #[serde(rename_all = "camelCase")]
 struct RawParserConfig {
     allow_html_optional_closing_tags: Option<bool>,
+    allow_unbalanced_html_fragments: Option<bool>,
 }
 
 impl RawParserConfig {
@@ -465,6 +466,10 @@ impl RawParserConfig {
 
         if let Some(allow_html_optional_closing_tags) = self.allow_html_optional_closing_tags {
             config.options.allow_html_optional_closing_tags = allow_html_optional_closing_tags;
+        }
+
+        if let Some(allow_unbalanced_html_fragments) = self.allow_unbalanced_html_fragments {
+            config.options.allow_unbalanced_html_fragments = allow_unbalanced_html_fragments;
         }
 
         config

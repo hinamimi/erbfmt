@@ -28,7 +28,8 @@ and `formatter.indentHtml` option for ERB and HTML-specific behavior.
     "includes": ["**/*.html.erb", "!vendor/**"]
   },
   "parser": {
-    "allowHtmlOptionalClosingTags": false
+    "allowHtmlOptionalClosingTags": false,
+    "allowUnbalancedHtmlFragments": false
   },
   "formatter": {
     "enabled": true,
@@ -83,6 +84,11 @@ and `formatter.indentHtml` option for ERB and HTML-specific behavior.
   ERB-heavy templates do not get reformatted under an inferred tree. When set
   to `true`, erbfmt accepts these forms but preserves the omitted closing tags
   instead of inserting them.
+- `parser.allowUnbalancedHtmlFragments`: allow partial HTML fragments that have
+  close tags from an outer template or open tags that are closed by a caller.
+  The default is `false`. When set to `true`, erbfmt preserves unmatched close
+  tags as text and allows unclosed HTML tags at the end of the file. Internal
+  mismatched tags still fail because they are unsafe to reformat structurally.
 
 ## Formatter
 

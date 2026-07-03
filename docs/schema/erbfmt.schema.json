@@ -25,6 +25,9 @@
       "properties": {
         "allowHtmlOptionalClosingTags": {
           "type": "boolean"
+        },
+        "allowUnbalancedHtmlFragments": {
+          "type": "boolean"
         }
       }
     },

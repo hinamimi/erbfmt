@@ -60,6 +60,7 @@ fn init_creates_default_config() {
     assert_eq!(value["formatter"]["indentWidth"], 2);
     assert_eq!(value["formatter"]["indentHtml"], true);
     assert_eq!(value["parser"]["allowHtmlOptionalClosingTags"], false);
+    assert_eq!(value["parser"]["allowUnbalancedHtmlFragments"], false);
     assert_eq!(value["assist"]["enabled"], false);
     assert_eq!(value["assist"]["includes"][0], "**/*.html.erb");
     assert_eq!(value["assist"]["actions"].as_object().unwrap().len(), 0);
@@ -689,6 +690,38 @@ fn config_can_disable_html_indentation() {
         "<% if user %>\n  <ul>\n  <li>Hello</li>\n  </ul>\n<% end %>\n"
     );
     assert_eq!(stderr(&output), "");
+}
+
+#[test]
+fn config_allows_unbalanced_html_fragments_for_formatting() {
+    let dir = TestDir::new("config_unbalanced_html_fragments_format");
+    let config = dir.write(
+        "erbfmt.json",
+        r#"{"parser":{"allowUnbalancedHtmlFragments":true}}"#,
+    );
+    let file = dir.write("input.html.erb", "</section><div><span>Hello</span>\n");
+
+    let output = run(["--config".as_ref(), config.as_path(), file.as_path()]);
+
+    assert_success(&output);
+    assert_eq!(stdout(&output), "</section>\n<div><span>Hello</span>\n");
+    assert_eq!(stderr(&output), "");
+}
+
+#[test]
+fn default_rejects_unbalanced_html_fragments() {
+    let dir = TestDir::new("default_unbalanced_html_fragments_rejected");
+    let file = dir.write("input.html.erb", "</section><div>Hello\n");
+
+    let output = run([file.as_path()]);
+
+    assert_failure(&output);
+    assert_eq!(stdout(&output), "");
+    assert!(
+        stderr(&output).contains("unexpected HTML close tag `</section>`"),
+        "{}",
+        stderr(&output)
+    );
 }
 
 #[test]

@@ -14,6 +14,7 @@ use frame::{Frame, FrameKind};
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct ParserOptions {
     pub allow_html_optional_closing_tags: bool,
+    pub allow_unbalanced_html_fragments: bool,
 }
 
 #[allow(dead_code)]
@@ -267,6 +268,11 @@ impl Parser {
     ) -> Result<(), ParseError> {
         self.close_optional_html_tags_before_close(&tag.name, close_start);
 
+        if self.is_at_root() && self.options.allow_unbalanced_html_fragments {
+            self.push_raw_html_text(tag.raw, close_start, end);
+            return Ok(());
+        }
+
         let Some(frame) = self.stack.pop() else {
             return Err(ParseError::UnexpectedHtmlCloseTag {
                 name: tag.name,
@@ -462,6 +468,12 @@ impl Parser {
             }
         }
 
+        if self.options.allow_unbalanced_html_fragments {
+            while self.current_html_name().is_some() {
+                self.close_optional_html_tag(self.source_end);
+            }
+        }
+
         if self.stack.len() == 1 {
             let root = self.stack.pop().expect("root frame exists");
             return Ok(Document {
@@ -504,6 +516,22 @@ impl Parser {
             node: Box::new(node),
             range,
         });
+    }
+
+    fn push_raw_html_text(&mut self, raw: String, start: Option<usize>, end: Option<usize>) {
+        let node = Node::HtmlText(raw);
+
+        match (start, end) {
+            (Some(start), Some(end)) => self.push_spanned_node(node, SourceRange { start, end }),
+            _ => self.push_node(node),
+        }
+    }
+
+    fn is_at_root(&self) -> bool {
+        matches!(
+            self.stack.last().map(|frame| &frame.kind),
+            Some(FrameKind::Root)
+        )
     }
 
     fn close_optional_html_tags_before_open(&mut self, next_name: &str, end: Option<usize>) {

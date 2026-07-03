@@ -67,7 +67,8 @@ erbfmt init --force</code></pre>
     "includes": ["**/*.html.erb", "!vendor/**"]
   },
   "parser": {
-    "allowHtmlOptionalClosingTags": false
+    "allowHtmlOptionalClosingTags": false,
+    "allowUnbalancedHtmlFragments": false
   },
   "formatter": {
     "enabled": true,
@@ -109,6 +110,7 @@ erbfmt init --force</code></pre>
         <h2 id="parser">Parser</h2>
         <dl class="option-list">
           <div class="option"><dt><code>parser.allowHtmlOptionalClosingTags</code><span class="meta">boolean · default: false</span></dt><dd><p><code>&lt;/li&gt;</code>、<code>&lt;/p&gt;</code>、<code>&lt;/td&gt;</code>、<code>&lt;/tr&gt;</code>など、HTMLで省略可能なclosing tagを許容します。defaultではerbfmtは省略されたclosing tagをparse errorとして扱います。有効にした場合、省略形を受け入れますが、formatterがclosing tagを自動挿入することはありません。</p></dd></div>
+          <div class="option"><dt><code>parser.allowUnbalancedHtmlFragments</code><span class="meta">boolean · default: false</span></dt><dd><p>外側のtemplateで開閉されるpartial HTML fragmentを許容します。有効にした場合、外側由来の unmatched close tag はtextとして保持し、file末尾の未閉じHTML tagは許容します。内部のmismatched tagは構造的に安全にformatできないため、引き続きparse errorとして扱います。</p></dd></div>
         </dl>
 
         <h2 id="formatter">Formatter</h2>

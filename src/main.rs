@@ -21,7 +21,8 @@ const DEFAULT_CONFIG: &str = r#"{
     "includes": ["**/*.html.erb"]
   },
   "parser": {
-    "allowHtmlOptionalClosingTags": false
+    "allowHtmlOptionalClosingTags": false,
+    "allowUnbalancedHtmlFragments": false
   },
   "formatter": {
     "enabled": true,

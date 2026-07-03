@@ -91,12 +91,28 @@ The raw text failures in files such as these no longer occur:
 The remaining failures appear to be different from the raw text gap. They fall
 mostly into these categories.
 
+## `allowUnbalancedHtmlFragments` Result
+
+Testing with `parser.allowUnbalancedHtmlFragments: true` reduced the remaining
+Forem parse failures, but it did not make the whole corpus parseable:
+
+```text
+44 files failed to parse.
+705 files were written by formatting.
+577 files changed by formatting.
+40587 unified diff lines.
+```
+
+This is expected. The option only allows close tags that belong to an outer
+template and open tags that are closed by a caller. It does not hide internal
+mismatched HTML tags or ERB block errors.
+
 ### Partial HTML Fragments
 
 Some partials intentionally open or close HTML elements that are balanced by the
 caller or by another partial. erbfmt currently parses each file as a standalone
-template, so these fragments fail with unexpected close tags or unclosed open
-tags.
+template by default, so these fragments fail with unexpected close tags or
+unclosed open tags unless `parser.allowUnbalancedHtmlFragments` is enabled.
 
 Examples:
 
@@ -182,8 +198,9 @@ contents intact when they contain ERB.
 The remaining Forem failures are not all good formatter targets. The most useful
 future work is likely:
 
-1. Add a documented "fragment mode" design for partials that intentionally start
-   or end with unmatched HTML.
+1. Review the `parser.allowUnbalancedHtmlFragments` diff for visual-risk
+   patterns before recommending it broadly. This option is intentionally
+   disabled by default.
 2. Decide whether cross-ERB-block HTML open/close pairs should be supported,
    ignored, or linted as unsafe for formatting.
 3. Review the large diff for visual-risk patterns and promote any concrete issue
