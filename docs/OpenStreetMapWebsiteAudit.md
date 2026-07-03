@@ -66,6 +66,26 @@ cargo run --quiet -- --check external/rails-repos/openstreetmap-website/app/view
 now reports only normal formatted / not formatted results for the view corpus.
 The two parser failures from the initial audit no longer reproduce.
 
+Second diff audit:
+
+```bash
+rm -rf /tmp/erbfmt-osm-audit
+mkdir -p /tmp/erbfmt-osm-audit/original /tmp/erbfmt-osm-audit/formatted
+cp -a external/rails-repos/openstreetmap-website/app/views /tmp/erbfmt-osm-audit/original/views
+cp -a external/rails-repos/openstreetmap-website/app/views /tmp/erbfmt-osm-audit/formatted/views
+cargo run --quiet -- --write /tmp/erbfmt-osm-audit/formatted/views
+diff -ru /tmp/erbfmt-osm-audit/original/views /tmp/erbfmt-osm-audit/formatted/views > /tmp/erbfmt-osm-audit/views.diff
+diff -qr /tmp/erbfmt-osm-audit/original/views /tmp/erbfmt-osm-audit/formatted/views > /tmp/erbfmt-osm-audit/changed-files.txt
+```
+
+Result after parser fixes and multiline setup-opener preservation:
+
+```text
+0 files failed to parse.
+130 files changed by formatting.
+4693 unified diff lines.
+```
+
 ## Parser issues found
 
 ### Multiline ERB block opener with Ruby setup
@@ -110,6 +130,8 @@ Fix:
   code.
 - Preserve the full ERB tag body, so the formatter can remain conservative
   about the setup statements.
+- When source ranges are available, preserve the original multiline opener
+  shape instead of normalizing the setup statements.
 
 Verification:
 
@@ -121,6 +143,15 @@ now reaches the normal format-check result:
 
 ```text
 external/rails-repos/openstreetmap-website/app/views/layers_panes/show.html.erb: file is not formatted.
+```
+
+The second diff audit confirms that the setup opener is no longer rewritten.
+The surrounding HTML may still be formatted, but this opener remains source-like:
+
+```erb
+<% @overlay_layers.each do |layer|
+     options = { :data => layer, :class => "form-check" }
+     options[:title] = t(".map_#{layer[:name]}_zoom_in_tooltip") if layer[:max_area] %>
 ```
 
 ### Trim marker confused with an HTML close tag
@@ -331,6 +362,84 @@ The audit also found many changes that look safe and useful:
 These should remain supported, but regression tests should continue to
 distinguish them from inline-sensitive cases.
 
+## Remaining formatter safety candidates
+
+The second diff audit did not find parser failures, but it still surfaced
+formatter changes worth prioritizing before treating real-world formatting as
+low-risk.
+
+### Empty inline icon/button tags expanded to multiline content
+
+Examples:
+
+```diff
+-      <i class="bi bi-chat<%= num_comments.zero? ? "" : "-fill" %> small" aria-hidden="true"></i>
++      <i
++        class="bi bi-chat<%= num_comments.zero? ? "" : "-fill" %> small"
++        aria-hidden="true"
++      >
++      </i>
+```
+
+```diff
+-        <button class="dropdown-toggle nav-link btn btn-outline-secondary px-1 py-0 border-0 bg-body text-secondary" type="button" data-bs-toggle="dropdown"><%= t ".more" %></button>
++        <button
++          class="dropdown-toggle nav-link btn btn-outline-secondary px-1 py-0 border-0 bg-body text-secondary"
++          type="button"
++          data-bs-toggle="dropdown"
++        ><%= t ".more" %></button>
+```
+
+The button case keeps the `>` and text child adjacent, which is the desired
+safety shape. The empty `<i></i>` case is more questionable: adding a newline
+between an inline icon open and close tag creates a whitespace text child. This
+usually has no visible effect for Bootstrap icon elements, but it is still a
+real inline-whitespace risk.
+
+Priority:
+
+- Keep empty inline elements inline when the original tag had no children.
+- If the opening tag must wrap, prefer `<i ...></i>`-style boundary preservation
+  over inserting a whitespace child.
+
+### Old-style hashrocket helper continuation indentation
+
+Example:
+
+```diff
+ <h2><%= t ".comment",
+-          :author => comment.author.display_name,
+-          :changeset_id => comment.changeset.id.to_s %></h2>
++:author => comment.author.display_name,
++:changeset_id => comment.changeset.id.to_s %></h2>
+```
+
+This does not appear to change rendered HTML because the ERB output boundary
+stays inline. It is still a readability regression. It also shows that
+hashrocket-style helper calls are being preserved, but their continuation
+indentation is not.
+
+Priority:
+
+- Preserve original multiline ERB output indentation when the expression is not
+  foldable.
+- Later, teach Ruby AST / wrapping to handle old-style hash arguments safely.
+
+### Standalone long ERB control tags expanded to delimiter lines
+
+Example:
+
+```diff
+-<% if Settings.status != "api_offline" && Settings.status != "database_offline" %>
++<%
++  if Settings.status != "api_offline" && Settings.status != "database_offline"
++%>
+```
+
+This is usually safe for block-level control flow and remains acceptable. It is
+not the same risk class as inline ERB output. It should remain covered by tests
+so future changes do not apply this shape inside inline text boundaries.
+
 ## Covered formatter fixtures
 
 The following audit-driven formatter cases are now covered or intentionally
@@ -368,8 +477,9 @@ preserved:
 ## Remaining proposed fixtures
 
 No parser fixtures from the initial OpenStreetMap audit remain unimplemented.
-Future audit runs should move any new parser or formatter safety findings into
-unit tests as they are discovered.
+Future parser audit findings should move into unit tests as they are discovered.
+For formatter safety, the next fixtures should cover empty inline elements and
+hashrocket continuation preservation.
 
 ## Summary
 
@@ -389,4 +499,5 @@ wrapping only foldable Ruby calls inside ERB delimiters, and leaving
 non-foldable expressions inline. The `</tr<%>` parse error from conditional
 attributes has also been fixed. The main remaining audit follow-up is to rerun
 the external diff review periodically and promote any new safety concerns into
-fixtures.
+fixtures. The next high-priority formatter candidates are empty inline element
+boundary preservation and old-style hashrocket helper indentation preservation.

@@ -687,7 +687,21 @@ impl<'a> Formatter<'a> {
         source.get(range.start..range.end)
     }
 
-    fn write_indented_raw(&mut self, raw: &str, depth: usize) {
+    pub(super) fn raw_erb_block_open_tag(
+        &self,
+        range: Option<SourceRange>,
+        tag: &ErbTag,
+    ) -> Option<&str> {
+        let source = self.source?;
+        let range = range?;
+        let raw = source.get(range.start..range.end)?;
+        let close = tag.syntax.close.as_str();
+        let open_end = raw.find(close)? + close.len();
+
+        source.get(range.start..range.start + open_end)
+    }
+
+    pub(super) fn write_indented_raw(&mut self, raw: &str, depth: usize) {
         self.output.push_str(&self.indent(depth));
         self.output.push_str(raw);
 

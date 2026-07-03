@@ -845,6 +845,25 @@ fn preserves_long_erb_block_opening_tags_when_they_are_control_flow() {
 }
 
 #[test]
+fn preserves_multiline_erb_block_openers_with_setup_statements() {
+    let input = r#"<% @overlay_layers.each do |layer|
+     options = { :data => layer, :class => "form-check" }
+     options[:title] = t(".tooltip") if layer[:max_area] %>
+<span><%= layer[:name] %></span>
+<% end %>
+"#;
+    let expected = r#"<% @overlay_layers.each do |layer|
+     options = { :data => layer, :class => "form-check" }
+     options[:title] = t(".tooltip") if layer[:max_area] %>
+  <span><%= layer[:name] %></span>
+<% end %>
+"#;
+
+    assert_eq!(format_source(input), expected);
+    assert_eq!(format_source(expected), expected);
+}
+
+#[test]
 fn wraps_long_erb_code_command_calls() {
     assert_eq!(
         format_with_options(
