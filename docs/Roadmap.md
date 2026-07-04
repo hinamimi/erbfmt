@@ -51,6 +51,8 @@ erbfmt は `*.html.erb` 向けの formatter / linter です。
 - Ruby splat / constant path / percent literal AST
 - top-level multi-statement ERB code の preservation
 - inline whitespace を壊さない formatter safety
+- inline boundary preservation for wrapped ERB output inside text
+- formatter safety fixtures for format-sensitive subtrees and nested helper wrapping
 - `<%- %>`, `<% -%>`, `<%== %>` の marker preservation
 - formatter ignore directive
 - basic syntax lint rules

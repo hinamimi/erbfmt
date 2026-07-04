@@ -575,6 +575,33 @@ fn preserves_erb_spacing_inside_format_sensitive_subtrees() {
 }
 
 #[test]
+fn safety_preserves_erb_inside_format_sensitive_subtrees() {
+    let input = r#"<section>
+<pre><%=   render partial: "profile", locals: { user: user }   %></pre>
+<textarea><%=   form.text_area :body, class: "body-field body-field--wide"   %></textarea>
+<script>const label = "<%=   t("labels.save")   %>";</script>
+<style>.button::before { content: "<%=   label   %>"; }</style>
+<svg><text><%=   title   %></text></svg>
+<math><mi><%=   variable   %></mi></math>
+<div contenteditable="true"><%=   render partial: "editable", locals: { record: record }   %></div>
+</section>
+"#;
+    let expected = r#"<section>
+  <pre><%=   render partial: "profile", locals: { user: user }   %></pre>
+  <textarea><%=   form.text_area :body, class: "body-field body-field--wide"   %></textarea>
+  <script>const label = "<%=   t("labels.save")   %>";</script>
+  <style>.button::before { content: "<%=   label   %>"; }</style>
+  <svg><text><%=   title   %></text></svg>
+  <math><mi><%=   variable   %></mi></math>
+  <div contenteditable="true"><%=   render partial: "editable", locals: { record: record }   %></div>
+</section>
+"#;
+
+    assert_eq!(format_source(input), expected);
+    assert_eq!(format_source(expected), expected);
+}
+
+#[test]
 fn indents_erb_block_children() {
     assert_eq!(
         format("<% if user %>\n<p>Hello</p>\n<% end %>\n"),
@@ -1044,6 +1071,34 @@ fn preserves_inline_modifier_erb_output_while_preserving_text_boundaries() {
 }
 
 #[test]
+fn safety_preserves_visible_whitespace_around_inline_helpers() {
+    let options = FormatOptions {
+        line_width: 48,
+        ..FormatOptions::default()
+    };
+    let input = r#"<p>Saved by <%= link_to user.name, user_path(user), class: "profile-link profile-link--long" %> in <%= link_to project.name, project_path(project), class: "project-link project-link--long" %>.</p>
+"#;
+    let expected = "<p>Saved by <%= link_to user.name, user_path(user), class: \"profile-link profile-link--long\" %> in <%= link_to project.name, project_path(project), class: \"project-link project-link--long\" %>.</p>\n";
+
+    assert_eq!(format_source_with_options(input, options), expected);
+    assert_eq!(format_source_with_options(expected, options), expected);
+}
+
+#[test]
+fn safety_preserves_inline_boundaries_around_modifier_suffix_helpers() {
+    let options = FormatOptions {
+        line_width: 48,
+        ..FormatOptions::default()
+    };
+    let input = r#"<p>Before <%= hidden_field_tag("referer", h(params[:really_long_referer])) unless params[:referer].nil? %> after</p>
+"#;
+    let expected = "<p>Before <%= hidden_field_tag(\n  \"referer\",\n  h(params[:really_long_referer])\n) unless params[:referer].nil? %> after</p>\n";
+
+    assert_eq!(format_source_with_options(input, options), expected);
+    assert_eq!(format_source_with_options(expected, options), expected);
+}
+
+#[test]
 fn preserves_existing_multiline_erb_output_shape() {
     assert_eq!(
         format(
@@ -1352,6 +1407,16 @@ fn wraps_nested_helper_calls_inside_keyword_arguments() {
         format_source(input),
         "<%= t(\n  \"views.admin.users.actions.adjust_credit.selector_html\",\n  action: f.select(\n    :credit_action,\n    options_for_select({ t(\"views.admin.users.actions.adjust_credit.add\") => \"Add\" }),\n    {},\n    class: \"js-credit-action crayons-select w-auto\"\n  ),\n  amount: f.text_field(\n    :credit_amount,\n    type: \"number\",\n    required: true,\n    class: \"js-credit-amount crayons-textfield w-auto\",\n    value: 1,\n    size: 5,\n    min: 1,\n    max: 9999\n  ),\n  credits: f.label(\n    :credit_amount,\n    t(\"views.admin.users.actions.adjust_credit.unit\"),\n    class: \"color-secondary flex-1\",\n    \"aria-label\": t(\"views.admin.users.actions.adjust_credit.aria_credits\")\n  )\n) %>\n"
     );
+}
+
+#[test]
+fn safety_keeps_quoted_label_and_nested_helper_wrapping_idempotent() {
+    let input = r#"<%= link_to "Save", admin_path(filters: { state: params[:state] }, action: f.select(:credit_action, options_for_select({ t("views.admin.users.actions.adjust_credit.add") => "Add" }), {}, class: "js-credit-action crayons-select w-auto")), class: "crayons-btn crayons-btn--primary", "aria-label": t("views.admin.users.actions.adjust_credit.aria_save") %>
+"#;
+    let expected = "<%= link_to(\n  \"Save\",\n  admin_path(filters: { state: params[:state] }, action: f.select(:credit_action, options_for_select({ t(\"views.admin.users.actions.adjust_credit.add\") => \"Add\" }), {}, class: \"js-credit-action crayons-select w-auto\")),\n  class: \"crayons-btn crayons-btn--primary\",\n  \"aria-label\": t(\"views.admin.users.actions.adjust_credit.aria_save\")\n) %>\n";
+
+    assert_eq!(format_source(input), expected);
+    assert_eq!(format_source(expected), expected);
 }
 
 #[test]

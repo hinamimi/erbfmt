@@ -318,6 +318,12 @@ impl<'a> Formatter<'a> {
             return;
         }
 
+        if can_render_inline(children)
+            && self.write_html_element_with_wrapped_inline_erb_child(open, &close, children, depth)
+        {
+            return;
+        }
+
         let children = split_formatting_nodes(children, &self.preserved_ranges);
         let prefix_count = if boundaries.open_child_same_line {
             leading_inline_boundary_nodes(&children)
@@ -330,6 +336,22 @@ impl<'a> Formatter<'a> {
             children.len()
         };
         let prefix = render_inline_formatting_nodes_untrimmed(&children[..prefix_count]);
+        let suffix = render_inline_formatting_nodes_untrimmed(&children[suffix_start..]);
+
+        if (prefix_count > 0 || suffix_start < children.len())
+            && let Some((tag, lines)) =
+                single_foldable_erb_output_formatting_node(&children[prefix_count..suffix_start])
+        {
+            let open = normalize_tag(open).unwrap_or_else(|| open.to_string());
+            self.write_wrapped_erb_output_tag(
+                depth,
+                tag.syntax,
+                &lines,
+                &format!("{open}{prefix}"),
+                &format!("{suffix}{close}"),
+            );
+            return;
+        }
 
         if prefix_count == children.len() {
             let suffix = if boundaries.child_close_same_line {
@@ -353,7 +375,6 @@ impl<'a> Formatter<'a> {
         );
 
         if suffix_start < children.len() {
-            let suffix = render_inline_formatting_nodes_untrimmed(&children[suffix_start..]);
             self.write_indented_line(self.html_child_depth(depth), &format!("{suffix}{close}"));
         } else {
             self.write_indented_line(depth, &close);
@@ -961,6 +982,32 @@ fn single_foldable_erb_output_inline_child(
             if foldable.replace((index, tag, lines)).is_some() {
                 return None;
             }
+        }
+    }
+
+    foldable
+}
+
+fn single_foldable_erb_output_formatting_node<'a>(
+    nodes: &'a [FormattingNode<'a>],
+) -> Option<(&'a ErbTag, Vec<String>)> {
+    let mut foldable = None;
+
+    for node in nodes {
+        match node {
+            FormattingNode::HtmlText { text, .. } if text.trim().is_empty() => {}
+            FormattingNode::Node(node) => match node.unspanned() {
+                Node::HtmlText(text) if text.trim().is_empty() => {}
+                Node::ErbOutput(tag) => {
+                    let lines = wrapped_erb_output_lines(tag.syntax, &tag.code)?;
+
+                    if foldable.replace((tag, lines)).is_some() {
+                        return None;
+                    }
+                }
+                _ => return None,
+            },
+            _ => return None,
         }
     }
 
