@@ -335,6 +335,60 @@ The modifier suffix support reduced the local Forem long Rails-helper filter
 from 107 to 105. Quoted label keyword support reduced it further from 105 to 96.
 Both passes were idempotent when the formatter was applied a second time.
 
+Nested helper calls inside keyword arguments were then improved. This does not
+always reduce the simple long-line filter, because the outer call was already
+split, but it makes nested Rails helpers much easier to read and gives them
+consistent indentation.
+
+Example:
+
+```erb
+<%= t("views.admin.users.actions.adjust_credit.selector_html",
+      action: f.select(:credit_action, options_for_select({ t("views.admin.users.actions.adjust_credit.add") => "Add" }), {}, class: "js-credit-action crayons-select w-auto"),
+      amount: f.text_field(:credit_amount,
+                           type: "number",
+                           required: true,
+                           class: "js-credit-amount crayons-textfield w-auto",
+                           value: 1,
+                           size: 5,
+                           min: 1,
+                           max: 9999),
+      credits: f.label(:credit_amount, t("views.admin.users.actions.adjust_credit.unit"), class: "color-secondary flex-1", "aria-label": t("views.admin.users.actions.adjust_credit.aria_credits"))) %>
+```
+
+```erb
+<%= t(
+  "views.admin.users.actions.adjust_credit.selector_html",
+  action: f.select(
+    :credit_action,
+    options_for_select({ t("views.admin.users.actions.adjust_credit.add") => "Add" }),
+    {},
+    class: "js-credit-action crayons-select w-auto"
+  ),
+  amount: f.text_field(
+    :credit_amount,
+    type: "number",
+    required: true,
+    class: "js-credit-amount crayons-textfield w-auto",
+    value: 1,
+    size: 5,
+    min: 1,
+    max: 9999
+  ),
+  credits: f.label(
+    :credit_amount,
+    t("views.admin.users.actions.adjust_credit.unit"),
+    class: "color-secondary flex-1",
+    "aria-label": t("views.admin.users.actions.adjust_credit.aria_credits")
+  )
+) %>
+```
+
+In the local Forem audit copy, this changed 37 files and remained idempotent on
+the second formatter pass. The same long Rails-helper filter stayed at 96,
+because this pass primarily improved nested indentation rather than top-level
+line count.
+
 ## Next Candidates
 
 The remaining Forem failures are not all good formatter targets. The most useful

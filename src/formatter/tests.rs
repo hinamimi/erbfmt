@@ -1334,6 +1334,27 @@ fn wraps_forem_link_helpers_with_quoted_label_keyword_arguments() {
 }
 
 #[test]
+fn wraps_nested_helper_calls_inside_keyword_arguments() {
+    let input = r#"<%= t("views.admin.users.actions.adjust_credit.selector_html",
+      action: f.select(:credit_action, options_for_select({ t("views.admin.users.actions.adjust_credit.add") => "Add" }), {}, class: "js-credit-action crayons-select w-auto"),
+      amount: f.text_field(:credit_amount,
+                           type: "number",
+                           required: true,
+                           class: "js-credit-amount crayons-textfield w-auto",
+                           value: 1,
+                           size: 5,
+                           min: 1,
+                           max: 9999),
+      credits: f.label(:credit_amount, t("views.admin.users.actions.adjust_credit.unit"), class: "color-secondary flex-1", "aria-label": t("views.admin.users.actions.adjust_credit.aria_credits"))) %>
+"#;
+
+    assert_eq!(
+        format_source(input),
+        "<%= t(\n  \"views.admin.users.actions.adjust_credit.selector_html\",\n  action: f.select(\n    :credit_action,\n    options_for_select({ t(\"views.admin.users.actions.adjust_credit.add\") => \"Add\" }),\n    {},\n    class: \"js-credit-action crayons-select w-auto\"\n  ),\n  amount: f.text_field(\n    :credit_amount,\n    type: \"number\",\n    required: true,\n    class: \"js-credit-amount crayons-textfield w-auto\",\n    value: 1,\n    size: 5,\n    min: 1,\n    max: 9999\n  ),\n  credits: f.label(\n    :credit_amount,\n    t(\"views.admin.users.actions.adjust_credit.unit\"),\n    class: \"color-secondary flex-1\",\n    \"aria-label\": t(\"views.admin.users.actions.adjust_credit.aria_credits\")\n  )\n) %>\n"
+    );
+}
+
+#[test]
 fn normalizes_existing_multiline_parenthesized_erb_output_arguments() {
     assert_eq!(
         format(

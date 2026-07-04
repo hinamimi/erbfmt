@@ -233,6 +233,7 @@ fn hash_key_is_foldable(key: &HashKey) -> bool {
 
 fn format_argument_lines(argument: &str, comma: bool) -> Vec<String> {
     let mut lines = fold_keyword_hash_argument(argument)
+        .or_else(|| fold_keyword_call_value_argument(argument))
         .or_else(|| fold_chained_method_argument(argument))
         .unwrap_or_else(|| normalize_multiline_argument(argument));
     let last_index = lines.len().saturating_sub(1);
@@ -246,6 +247,22 @@ fn format_argument_lines(argument: &str, comma: bool) -> Vec<String> {
     }
 
     lines
+}
+
+fn fold_keyword_call_value_argument(argument: &str) -> Option<Vec<String>> {
+    let (keyword, value) = split_keyword_value_argument(argument)?;
+
+    if !value.contains('(') || (!value.contains('\n') && value.len() <= 80) {
+        return None;
+    }
+
+    let mut lines = fold_command_call(value)?;
+    if lines.len() < 2 {
+        return None;
+    }
+
+    lines[0] = format!("{keyword}: {}", lines[0]);
+    Some(lines)
 }
 
 fn fold_chained_method_argument(argument: &str) -> Option<Vec<String>> {
