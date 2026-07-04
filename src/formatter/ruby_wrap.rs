@@ -1223,9 +1223,45 @@ mod tests {
     }
 
     #[test]
+    fn folds_quoted_symbol_hash_pair_arguments() {
+        assert_eq!(
+            fold_command_call(
+                r#"link_to "Save", save_path, :"data-action" => "click->save#submit""#
+            ),
+            Some(vec![
+                "link_to(".to_string(),
+                r#"  "Save","#.to_string(),
+                "  save_path,".to_string(),
+                r#"  :"data-action" => "click->save#submit""#.to_string(),
+                ")".to_string(),
+            ])
+        );
+    }
+
+    #[test]
     fn does_not_fold_control_flow() {
         assert_eq!(
             fold_command_call("if current_user.admin? && account.active?"),
+            None
+        );
+    }
+
+    #[test]
+    fn does_not_fold_assignment_or_top_level_ternary() {
+        assert_eq!(
+            fold_command_call(r#"message = t(".saved"), class: "notice""#),
+            None
+        );
+        assert_eq!(
+            fold_command_call(r#"current_user.admin? ? admin_path : root_path"#),
+            None
+        );
+    }
+
+    #[test]
+    fn does_not_fold_unsupported_block_parameter_shapes() {
+        assert_eq!(
+            fold_command_call(r#"tag.ul(items, class: "list") { |(key, value)| tag.li(key) }"#),
             None
         );
     }

@@ -131,6 +131,22 @@ erbfmt は `*.html.erb` 向けの formatter / linter です。
 
 ERB tag 内 Ruby expression を安全に理解するための AST 基盤を育てます。
 
+現在の状態:
+
+- 開発版では Milestone B の完了条件を満たした扱いにする。
+- helper call、keyword argument、array、hash、assignment、operator expression、
+  modifier、ternary、range、splat、constant path、percent literal、safe navigation、
+  index access、multiple statements、nested call、simple block suffix を AST 化できる。
+- `true` / `false` / `nil`、`self` receiver、quoted symbol hash pair も扱える。
+- assignment、top-level ternary、multiple statements、modifier expression は
+  formatter candidate から外す。
+- unsupported keyword expression、comment、complex block parameter は明示的に
+  parse error にする。
+- formatter wrapper 側でも、assignment、top-level ternary、unsupported block parameter
+  を fold しないことを test で固定している。
+
+以後の Ruby formatter 改善は Milestone C の AST integration として扱います。
+
 やること:
 
 - `src/ruby_ast/` の lexer / parser / AST を小さく保つ。

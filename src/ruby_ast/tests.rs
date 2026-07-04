@@ -97,6 +97,24 @@ fn parses_command_style_call_with_legacy_hash_pair_arguments() {
 }
 
 #[test]
+fn parses_quoted_symbol_hash_pair_arguments() {
+    let program =
+        parse(r#"link_to "Save", save_path, :"data-action" => "click->save#submit""#).unwrap();
+
+    let Expression::Call(call) = single_statement(&program) else {
+        panic!("expected call expression");
+    };
+
+    assert!(matches!(
+        &call.arguments[2],
+        Argument::HashPair {
+            key: Expression::Symbol(key),
+            value: Expression::String(value),
+        } if key == r#":"data-action""# && value == r#""click->save#submit""#
+    ));
+}
+
+#[test]
 fn parses_command_style_call_with_quoted_label_keyword_argument() {
     let program =
         parse(r#"link_to "Previous", calendar_path, "aria-label": t(".previous")"#).unwrap();
@@ -176,6 +194,49 @@ fn parses_nested_array_and_hash_arguments() {
         &pairs[0],
         HashPair::KeyValue { key: HashKey::Label(key), .. } if key == "controller"
     ));
+}
+
+#[test]
+fn parses_literal_keywords_as_literals() {
+    let program = parse(r#"render partial: nil, layout: false, cached: true"#).unwrap();
+
+    let Expression::Call(call) = single_statement(&program) else {
+        panic!("expected call expression");
+    };
+
+    assert!(matches!(
+        &call.arguments[0],
+        Argument::Keyword {
+            name,
+            value: Expression::Literal(value),
+        } if name == "partial" && value == "nil"
+    ));
+    assert!(matches!(
+        &call.arguments[1],
+        Argument::Keyword {
+            name,
+            value: Expression::Literal(value),
+        } if name == "layout" && value == "false"
+    ));
+    assert!(matches!(
+        &call.arguments[2],
+        Argument::Keyword {
+            name,
+            value: Expression::Literal(value),
+        } if name == "cached" && value == "true"
+    ));
+}
+
+#[test]
+fn parses_self_receiver_access() {
+    let program = parse("self.policy(user)").unwrap();
+
+    let Expression::MethodCall(call) = single_statement(&program) else {
+        panic!("expected method call");
+    };
+
+    assert_eq!(call.method, "policy");
+    assert!(matches!(*call.receiver, Expression::Identifier(ref value) if value == "self"));
 }
 
 #[test]
@@ -613,6 +674,39 @@ fn parses_tagged_percent_literals_with_custom_delimiters() {
         &call.arguments[0],
         Argument::Positional(Expression::PercentLiteral(value)) if value == r#"%r{/users/\d+}"#
     ));
+}
+
+#[test]
+fn rejects_unsupported_ruby_keywords_as_ast_expressions() {
+    let error = parse("begin").unwrap_err();
+    assert!(error.message.contains("Ruby keyword `begin`"));
+
+    let error = parse("return user").unwrap_err();
+    assert!(error.message.contains("Ruby keyword `return`"));
+
+    let error = parse("if admin?").unwrap_err();
+    assert!(error.message.contains("Ruby keyword `if`"));
+}
+
+#[test]
+fn rejects_comments_in_ast_mode() {
+    let error = parse(r#"render partial: "card" # comment"#).unwrap_err();
+
+    assert!(error.message.contains("comments are not supported"));
+}
+
+#[test]
+fn rejects_complex_block_parameters_in_do_suffix() {
+    let error = parse("form_with model: user do |(key, value)|").unwrap_err();
+
+    assert!(error.message.contains("unsupported Ruby block parameter"));
+}
+
+#[test]
+fn rejects_complex_block_parameters_in_brace_suffix() {
+    let error = parse("items.map { |(key, value)| key }").unwrap_err();
+
+    assert!(error.message.contains("unsupported Ruby block parameter"));
 }
 
 fn single_statement(program: &super::ast::Program) -> Expression {

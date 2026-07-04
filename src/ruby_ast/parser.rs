@@ -256,6 +256,15 @@ impl Parser {
         }
 
         match self.advance().map(|token| token.kind.clone()) {
+            Some(TokenKind::Identifier(value)) if is_literal_keyword(&value) => {
+                Ok(Expression::Literal(value))
+            }
+            Some(TokenKind::Identifier(value)) if value == "self" => {
+                Ok(Expression::Identifier(value))
+            }
+            Some(TokenKind::Identifier(value)) if is_keyword(&value) => Err(self.error(format!(
+                "Ruby keyword `{value}` is not supported in AST expressions"
+            ))),
             Some(TokenKind::Identifier(value)) => Ok(Expression::Identifier(value)),
             Some(TokenKind::Number(value)) => Ok(Expression::Literal(value)),
             Some(TokenKind::PercentLiteral(value)) => Ok(Expression::PercentLiteral(value)),
@@ -481,10 +490,12 @@ impl Parser {
     }
 
     fn index_after_callee(&self, start: usize) -> Option<usize> {
-        if !matches!(
-            self.tokens.get(start).map(|token| &token.kind),
-            Some(TokenKind::Identifier(_))
-        ) {
+        let Some(TokenKind::Identifier(callee)) = self.tokens.get(start).map(|token| &token.kind)
+        else {
+            return None;
+        };
+
+        if is_keyword(callee) {
             return None;
         }
 
@@ -528,6 +539,19 @@ impl Parser {
         }
     }
 
+    fn expect_block_param_name(&mut self) -> Result<String, RubyAstError> {
+        match self.advance().map(|token| token.kind.clone()) {
+            Some(TokenKind::Identifier(value)) if is_block_param_name(&value) => Ok(value),
+            Some(TokenKind::Identifier(value)) => {
+                Err(self.error(format!("unsupported Ruby block parameter `{value}`")))
+            }
+            Some(kind) => Err(self.error(format!(
+                "unsupported Ruby block parameter starting with {kind:?}"
+            ))),
+            None => Err(self.error("expected Ruby block parameter")),
+        }
+    }
+
     fn parse_index_arguments(&mut self) -> Result<Vec<Expression>, RubyAstError> {
         let mut arguments = Vec::new();
 
@@ -562,7 +586,7 @@ impl Parser {
 
         if self.consume_operator("|") {
             while !self.consume_operator("|") {
-                params.push(self.expect_identifier()?);
+                params.push(self.expect_block_param_name()?);
 
                 if self.consume_operator("|") {
                     break;
@@ -929,12 +953,7 @@ fn parse_block_suffix(suffix: &str, offset: usize) -> Result<Block, RubyAstError
         ));
     }
 
-    let params = rest[1..rest.len() - 1]
-        .split(',')
-        .map(str::trim)
-        .filter(|param| !param.is_empty())
-        .map(ToString::to_string)
-        .collect();
+    let params = parse_block_params(&rest[1..rest.len() - 1], offset)?;
 
     Ok(Block { params })
 }
@@ -956,14 +975,41 @@ fn parse_brace_block_suffix(suffix: &str, offset: usize) -> Result<Block, RubyAs
         ));
     };
 
-    let params = body[1..end]
-        .split(',')
-        .map(str::trim)
-        .filter(|param| !param.is_empty())
-        .map(ToString::to_string)
-        .collect();
+    let params = parse_block_params(&body[1..end], offset)?;
 
     Ok(Block { params })
+}
+
+fn parse_block_params(source: &str, offset: usize) -> Result<Vec<String>, RubyAstError> {
+    let mut params = Vec::new();
+
+    for param in source.split(',').map(str::trim) {
+        if param.is_empty() {
+            continue;
+        }
+
+        if !is_block_param_name(param) {
+            return Err(RubyAstError::new(
+                format!("unsupported Ruby block parameter `{param}`"),
+                offset,
+            ));
+        }
+
+        params.push(param.to_string());
+    }
+
+    Ok(params)
+}
+
+fn is_block_param_name(value: &str) -> bool {
+    let mut chars = value.chars();
+    let Some(first) = chars.next() else {
+        return false;
+    };
+
+    (first == '_' || first.is_ascii_alphabetic())
+        && chars.all(|ch| ch == '_' || ch.is_ascii_alphanumeric())
+        && !is_keyword(value)
 }
 
 fn is_balanced_brace_block_suffix(suffix: &str) -> bool {
@@ -1023,6 +1069,10 @@ fn is_keyword(value: &str) -> bool {
             | "while"
             | "yield"
     )
+}
+
+fn is_literal_keyword(value: &str) -> bool {
+    matches!(value, "false" | "nil" | "true")
 }
 
 fn append_constant_path(expression: Expression, part: String) -> Expression {

@@ -78,6 +78,27 @@ pub(super) fn tokenize(source: &str) -> Result<Vec<Token>, RubyAstError> {
 
             if chars
                 .peek()
+                .is_some_and(|(_, next)| matches!(*next, '\'' | '"'))
+            {
+                let Some((quote_offset, quote)) = chars.next() else {
+                    unreachable!("quoted symbol delimiter was just checked");
+                };
+                let string = read_string(source, quote_offset, quote)?;
+                let end = quote_offset + string.len();
+                tokens.push(Token {
+                    kind: TokenKind::Symbol(format!(":{string}")),
+                    offset,
+                });
+
+                while chars.peek().is_some_and(|(index, _)| *index < end) {
+                    chars.next();
+                }
+
+                continue;
+            }
+
+            if chars
+                .peek()
                 .is_some_and(|(_, next)| is_identifier_start(*next))
             {
                 let (symbol, end) = read_symbol(source, offset + ch.len_utf8());
