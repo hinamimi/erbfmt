@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 
-use crate::ruby_ast::{Argument, Call, Expression, HashKey, HashPair, Program, parse};
+use crate::ruby_ast::{Argument, Call, Expression, HashKey, HashPair, Modifier, Program, parse};
 
 pub(super) fn fold_command_call(code: &str) -> Option<Vec<String>> {
     let code = code.trim();
@@ -15,6 +15,13 @@ pub(super) fn fold_command_call(code: &str) -> Option<Vec<String>> {
         Cow::Borrowed(code)
     };
     let code = code.as_ref();
+
+    let (code, modifier_suffix) = split_top_level_modifier_suffix(code)?;
+    if let Some(suffix) = modifier_suffix
+        && !modifier_suffix_condition_is_foldable(suffix)
+    {
+        return None;
+    }
 
     let program = parse(code).ok()?;
     let parsed_call = foldable_call(&program)?;
@@ -47,9 +54,11 @@ pub(super) fn fold_command_call(code: &str) -> Option<Vec<String>> {
     let mut lines = vec![format!("{callee}(")];
     lines.extend(argument_lines);
 
-    match block_suffix {
-        Some(suffix) => lines.push(format!(") {suffix}")),
-        None => lines.push(")".to_string()),
+    match (block_suffix, modifier_suffix) {
+        (Some(block), Some(modifier)) => lines.push(format!(") {block} {modifier}")),
+        (Some(block), None) => lines.push(format!(") {block}")),
+        (None, Some(modifier)) => lines.push(format!(") {modifier}")),
+        (None, None) => lines.push(")".to_string()),
     }
 
     Some(lines)
@@ -114,18 +123,31 @@ fn normalize_multiline_command_call_source(code: &str) -> Option<String> {
 }
 
 fn foldable_call(program: &Program) -> Option<&Call> {
-    if !program.is_format_candidate() {
+    if program.statements.len() != 1 {
         return None;
     }
 
-    let [Expression::Call(call)] = program.statements.as_slice() else {
-        return None;
+    let call = match &program.statements[0] {
+        Expression::Call(call) => call,
+        Expression::Modifier(modifier) => foldable_modifier_call(modifier)?,
+        _ => return None,
     };
 
     if call.arguments.iter().all(argument_is_foldable) {
         Some(call)
     } else {
         None
+    }
+}
+
+fn foldable_modifier_call(modifier: &Modifier) -> Option<&Call> {
+    if !expression_is_foldable(&modifier.condition) {
+        return None;
+    }
+
+    match modifier.expression.as_ref() {
+        Expression::Call(call) => Some(call),
+        _ => None,
     }
 }
 
@@ -283,7 +305,7 @@ fn compact_chained_method_segments(parts: Vec<&str>) -> Vec<String> {
 fn is_plain_method_segment(segment: &str) -> bool {
     segment
         .strip_prefix('.')
-        .is_some_and(|name| is_keyword_argument_name(name))
+        .is_some_and(is_keyword_argument_name)
 }
 
 fn method_segment_has_arguments(segment: &str) -> bool {
@@ -617,6 +639,58 @@ fn split_top_level_block_suffix(code: &str) -> Option<(&str, Option<&str>)> {
     state.is_balanced().then_some((code, None))
 }
 
+fn split_top_level_modifier_suffix(code: &str) -> Option<(&str, Option<&str>)> {
+    let mut state = RubyScanState::default();
+
+    for (index, ch) in code.char_indices() {
+        if state.is_top_level() && ch.is_whitespace() {
+            let trimmed = code[index..].trim_start();
+
+            if is_modifier_suffix(trimmed) {
+                return state
+                    .is_balanced()
+                    .then(|| (code[..index].trim_end(), Some(trimmed)));
+            }
+        }
+
+        if !state.consume(ch) {
+            return None;
+        }
+    }
+
+    state.is_balanced().then_some((code, None))
+}
+
+fn is_modifier_suffix(value: &str) -> bool {
+    modifier_suffix_condition(value).is_some()
+}
+
+fn modifier_suffix_condition(value: &str) -> Option<&str> {
+    ["if", "unless"].iter().find_map(|keyword| {
+        value
+            .strip_prefix(keyword)
+            .and_then(|condition| {
+                condition
+                    .chars()
+                    .next()
+                    .is_some_and(char::is_whitespace)
+                    .then_some(condition.trim())
+            })
+            .filter(|condition| !condition.is_empty())
+    })
+}
+
+fn modifier_suffix_condition_is_foldable(value: &str) -> bool {
+    let Some(condition) = modifier_suffix_condition(value) else {
+        return false;
+    };
+    let Ok(program) = parse(condition) else {
+        return false;
+    };
+
+    matches!(program.statements.as_slice(), [expression] if expression_is_foldable(expression))
+}
+
 fn is_single_balanced_brace_suffix(value: &str) -> bool {
     if !value.starts_with('{') || !value.ends_with('}') {
         return false;
@@ -824,6 +898,24 @@ mod tests {
                 "  model: user,".to_string(),
                 "  url: user_path(user)".to_string(),
                 ") do |form|".to_string(),
+            ])
+        );
+    }
+
+    #[test]
+    fn folds_command_call_with_modifier_suffix() {
+        assert_eq!(
+            fold_command_call(
+                r#"render partial: "shared/auth_widget", locals: { tracking_id: "ca_left_sidebar_home_page", source: "left_sidebar" } unless user_signed_in?"#
+            ),
+            Some(vec![
+                "render(".to_string(),
+                r#"  partial: "shared/auth_widget","#.to_string(),
+                "  locals: {".to_string(),
+                r#"    tracking_id: "ca_left_sidebar_home_page","#.to_string(),
+                r#"    source: "left_sidebar""#.to_string(),
+                "  }".to_string(),
+                ") unless user_signed_in?".to_string(),
             ])
         );
     }

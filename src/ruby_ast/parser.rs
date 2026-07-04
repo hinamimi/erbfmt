@@ -362,7 +362,7 @@ impl Parser {
             return Ok(Argument::Block(self.parse_modifier_expression()?));
         }
 
-        if let Some(name) = self.peek_identifier_before_colon() {
+        if let Some(name) = self.peek_label_before_colon() {
             self.advance();
             self.expect_punct(':')?;
             let value = self.parse_modifier_expression()?;
@@ -435,7 +435,7 @@ impl Parser {
             return Ok(HashPair::KeywordSplat(self.parse_modifier_expression()?));
         }
 
-        if let Some(label) = self.peek_identifier_before_colon() {
+        if let Some(label) = self.peek_label_before_colon() {
             self.advance();
             self.expect_punct(':')?;
             let value = self.parse_modifier_expression()?;
@@ -649,12 +649,13 @@ impl Parser {
         }
     }
 
-    fn peek_identifier_before_colon(&self) -> Option<String> {
+    fn peek_label_before_colon(&self) -> Option<String> {
         let current = self.tokens.get(self.position)?;
         let next = self.tokens.get(self.position + 1)?;
 
         match (&current.kind, &next.kind) {
             (TokenKind::Identifier(name), TokenKind::Punct(':')) => Some(name.clone()),
+            (TokenKind::String(name), TokenKind::Punct(':')) => Some(name.clone()),
             _ => None,
         }
     }

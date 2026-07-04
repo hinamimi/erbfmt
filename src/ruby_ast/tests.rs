@@ -97,6 +97,22 @@ fn parses_command_style_call_with_legacy_hash_pair_arguments() {
 }
 
 #[test]
+fn parses_command_style_call_with_quoted_label_keyword_argument() {
+    let program =
+        parse(r#"link_to "Previous", calendar_path, "aria-label": t(".previous")"#).unwrap();
+
+    let Expression::Call(call) = single_statement(&program) else {
+        panic!("expected call expression");
+    };
+
+    assert_eq!(call.callee, "link_to");
+    assert!(matches!(
+        &call.arguments[2],
+        Argument::Keyword { name, .. } if name == "\"aria-label\""
+    ));
+}
+
+#[test]
 fn parses_trailing_commas_in_helper_arguments_and_literals() {
     let program = parse(
         r#"render(partial: "profile", locals: { current_user: current_user, account: account, }, formats: [:html, :turbo_stream,],)"#,

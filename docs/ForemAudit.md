@@ -295,6 +295,46 @@ as part of the helper-call safety check. In the local Forem audit copy, this
 reduced the same long Rails-helper line filter from 111 to 107. Applying the
 formatter a second time to that copy produced no further diff.
 
+Two more Ruby wrapping gaps were then addressed:
+
+- helper calls with top-level `if` / `unless` modifier suffixes, such as
+  `render ... unless user_signed_in?`
+- quoted label keyword arguments, such as `"aria-label": ...` and
+  `"data-action": ...`
+
+Examples:
+
+```erb
+<%= render partial: "shared/auth_widget", locals: { tracking_id: "ca_left_sidebar_home_page", source: "left_sidebar" } unless user_signed_in? %>
+```
+
+```erb
+<%= render(
+  partial: "shared/auth_widget",
+  locals: {
+    tracking_id: "ca_left_sidebar_home_page",
+    source: "left_sidebar"
+  }
+) unless user_signed_in? %>
+```
+
+```erb
+<%= link_to "‹", calendar_path(month: prev_month.strftime("%Y-%m"), start: params[:start].presence, end: params[:end].presence, type_of: params[:type_of].presence), class: "calendar__nav-btn", "aria-label": t("views.calendar.nav.previous_month") %>
+```
+
+```erb
+<%= link_to(
+  "‹",
+  calendar_path(month: prev_month.strftime("%Y-%m"), start: params[:start].presence, end: params[:end].presence, type_of: params[:type_of].presence),
+  class: "calendar__nav-btn",
+  "aria-label": t("views.calendar.nav.previous_month")
+) %>
+```
+
+The modifier suffix support reduced the local Forem long Rails-helper filter
+from 107 to 105. Quoted label keyword support reduced it further from 105 to 96.
+Both passes were idempotent when the formatter was applied a second time.
+
 ## Next Candidates
 
 The remaining Forem failures are not all good formatter targets. The most useful

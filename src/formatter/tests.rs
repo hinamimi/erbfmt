@@ -1010,7 +1010,7 @@ fn preserves_long_erb_output_when_expression_is_not_safely_splittable() {
 }
 
 #[test]
-fn preserves_long_modifier_erb_output_without_multiline_delimiters() {
+fn wraps_long_modifier_erb_output_while_preserving_suffix() {
     let input =
         r#"<%= hidden_field_tag("referer", h(params[:referer])) unless params[:referer].nil? %>"#;
 
@@ -1022,12 +1022,12 @@ fn preserves_long_modifier_erb_output_without_multiline_delimiters() {
                 ..FormatOptions::default()
             }
         ),
-        "<%= hidden_field_tag(\"referer\", h(params[:referer])) unless params[:referer].nil? %>\n"
+        "<%= hidden_field_tag(\n  \"referer\",\n  h(params[:referer])\n) unless params[:referer].nil? %>\n"
     );
 }
 
 #[test]
-fn preserves_inline_modifier_erb_output_without_multiline_delimiters() {
+fn preserves_inline_modifier_erb_output_while_preserving_text_boundaries() {
     let input =
         r#"<p>Back to <%= link_to("previous page", back_path) unless back_path.nil? %></p>"#;
 
@@ -1308,6 +1308,28 @@ fn wraps_forem_select_helpers_with_receiver_block_arguments() {
     assert_eq!(
         format_source(input),
         "<%= f.select(\n  :type_of,\n  Survey.type_ofs.keys.map { |type| [type.titleize, type] },\n  {},\n  class: \"crayons-select__native\"\n) %>\n"
+    );
+}
+
+#[test]
+fn wraps_forem_render_helpers_with_modifier_suffixes() {
+    let input = r#"<%= render partial: "shared/auth_widget", locals: { tracking_id: "ca_left_sidebar_home_page", source: "left_sidebar" } unless user_signed_in? %>
+"#;
+
+    assert_eq!(
+        format_source(input),
+        "<%= render(\n  partial: \"shared/auth_widget\",\n  locals: {\n    tracking_id: \"ca_left_sidebar_home_page\",\n    source: \"left_sidebar\"\n  }\n) unless user_signed_in? %>\n"
+    );
+}
+
+#[test]
+fn wraps_forem_link_helpers_with_quoted_label_keyword_arguments() {
+    let input = r#"<%= link_to "‹", calendar_path(month: prev_month.strftime("%Y-%m"), start: params[:start].presence, end: params[:end].presence, type_of: params[:type_of].presence), class: "calendar__nav-btn", "aria-label": t("views.calendar.nav.previous_month") %>
+"#;
+
+    assert_eq!(
+        format_source(input),
+        "<%= link_to(\n  \"‹\",\n  calendar_path(month: prev_month.strftime(\"%Y-%m\"), start: params[:start].presence, end: params[:end].presence, type_of: params[:type_of].presence),\n  class: \"calendar__nav-btn\",\n  \"aria-label\": t(\"views.calendar.nav.previous_month\")\n) %>\n"
     );
 }
 
