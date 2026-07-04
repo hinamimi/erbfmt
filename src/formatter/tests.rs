@@ -1276,6 +1276,31 @@ fn wraps_forem_render_with_chained_collection_scope() {
 }
 
 #[test]
+fn normalizes_forem_multiline_command_helper_continuations() {
+    let input = r#"<%= link_to "Delete", admin_subforem_community_bot_scheduled_automation_path(@subforem, @bot, automation), 
+    method: :delete, 
+    data: { confirm: "Are you sure you want to delete this automation? This action cannot be undone." },
+    class: "crayons-btn crayons-btn--danger crayons-btn--s" %>
+"#;
+
+    assert_eq!(
+        format_source(input),
+        "<%= link_to(\n  \"Delete\",\n  admin_subforem_community_bot_scheduled_automation_path(@subforem, @bot, automation),\n  method: :delete,\n  data: { confirm: \"Are you sure you want to delete this automation? This action cannot be undone.\" },\n  class: \"crayons-btn crayons-btn--danger crayons-btn--s\"\n) %>\n"
+    );
+}
+
+#[test]
+fn wraps_forem_link_helpers_with_ternary_keyword_arguments() {
+    let input = r#"<li><%= link_to t("views.admin.users.tabs.overview"), admin_user_path(@user.id), class: "crayons-navigation__item #{'crayons-navigation__item crayons-navigation__item--current' if @current_tab == 'overview'}", aria: @current_tab == "overview" ? { current: "page" } : {} %></li>
+"#;
+
+    assert_eq!(
+        format_source(input),
+        "<li><%= link_to(\n  t(\"views.admin.users.tabs.overview\"),\n  admin_user_path(@user.id),\n  class: \"crayons-navigation__item #{'crayons-navigation__item crayons-navigation__item--current' if @current_tab == 'overview'}\",\n  aria: @current_tab == \"overview\" ? { current: \"page\" } : {}\n) %></li>\n"
+    );
+}
+
+#[test]
 fn normalizes_existing_multiline_parenthesized_erb_output_arguments() {
     assert_eq!(
         format(

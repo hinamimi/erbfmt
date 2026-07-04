@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use crate::ruby_ast::{Argument, Call, Expression, HashKey, HashPair, Program, parse};
 
 pub(super) fn fold_command_call(code: &str) -> Option<Vec<String>> {
@@ -6,6 +8,13 @@ pub(super) fn fold_command_call(code: &str) -> Option<Vec<String>> {
     if code.is_empty() || code.contains("<<") {
         return None;
     }
+
+    let code = if code.contains('\n') && contains_top_level_newline(code) {
+        Cow::Owned(normalize_multiline_command_call_source(code)?)
+    } else {
+        Cow::Borrowed(code)
+    };
+    let code = code.as_ref();
 
     let program = parse(code).ok()?;
     let parsed_call = foldable_call(&program)?;
@@ -44,6 +53,64 @@ pub(super) fn fold_command_call(code: &str) -> Option<Vec<String>> {
     }
 
     Some(lines)
+}
+
+fn normalize_multiline_command_call_source(code: &str) -> Option<String> {
+    if code.contains("=>") {
+        return None;
+    }
+
+    let lines = trim_blank_edges(code.lines().collect());
+    if lines.len() < 2 {
+        return None;
+    }
+
+    let trimmed_lines = lines
+        .iter()
+        .map(|line| line.trim())
+        .filter(|line| !line.is_empty())
+        .collect::<Vec<_>>();
+
+    if trimmed_lines.len() < 2
+        || trimmed_lines.iter().any(|line| line.starts_with('#'))
+        || !trimmed_lines[..trimmed_lines.len() - 1]
+            .iter()
+            .all(|line| line.ends_with(','))
+    {
+        return None;
+    }
+
+    let mut state = RubyScanState::default();
+    let mut normalized = String::new();
+    let mut last_was_space = false;
+    let mut saw_top_level_newline = false;
+
+    for ch in code.chars() {
+        if state.is_top_level() && matches!(ch, '\n' | '\r') {
+            saw_top_level_newline = true;
+            if !last_was_space {
+                normalized.push(' ');
+                last_was_space = true;
+            }
+            continue;
+        }
+
+        if !state.consume(ch) {
+            return None;
+        }
+
+        if ch.is_whitespace() {
+            if !last_was_space {
+                normalized.push(' ');
+                last_was_space = true;
+            }
+        } else {
+            normalized.push(ch);
+            last_was_space = false;
+        }
+    }
+
+    (saw_top_level_newline && state.is_balanced()).then(|| normalized.trim().to_string())
 }
 
 fn foldable_call(program: &Program) -> Option<&Call> {
@@ -87,7 +154,7 @@ fn argument_contains_foldable_keyword_hash(argument: &Argument) -> bool {
 
 fn expression_is_foldable(expression: &Expression) -> bool {
     match expression {
-        Expression::Assignment(_) | Expression::Modifier(_) | Expression::Ternary(_) => false,
+        Expression::Assignment(_) | Expression::Modifier(_) => false,
         Expression::Array(values) => values.iter().all(expression_is_foldable),
         Expression::Binary(binary) => {
             expression_is_foldable(&binary.left) && expression_is_foldable(&binary.right)
@@ -107,6 +174,11 @@ fn expression_is_foldable(expression: &Expression) -> bool {
         }
         Expression::Range(range) => {
             expression_is_foldable(&range.start) && expression_is_foldable(&range.end)
+        }
+        Expression::Ternary(ternary) => {
+            expression_is_foldable(&ternary.condition)
+                && expression_is_foldable(&ternary.truthy)
+                && expression_is_foldable(&ternary.falsy)
         }
         Expression::Identifier(_)
         | Expression::ConstantPath(_)
@@ -766,6 +838,49 @@ mod tests {
                 r#"  :class => "button""#.to_string(),
                 ")".to_string(),
             ])
+        );
+    }
+
+    #[test]
+    fn folds_existing_multiline_command_call_continuations() {
+        assert_eq!(
+            fold_command_call(
+                r#"link_to "Delete", admin_path(record),
+                  method: :delete,
+                  data: { confirm: "Are you sure?" },
+                  class: "button button--danger""#
+            ),
+            Some(vec![
+                "link_to(".to_string(),
+                r#"  "Delete","#.to_string(),
+                "  admin_path(record),".to_string(),
+                "  method: :delete,".to_string(),
+                r#"  data: { confirm: "Are you sure?" },"#.to_string(),
+                r#"  class: "button button--danger""#.to_string(),
+                ")".to_string(),
+            ])
+        );
+    }
+
+    #[test]
+    fn folds_ternary_expressions_inside_call_arguments() {
+        assert_eq!(
+            fold_command_call(
+                r#"link_to t("tabs.overview"), admin_user_path(user), class: "tab", aria: current_tab == "overview" ? { current: "page" } : {}"#
+            ),
+            Some(vec![
+                "link_to(".to_string(),
+                r#"  t("tabs.overview"),"#.to_string(),
+                "  admin_user_path(user),".to_string(),
+                r#"  class: "tab","#.to_string(),
+                r#"  aria: current_tab == "overview" ? { current: "page" } : {}"#.to_string(),
+                ")".to_string(),
+            ])
+        );
+
+        assert_eq!(
+            fold_command_call(r#"current_tab == "overview" ? "on" : "off""#),
+            None
         );
     }
 

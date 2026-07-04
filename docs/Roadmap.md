@@ -93,7 +93,7 @@ erbfmt は `*.html.erb` 向けの formatter / linter です。
 
 ## 現在の制約
 
-- Ruby AST は基盤実装を開始したが、formatter の出力変更にはまだ使っていない。
+- Ruby AST は helper call wrapping の安全判定に使い始めている。
 - Ruby expression の folding は、構文的に安全に分割できる範囲だけ扱う。
 - CSS の `display` や Rails helper の semantic analysis はしない。
 - crates.io、npm、Open VSX はまだ公開しない。
@@ -136,7 +136,8 @@ ERB tag 内 Ruby expression を安全に理解するための AST 基盤を育�
 - operator expression は AST 化し、method call wrapping の安全判定に使う。
 - multiple statements は AST 化するが、formatter 対象からは外す。
 - modifier `if` / `unless` は AST 化するが、formatter 対象からは外す。
-- ternary は AST 化するが、formatter 対象からは外す。
+- ternary は AST 化する。top-level ternary は formatter 対象から外すが、
+  helper call の引数として安全に保持できる場合は wrapping 対象にする。
 - parse できる / できない Ruby の fixture を追加する。
 - formatter 出力生成へ完全接続する前に、AST から wrapping plan を作る設計を決める。
 

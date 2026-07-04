@@ -229,6 +229,46 @@ safe and readable:
 In the local Forem audit copy, this reduced long Rails-helper lines from 133 to
 124 with the same filter used during the review.
 
+Two additional safe formatting gaps were then addressed:
+
+- existing multiline command-style helpers, when every continuation line is a
+  comma-separated argument and the expression does not use legacy hashrocket
+  options
+- ternary expressions inside helper arguments, while keeping top-level ternary
+  expressions out of formatter rewriting
+
+Examples:
+
+```erb
+<%= link_to "Delete", admin_badge_badge_automation_path(@badge, automation), 
+    method: :delete, 
+    data: { confirm: "Are you sure?" },
+    class: "crayons-btn crayons-btn--danger crayons-btn--s" %>
+```
+
+```erb
+<%= link_to(
+  "Delete",
+  admin_badge_badge_automation_path(@badge, automation),
+  method: :delete,
+  data: { confirm: "Are you sure?" },
+  class: "crayons-btn crayons-btn--danger crayons-btn--s"
+) %>
+```
+
+```erb
+<li><%= link_to(
+  t("views.admin.users.tabs.overview"),
+  admin_user_path(@user.id),
+  class: "crayons-navigation__item #{'crayons-navigation__item crayons-navigation__item--current' if @current_tab == 'overview'}",
+  aria: @current_tab == "overview" ? { current: "page" } : {}
+) %></li>
+```
+
+After these changes, the same local Forem review filter reduced long
+Rails-helper lines from 119 to 111. Applying the formatter a second time to that
+copy produced no further diff.
+
 ## Next Candidates
 
 The remaining Forem failures are not all good formatter targets. The most useful
