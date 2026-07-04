@@ -171,6 +171,10 @@ fn expression_is_foldable(expression: &Expression) -> bool {
         Expression::MethodCall(call) => {
             expression_is_foldable(&call.receiver)
                 && call.arguments.iter().all(argument_is_foldable)
+                && call
+                    .block
+                    .as_ref()
+                    .is_none_or(|block| block.params.iter().all(|param| !param.is_empty()))
         }
         Expression::Range(range) => {
             expression_is_foldable(&range.start) && expression_is_foldable(&range.end)

@@ -41,6 +41,7 @@ erbfmt は `*.html.erb` 向けの formatter / linter です。
 - parenthesized Ruby helper call wrapping
 - 安全に扱える command-style Ruby helper call wrapping
 - Ruby AST-assisted method call wrapping
+- Ruby receiver method call with brace block suffix parsing for helper wrapping
 - Ruby assignment / operator expression AST
 - Ruby modifier / safe navigation / index access AST
 - Ruby ternary / range AST
@@ -165,6 +166,8 @@ Ruby AST を使って、既存の heuristic wrapping を段階的に置き換え
 
 - `render(...)`, `form_with(...)`, `link_to(...)`, `image_tag(...)`,
   `video_tag(...)`, `react_component(...)` の AST-based wrapping を設計する。
+- `f.select ... Foo.keys.map { |value| ... }` のような receiver block 付き
+  helper argument を安全判定に使う。
 - command-style call wrapping が semantic を変えそうな場合は wrapping しない。
 - hash / array / keyword arguments の indentation を AST から生成する。
 - 既存 `ruby_wrap.rs` の fixture を AST-based formatter plan へ移す。

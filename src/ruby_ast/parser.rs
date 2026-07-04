@@ -184,12 +184,24 @@ impl Parser {
                 expression = if self.consume_punct('(') {
                     let arguments = self.parse_argument_list_until(')')?;
                     self.expect_punct(')')?;
+                    let block = self.parse_optional_brace_block()?;
 
                     Expression::MethodCall(MethodCall {
                         receiver: Box::new(expression),
                         operator,
                         method: member,
                         arguments,
+                        block,
+                    })
+                } else if self.check_punct('{') {
+                    let block = self.parse_optional_brace_block()?;
+
+                    Expression::MethodCall(MethodCall {
+                        receiver: Box::new(expression),
+                        operator,
+                        method: member,
+                        arguments: Vec::new(),
+                        block,
                     })
                 } else {
                     Expression::MemberAccess(MemberAccess {
@@ -465,7 +477,6 @@ impl Parser {
                 | Some(TokenKind::PercentLiteral(_))
                 | Some(TokenKind::String(_))
                 | Some(TokenKind::Symbol(_))
-                | Some(TokenKind::Punct('{'))
         )
     }
 
@@ -539,6 +550,48 @@ impl Parser {
         }
 
         Ok(arguments)
+    }
+
+    fn parse_optional_brace_block(&mut self) -> Result<Option<Block>, RubyAstError> {
+        if !self.check_punct('{') {
+            return Ok(None);
+        }
+
+        self.expect_punct('{')?;
+        let mut params = Vec::new();
+
+        if self.consume_operator("|") {
+            while !self.consume_operator("|") {
+                params.push(self.expect_identifier()?);
+
+                if self.consume_operator("|") {
+                    break;
+                }
+
+                self.expect_punct(',')?;
+            }
+        }
+
+        let mut depth = 1;
+        while depth > 0 {
+            if self.consume_punct('{') {
+                depth += 1;
+                continue;
+            }
+
+            if self.consume_punct('}') {
+                depth -= 1;
+                continue;
+            }
+
+            if self.is_at_end() {
+                return Err(self.error("unterminated `{}` block"));
+            }
+
+            self.advance();
+        }
+
+        Ok(Some(Block { params }))
     }
 
     fn peek_binary_operator(&self) -> Option<(BinaryOperator, u8)> {

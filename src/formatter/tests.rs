@@ -1301,6 +1301,17 @@ fn wraps_forem_link_helpers_with_ternary_keyword_arguments() {
 }
 
 #[test]
+fn wraps_forem_select_helpers_with_receiver_block_arguments() {
+    let input = r#"<%= f.select :type_of, Survey.type_ofs.keys.map { |type| [type.titleize, type] }, {}, class: "crayons-select__native" %>
+"#;
+
+    assert_eq!(
+        format_source(input),
+        "<%= f.select(\n  :type_of,\n  Survey.type_ofs.keys.map { |type| [type.titleize, type] },\n  {},\n  class: \"crayons-select__native\"\n) %>\n"
+    );
+}
+
+#[test]
 fn normalizes_existing_multiline_parenthesized_erb_output_arguments() {
     assert_eq!(
         format(

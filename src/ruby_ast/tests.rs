@@ -407,6 +407,19 @@ fn parses_chained_method_calls_on_receivers() {
 }
 
 #[test]
+fn parses_receiver_method_call_with_brace_block() {
+    let program = parse(r#"Survey.type_ofs.keys.map { |type| [type.titleize, type] }"#).unwrap();
+
+    let Expression::MethodCall(map_call) = single_statement(&program) else {
+        panic!("expected method call");
+    };
+
+    assert_eq!(map_call.method, "map");
+    assert_eq!(map_call.block.unwrap().params, vec!["type"]);
+    assert!(matches!(*map_call.receiver, Expression::MemberAccess(_)));
+}
+
+#[test]
 fn parses_ternary_expression_without_formatting_it() {
     let program = parse(r#"user.admin? ? "admin" : "user""#).unwrap();
 

@@ -112,6 +112,7 @@ pub struct MethodCall {
     pub operator: MemberOperator,
     pub method: String,
     pub arguments: Vec<Argument>,
+    pub block: Option<Block>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

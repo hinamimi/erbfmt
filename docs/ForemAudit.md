@@ -269,6 +269,32 @@ After these changes, the same local Forem review filter reduced long
 Rails-helper lines from 119 to 111. Applying the formatter a second time to that
 copy produced no further diff.
 
+Another Milestone C gap was receiver method calls with brace blocks inside
+helper arguments. Forem has several select helpers whose option collections are
+built with `keys.map { |value| ... }`. These are safe to keep as a single Ruby
+argument while still wrapping the surrounding helper call.
+
+Example:
+
+```erb
+<%= f.select :type_of, Survey.type_ofs.keys.map { |type| [type.titleize, type] }, {}, class: "crayons-select__native" %>
+```
+
+```erb
+<%= f.select(
+  :type_of,
+  Survey.type_ofs.keys.map { |type| [type.titleize, type] },
+  {},
+  class: "crayons-select__native"
+) %>
+```
+
+The Ruby AST now parses receiver method calls with brace block suffixes, such as
+`Survey.type_ofs.keys.map { |type| ... }`, and the formatter can use that parse
+as part of the helper-call safety check. In the local Forem audit copy, this
+reduced the same long Rails-helper line filter from 111 to 107. Applying the
+formatter a second time to that copy produced no further diff.
+
 ## Next Candidates
 
 The remaining Forem failures are not all good formatter targets. The most useful
