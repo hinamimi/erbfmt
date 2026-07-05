@@ -108,6 +108,7 @@ HTML / ERB の lint を、実用上の発見力と誤検知の少なさの両方
 
 やること:
 
+- style / normalization 系の rule は、可能なら assist action として提供する。
 - HTML content model rule の range と message を改善する。
 - unquoted attribute、duplicate attribute、invalid nesting の例を増やす。
 - ignore directive と lint rule の相互作用を整理する。
@@ -138,7 +139,38 @@ Codex / Claude Code などの agent が、Rails view を安全に編集しやす
 - AI 向け docs を読めば、Rails view 編集後に実行すべき command が分かる。
 - 人間向け CLI 出力と agent 向け JSON 出力が役割分担できている。
 
-## Milestone F: editor / distribution UX
+## Milestone F: assist actions
+
+lint の一部を、安全な編集候補として提供します。
+
+方針:
+
+- linter は問題を知らせる。
+- assist は安全に適用できる `TextEdit` を返す。
+- correctness 系の rule は linter に残す。
+- style / normalization 系は assist に寄せる。
+- correctness かつ機械的に直せるものは、linter と assist の両方で扱う。
+
+現在の action:
+
+- `html.useDoubleQuotedAttributes`
+- `html.fixSelfClosingTags`
+- `html.simplifyBooleanAttributes`
+- `erb.removeEmptyTags`
+
+やること:
+
+- VS Code code action から assist を呼べるようにする。
+- `--assist-format json` の schema を AI / editor 向けに安定させる。
+- linter diagnostic と assist action の対応関係を docs にまとめる。
+
+完了条件:
+
+- `erbfmt --assist` で候補を確認できる。
+- `erbfmt --assist --write` で safe action を適用できる。
+- linter から移すべき rule と残すべき rule の境界が説明できる。
+
+## Milestone G: editor / distribution UX
 
 VS Code extension と配布経路を、普段使いしやすい状態に近づけます。
 

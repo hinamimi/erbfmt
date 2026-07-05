@@ -35,6 +35,8 @@ fn help_describes_core_modes() {
     assert!(stdout.contains("--check"), "{stdout}");
     assert!(stdout.contains("--lint"), "{stdout}");
     assert!(stdout.contains("--lint-format"), "{stdout}");
+    assert!(stdout.contains("--assist"), "{stdout}");
+    assert!(stdout.contains("--assist-format"), "{stdout}");
     assert!(stdout.contains("--config"), "{stdout}");
     assert!(stdout.contains("init"), "{stdout}");
     assert_eq!(stderr(&output), "");
@@ -63,7 +65,16 @@ fn init_creates_default_config() {
     assert_eq!(value["parser"]["allowUnbalancedHtmlFragments"], false);
     assert_eq!(value["assist"]["enabled"], false);
     assert_eq!(value["assist"]["includes"][0], "**/*.html.erb");
-    assert_eq!(value["assist"]["actions"].as_object().unwrap().len(), 0);
+    assert_eq!(
+        value["assist"]["actions"]["html.useDoubleQuotedAttributes"],
+        true
+    );
+    assert_eq!(value["assist"]["actions"]["html.fixSelfClosingTags"], true);
+    assert_eq!(
+        value["assist"]["actions"]["html.simplifyBooleanAttributes"],
+        true
+    );
+    assert_eq!(value["assist"]["actions"]["erb.removeEmptyTags"], true);
     assert_eq!(value["files"]["includes"][0], "**/*.html.erb");
     assert_eq!(
         value["linter"]["rules"]["noInvalidHtmlBooleanAttribute"],
@@ -226,7 +237,7 @@ fn directory_inputs_require_mode() {
     assert_failure(&output);
     assert_eq!(stdout(&output), "");
     assert!(
-        stderr(&output).contains("directory inputs require --write, --check, or --lint"),
+        stderr(&output).contains("directory inputs require --write, --check, --lint, or --assist"),
         "{}",
         stderr(&output)
     );
@@ -306,6 +317,106 @@ fn lint_passes_for_valid_file() {
     assert_eq!(
         stdout(&output),
         format!("{}: no lint issues found.\n", file.display())
+    );
+    assert_eq!(stderr(&output), "");
+}
+
+#[test]
+fn assist_reports_plain_actions() {
+    let dir = TestDir::new("assist_plain");
+    let file = dir.write(
+        "input.html.erb",
+        "<button class='primary' checked=\"checked\"><br /><% %></button>\n",
+    );
+
+    let output = run(["--assist".as_ref(), file.as_path()]);
+
+    assert_success(&output);
+    let stdout = stdout(&output);
+    assert!(
+        stdout.contains("html.useDoubleQuotedAttributes: Use double quotes"),
+        "{stdout}"
+    );
+    assert!(
+        stdout.contains("html.simplifyBooleanAttributes: Simplify redundant"),
+        "{stdout}"
+    );
+    assert!(
+        stdout.contains("html.fixSelfClosingTags: Fix self-closing HTML tag"),
+        "{stdout}"
+    );
+    assert!(
+        stdout.contains("erb.removeEmptyTags: Remove empty ERB tag"),
+        "{stdout}"
+    );
+    assert_eq!(stderr(&output), "");
+}
+
+#[test]
+fn assist_json_reports_actions_with_edits() {
+    let dir = TestDir::new("assist_json");
+    let file = dir.write("input.html.erb", "<div class=<%= foo %>></div>\n");
+
+    let output = run([
+        "--assist".as_ref(),
+        "--assist-format".as_ref(),
+        "json".as_ref(),
+        file.as_path(),
+    ]);
+
+    assert_success(&output);
+    assert_eq!(stderr(&output), "");
+
+    let value: serde_json::Value = serde_json::from_str(stdout(&output).trim()).unwrap();
+    assert_eq!(value["file"], file.display().to_string());
+    assert_eq!(value["summary"]["actions"], 1);
+    assert_eq!(value["actions"][0]["id"], "html.useDoubleQuotedAttributes");
+    assert_eq!(value["actions"][0]["location"]["line"], 1);
+    assert_eq!(value["actions"][0]["edit"]["replacement"], "\"<%= foo %>\"");
+}
+
+#[test]
+fn assist_write_applies_safe_actions() {
+    let dir = TestDir::new("assist_write");
+    let file = dir.write(
+        "input.html.erb",
+        "<button class='primary' checked=\"checked\"><br /><div /><% %></button>\n",
+    );
+
+    let output = run(["--assist".as_ref(), "--write".as_ref(), file.as_path()]);
+
+    assert_success(&output);
+    assert_eq!(
+        fs::read_to_string(&file).unwrap(),
+        "<button class=\"primary\" checked><br><div></div></button>\n"
+    );
+    assert_eq!(
+        stdout(&output),
+        format!("{}: applied 5 assist actions.\n", file.display())
+    );
+    assert_eq!(stderr(&output), "");
+}
+
+#[test]
+fn assist_actions_can_be_disabled_by_config() {
+    let dir = TestDir::new("assist_config_actions");
+    let config = dir.write(
+        "erbfmt.json",
+        r#"{"assist":{"actions":{"html.useDoubleQuotedAttributes":false}}}"#,
+    );
+    let file = dir.write("input.html.erb", "<div class='card'></div>\n");
+
+    let output = run([
+        "--assist".as_ref(),
+        "--config".as_ref(),
+        config.as_path(),
+        file.as_path(),
+    ]);
+
+    assert_success(&output);
+    assert_eq!(
+        stdout(&output),
+        format!("{}: no assist actions found.\n", file.display())
     );
     assert_eq!(stderr(&output), "");
 }
@@ -1316,7 +1427,9 @@ fn multiple_files_without_mode_fails() {
 
     assert_failure(&output);
     assert_eq!(stdout(&output), "");
-    assert!(stderr(&output).contains("multiple files require --write, --check, or --lint"));
+    assert!(
+        stderr(&output).contains("multiple files require --write, --check, --lint, or --assist")
+    );
 }
 
 #[test]

@@ -35,6 +35,11 @@
   "assist": {
     "enabled": false,
     "includes": ["**/*.html.erb"],
-    "actions": {}
+    "actions": {
+      "html.useDoubleQuotedAttributes": true,
+      "html.fixSelfClosingTags": true,
+      "html.simplifyBooleanAttributes": true,
+      "erb.removeEmptyTags": true
+    }
   }
 }

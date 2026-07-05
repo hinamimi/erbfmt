@@ -106,6 +106,21 @@ fn reports_self_closing_html_tags() {
 }
 
 #[test]
+fn allows_self_closing_tags_in_foreign_content() {
+    let diagnostics = lint(
+        "<svg><path d=\"M0 0\" /><g><use href=\"#icon\" /></g></svg>\n<math><mi /></math>\n<div />\n",
+    );
+
+    assert_eq!(
+        diagnostics,
+        vec![Diagnostic::located(
+            "self-closing HTML tag `<div />` is not valid HTML5",
+            SourceLocation { line: 3, column: 1 }
+        )]
+    );
+}
+
+#[test]
 fn reports_deprecated_html_tags() {
     let diagnostics =
         lint("<main>\n  <center>Legacy</center>\n  <font color=\"red\">Alert</font>\n</main>\n");

@@ -57,6 +57,18 @@ Use check mode to detect formatting changes without modifying files:
 bundle exec erbfmt --check app/views
 ```
 
+## Inspect safe assist actions
+
+Use assist mode to inspect safe mechanical edits:
+
+```bash
+bundle exec erbfmt --assist --assist-format json app/views
+```
+
+Assist actions include double-quoting safe HTML attribute values, fixing HTML
+self-closing tags, simplifying redundant boolean attributes, and removing empty
+ERB tags.
+
 ## Format when requested
 
 Only write formatting changes when the user asks for formatting or accepts a
@@ -70,6 +82,14 @@ For a single file:
 
 ```bash
 bundle exec erbfmt --write app/views/users/show.html.erb
+```
+
+## Apply assist actions when requested
+
+Only apply assist actions when the user asks for these safe mechanical edits:
+
+```bash
+bundle exec erbfmt --assist --write app/views
 ```
 
 ## JSON lint schema
@@ -99,6 +119,40 @@ bundle exec erbfmt --write app/views/users/show.html.erb
 
 `location` may be `null` for file-level diagnostics.
 
+## JSON assist schema
+
+`--assist-format json` emits one object per file:
+
+```json
+{
+  "file": "app/views/users/show.html.erb",
+  "summary": {
+    "actions": 1
+  },
+  "actions": [
+    {
+      "id": "html.useDoubleQuotedAttributes",
+      "title": "Use double quotes for HTML attribute value",
+      "location": {
+        "line": 1,
+        "column": 12
+      },
+      "range": {
+        "start": 11,
+        "end": 17
+      },
+      "edit": {
+        "range": {
+          "start": 11,
+          "end": 17
+        },
+        "replacement": "\"card\""
+      }
+    }
+  ]
+}
+```
+
 ## Exit status
 
 - `0`: formatting/check/lint succeeded, or lint found warnings only.
@@ -110,6 +164,8 @@ bundle exec erbfmt --write app/views/users/show.html.erb
 
 - Do not parse `pretty` output when `--lint-format json` is available.
 - Do not run `--write` unless formatting changes are requested or approved.
+- Do not run `--assist --write` unless safe assist edits are requested or
+  approved.
 - Preserve complex Ruby expressions when the safe edit is unclear.
 - Prefer fixing the source over adding ignore directives.
 - Use `erbfmt-ignore` only for intentionally unmanaged or generated markup.

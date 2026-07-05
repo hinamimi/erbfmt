@@ -1,3 +1,4 @@
+mod assist;
 mod config;
 mod formatter;
 mod ignore;
@@ -50,7 +51,12 @@ const DEFAULT_CONFIG: &str = r#"{
   "assist": {
     "enabled": false,
     "includes": ["**/*.html.erb"],
-    "actions": {}
+    "actions": {
+      "html.useDoubleQuotedAttributes": true,
+      "html.fixSelfClosingTags": true,
+      "html.simplifyBooleanAttributes": true,
+      "erb.removeEmptyTags": true
+    }
   }
 }
 "#;
@@ -63,7 +69,7 @@ const DEFAULT_CONFIG: &str = r#"{
     after_help = "Commands:\n  init  Create an erbfmt.json config file\n",
     group(
     ArgGroup::new("mode")
-        .args(["write", "check", "lint"])
+        .args(["check", "lint", "assist"])
         .multiple(false)
     )
 )]
@@ -80,6 +86,9 @@ struct Args {
     #[arg(long, help = "Run lint diagnostics instead of formatting")]
     lint: bool,
 
+    #[arg(long, help = "Run assist actions instead of formatting")]
+    assist: bool,
+
     #[arg(
         long,
         value_enum,
@@ -88,6 +97,14 @@ struct Args {
     )]
     lint_format: LintFormat,
 
+    #[arg(
+        long,
+        value_enum,
+        default_value = "plain",
+        help = "Set assist output format"
+    )]
+    assist_format: AssistFormat,
+
     #[arg(long, value_name = "PATH", help = "Path to erbfmt.json")]
     config: Option<PathBuf>,
 }
@@ -95,6 +112,12 @@ struct Args {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
 enum LintFormat {
     Pretty,
+    Plain,
+    Json,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+enum AssistFormat {
     Plain,
     Json,
 }
@@ -117,12 +140,25 @@ fn main() -> Result<ExitCode> {
         bail!("at least one file is required unless a subcommand is used");
     }
 
-    if args.files.len() > 1 && !args.write && !args.check && !args.lint {
-        bail!("multiple files require --write, --check, or --lint");
+    if args.write && args.check {
+        bail!("--write cannot be combined with --check");
     }
 
-    if args.files.iter().any(|file| file.is_dir()) && !args.write && !args.check && !args.lint {
-        bail!("directory inputs require --write, --check, or --lint");
+    if args.write && args.lint {
+        bail!("--write cannot be combined with --lint");
+    }
+
+    if args.files.len() > 1 && !args.write && !args.check && !args.lint && !args.assist {
+        bail!("multiple files require --write, --check, --lint, or --assist");
+    }
+
+    if args.files.iter().any(|file| file.is_dir())
+        && !args.write
+        && !args.check
+        && !args.lint
+        && !args.assist
+    {
+        bail!("directory inputs require --write, --check, --lint, or --assist");
     }
 
     let config = config::Config::load(args.config.as_deref())?;
@@ -248,6 +284,10 @@ fn run_file(args: &Args, config: &config::Config, file: &Path) -> Result<FileSta
         return run_lint(file, &content, config, args.lint_format);
     }
 
+    if args.assist {
+        return run_assist(file, &content, config, args);
+    }
+
     let formatted = format_content(file, &content, config)?;
 
     if args.write {
@@ -273,6 +313,108 @@ fn run_file(args: &Args, config: &config::Config, file: &Path) -> Result<FileSta
     }
 
     unreachable!("multiple files without a mode are rejected before processing")
+}
+
+fn run_assist(
+    file: &Path,
+    content: &str,
+    config: &config::Config,
+    args: &Args,
+) -> Result<FileStatus> {
+    if !config.includes_assist_file(file) {
+        return Ok(FileStatus::Passed);
+    }
+
+    let mut options = config.assist_options();
+    options.enabled = true;
+    let actions = assist::assist(content, &options);
+
+    if args.write {
+        if actions.is_empty() {
+            println!("{}: no assist actions found.", file.display());
+            return Ok(FileStatus::Passed);
+        }
+
+        let applied = assist::apply_actions(content, &actions);
+        fs::write(file, applied)
+            .with_context(|| format!("failed to write `{}`", file.display()))?;
+        println!(
+            "{}: applied {} assist {}.",
+            file.display(),
+            actions.len(),
+            plural(actions.len(), "action", "actions")
+        );
+        return Ok(FileStatus::Passed);
+    }
+
+    match args.assist_format {
+        AssistFormat::Plain => print_plain_assist_actions(file, content, &actions),
+        AssistFormat::Json => print_json_assist_actions(file, content, &actions)?,
+    }
+
+    Ok(FileStatus::Passed)
+}
+
+fn print_plain_assist_actions(file: &Path, content: &str, actions: &[assist::AssistAction]) {
+    if actions.is_empty() {
+        println!("{}: no assist actions found.", file.display());
+        return;
+    }
+
+    for action in actions {
+        let location = lexer::source_location(content, action.range.start);
+        println!(
+            "{}: {}: {} at {}",
+            file.display(),
+            action.id,
+            action.title,
+            location
+        );
+    }
+}
+
+fn print_json_assist_actions(
+    file: &Path,
+    content: &str,
+    actions: &[assist::AssistAction],
+) -> Result<()> {
+    let actions = actions
+        .iter()
+        .map(|action| {
+            let location = lexer::source_location(content, action.range.start);
+
+            serde_json::json!({
+                "id": action.id,
+                "title": action.title,
+                "location": {
+                    "line": location.line,
+                    "column": location.column,
+                },
+                "range": {
+                    "start": action.range.start,
+                    "end": action.range.end,
+                },
+                "edit": {
+                    "range": {
+                        "start": action.edit.range.start,
+                        "end": action.edit.range.end,
+                    },
+                    "replacement": action.edit.replacement,
+                }
+            })
+        })
+        .collect::<Vec<_>>();
+
+    let payload = serde_json::json!({
+        "file": file.display().to_string(),
+        "summary": {
+            "actions": actions.len(),
+        },
+        "actions": actions,
+    });
+
+    println!("{}", serde_json::to_string(&payload)?);
+    Ok(())
 }
 
 fn run_lint(

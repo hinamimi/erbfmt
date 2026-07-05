@@ -59,7 +59,12 @@ and `formatter.indentHtml` option for ERB and HTML-specific behavior.
   "assist": {
     "enabled": false,
     "includes": ["**/*.html.erb"],
-    "actions": {}
+    "actions": {
+      "html.useDoubleQuotedAttributes": true,
+      "html.fixSelfClosingTags": true,
+      "html.simplifyBooleanAttributes": true,
+      "erb.removeEmptyTags": true
+    }
   }
 }
 ```
@@ -143,15 +148,37 @@ planned rules.
 
 ## Assist
 
-The `assist` section reserves configuration for future code actions and
-AI/editor-friendly transformations. It is parsed today, but erbfmt does not run
-assist actions from the CLI yet.
+The `assist` section configures safe code actions. Assist is separate from
+formatting and linting: linter rules report problems, while assist actions
+offer edits that erbfmt can apply without needing Ruby or Rails semantic
+analysis.
 
 - `assist.enabled`: enable or disable assist actions. The default is `false`.
-  `assist.enable` is also accepted as an alias.
+  `assist.enable` is also accepted as an alias. The CLI `--assist` mode runs
+  assist explicitly even when the default config keeps this value `false`.
 - `assist.includes`: file include and exclude patterns used by assist actions.
   The pattern syntax matches `files.includes`.
-- `assist.actions`: action-name to boolean map for future assist actions. No
-  actions are executed by erbfmt yet.
+- `assist.actions`: action-name to boolean map. Known actions default to enabled
+  when assist runs, unless explicitly set to `false`.
+
+Current actions:
+
+- `html.useDoubleQuotedAttributes`: replace single-quoted or unquoted HTML
+  attribute values with double-quoted values when the value itself does not
+  contain a double quote.
+- `html.fixSelfClosingTags`: replace `<br />` with `<br>` and `<div />` with
+  `<div></div>`.
+- `html.simplifyBooleanAttributes`: replace redundant boolean attributes such
+  as `checked="checked"` with `checked`. Values such as `disabled="false"` are
+  not changed because they may indicate a semantic bug.
+- `erb.removeEmptyTags`: remove empty `<% %>` and `<%= %>` tags.
+
+CLI examples:
+
+```bash
+erbfmt --assist app/views
+erbfmt --assist --assist-format json app/views
+erbfmt --assist --write app/views
+```
 
 See [Ignore.md](Ignore.md) for `erbfmt-ignore` lint and formatter directives.

@@ -98,7 +98,12 @@ erbfmt init --force</code></pre>
   "assist": {
     "enabled": false,
     "includes": ["**/*.html.erb"],
-    "actions": {}
+    "actions": {
+      "html.useDoubleQuotedAttributes": true,
+      "html.fixSelfClosingTags": true,
+      "html.simplifyBooleanAttributes": true,
+      "erb.removeEmptyTags": true
+    }
   }
 }</code></pre>
 
@@ -147,12 +152,12 @@ erbfmt init --force</code></pre>
 
         <h2 id="assist">Assist</h2>
         <dl class="option-list">
-          <div class="option"><dt><code>assist.enabled</code><span class="meta">boolean · default: false</span></dt><dd><p>assist action全体を有効または無効にします。<code>assist.enable</code> もaliasとして受け付けます。この設定は現時点で読み込まれますが、erbfmt CLIからassist actionはまだ実行されません。</p></dd></div>
-          <div class="option"><dt><code>assist.includes</code><span class="meta">glob patternのarray</span></dt><dd><p>将来のassist action対象fileを絞り込みます。pattern構文は <code>files.includes</code> と同じで、<code>!</code> による除外も使えます。</p></dd></div>
-          <div class="option"><dt><code>assist.actions</code><span class="meta">action booleanのobject</span></dt><dd><p>将来のassist action名とbooleanを対応させるmapです。現時点でerbfmtはassist actionを実行しません。</p></dd></div>
+          <div class="option"><dt><code>assist.enabled</code><span class="meta">boolean · default: false</span></dt><dd><p>assist action全体を有効または無効にします。<code>assist.enable</code> もaliasとして受け付けます。CLIの <code>--assist</code> modeは、この値がdefaultの <code>false</code> のままでも明示的にassistを実行します。</p></dd></div>
+          <div class="option"><dt><code>assist.includes</code><span class="meta">glob patternのarray</span></dt><dd><p>assist action対象fileを絞り込みます。pattern構文は <code>files.includes</code> と同じで、<code>!</code> による除外も使えます。</p></dd></div>
+          <div class="option"><dt><code>assist.actions</code><span class="meta">action booleanのobject</span></dt><dd><p>assist action名とbooleanを対応させるmapです。現在のactionは <code>html.useDoubleQuotedAttributes</code>、<code>html.fixSelfClosingTags</code>、<code>html.simplifyBooleanAttributes</code>、<code>erb.removeEmptyTags</code> です。</p></dd></div>
         </dl>
 
-        <footer class="footer">erbfmt 0.2.1 configuration · <a href="https://github.com/hinamimi/erbfmt/blob/main/docs/schema/erbfmt.schema.json">schema sourceを見る</a></footer>
+        <footer class="footer">erbfmt 0.3.0-dev configuration · <a href="https://github.com/hinamimi/erbfmt/blob/main/docs/schema/erbfmt.schema.json">schema sourceを見る</a></footer>
       </main>
     </div>
   </body>

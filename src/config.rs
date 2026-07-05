@@ -8,6 +8,7 @@ use anyhow::{Context, Result, bail};
 use serde::Deserialize;
 
 use crate::{
+    assist::AssistOptions,
     formatter::{FormatOptions, IndentStyle, LineEnding},
     linter::{DiagnosticSeverity, LintOptions, LintRuleSeverities, LintRules},
     syntax::template::ParserOptions,
@@ -57,8 +58,23 @@ impl Config {
         self.linter.options
     }
 
+    pub fn assist_options(&self) -> AssistOptions {
+        AssistOptions {
+            enabled: self.assist.enabled,
+            actions: self.assist.actions.clone(),
+        }
+    }
+
     pub fn includes_file(&self, path: &Path) -> bool {
         self.files.includes(path)
+    }
+
+    pub fn includes_assist_file(&self, path: &Path) -> bool {
+        if self.assist.includes.is_empty() {
+            return true;
+        }
+
+        path_includes(path, self.assist.base_dir.as_deref(), &self.assist.includes)
     }
 
     pub fn includes_discovered_file(&self, path: &Path) -> bool {

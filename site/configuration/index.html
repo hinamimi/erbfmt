@@ -98,7 +98,12 @@ erbfmt init --force</code></pre>
   "assist": {
     "enabled": false,
     "includes": ["**/*.html.erb"],
-    "actions": {}
+    "actions": {
+      "html.useDoubleQuotedAttributes": true,
+      "html.fixSelfClosingTags": true,
+      "html.simplifyBooleanAttributes": true,
+      "erb.removeEmptyTags": true
+    }
   }
 }</code></pre>
 
@@ -147,12 +152,12 @@ erbfmt init --force</code></pre>
 
         <h2 id="assist">Assist</h2>
         <dl class="option-list">
-          <div class="option"><dt><code>assist.enabled</code><span class="meta">boolean · default: false</span></dt><dd><p>Enables or disables assist actions. <code>assist.enable</code> is also accepted as an alias. The configuration is parsed today, but erbfmt does not run assist actions from the CLI yet.</p></dd></div>
-          <div class="option"><dt><code>assist.includes</code><span class="meta">array of glob patterns</span></dt><dd><p>Filters files for future assist actions. Pattern syntax matches <code>files.includes</code>, including <code>!</code> exclusions.</p></dd></div>
-          <div class="option"><dt><code>assist.actions</code><span class="meta">object of action booleans</span></dt><dd><p>Maps future assist action names to booleans. No assist actions are executed by erbfmt yet.</p></dd></div>
+          <div class="option"><dt><code>assist.enabled</code><span class="meta">boolean · default: false</span></dt><dd><p>Enables or disables assist actions. <code>assist.enable</code> is also accepted as an alias. The CLI <code>--assist</code> mode runs assist explicitly even when the default config keeps this value <code>false</code>.</p></dd></div>
+          <div class="option"><dt><code>assist.includes</code><span class="meta">array of glob patterns</span></dt><dd><p>Filters files for assist actions. Pattern syntax matches <code>files.includes</code>, including <code>!</code> exclusions.</p></dd></div>
+          <div class="option"><dt><code>assist.actions</code><span class="meta">object of action booleans</span></dt><dd><p>Maps assist action names to booleans. Known actions are <code>html.useDoubleQuotedAttributes</code>, <code>html.fixSelfClosingTags</code>, <code>html.simplifyBooleanAttributes</code>, and <code>erb.removeEmptyTags</code>.</p></dd></div>
         </dl>
 
-        <footer class="footer">Configuration for erbfmt 0.2.1 · <a href="https://github.com/hinamimi/erbfmt/blob/main/docs/schema/erbfmt.schema.json">View schema source</a></footer>
+        <footer class="footer">Configuration for erbfmt 0.3.0-dev · <a href="https://github.com/hinamimi/erbfmt/blob/main/docs/schema/erbfmt.schema.json">View schema source</a></footer>
       </main>
     </div>
   </body>
