@@ -63,7 +63,7 @@ if [[ -z "$version" || -z "$asset_dir" ]]; then
   exit 1
 fi
 
-if [[ ! "$version" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+if [[ ! "$version" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?$ ]]; then
   echo "invalid release version: $version" >&2
   exit 1
 fi
@@ -122,11 +122,11 @@ if [[ -z "$api_key" ]]; then
 fi
 
 expected=(
-  "erbfmt-${version}.gem"
-  "erbfmt-${version}-x86_64-linux-gnu.gem"
-  "erbfmt-${version}-x86_64-darwin.gem"
-  "erbfmt-${version}-arm64-darwin.gem"
-  "erbfmt-${version}-x64-mingw-ucrt.gem"
+  "erbfmt-${version//-/.}.gem"
+  "erbfmt-${version//-/.}-x86_64-linux-gnu.gem"
+  "erbfmt-${version//-/.}-x86_64-darwin.gem"
+  "erbfmt-${version//-/.}-arm64-darwin.gem"
+  "erbfmt-${version//-/.}-x64-mingw-ucrt.gem"
 )
 
 gems=()

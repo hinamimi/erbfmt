@@ -44,7 +44,7 @@ bundle exec erbfmt --write app/views/users/show.html.erb
 手元でglobal commandとして使いたい場合は、RubyGemを直接installします。
 
 ```bash
-gem install erbfmt -v 0.3.0-dev
+gem install erbfmt -v 0.3.0.dev
 erbfmt --version
 ```
 

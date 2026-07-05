@@ -65,7 +65,7 @@ Configure the extension to use the project-pinned command:
 For a global local command, install the RubyGem directly:
 
 ```bash
-gem install erbfmt -v 0.3.0-dev
+gem install erbfmt -v 0.3.0.dev
 erbfmt --version
 ```
 

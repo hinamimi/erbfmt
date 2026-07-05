@@ -150,10 +150,20 @@ module ErbfmtVersioning
 
   def replace_version_references(file, current, version)
     content = File.read(file)
-    matches = content.scan(current).length
+    current_gem_version = ruby_gem_version(current)
+    references = [[current, version]]
+    if current_gem_version != current
+      references << [current_gem_version, ruby_gem_version(version)]
+    end
+
+    matches = references.sum { |reference, _| content.scan(reference).length }
     raise Error, "expected at least one version reference in #{file}" if matches.zero?
 
-    File.write(file, content.gsub(current, version))
+    references.each do |reference, replacement|
+      content = content.gsub(reference, replacement)
+    end
+
+    File.write(file, content)
   end
 
   def update_json_version(file, version)

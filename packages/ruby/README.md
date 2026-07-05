@@ -25,7 +25,7 @@ end
 For a global local command, install erbfmt directly from RubyGems.org:
 
 ```bash
-gem install erbfmt -v 0.3.0-dev
+gem install erbfmt -v 0.3.0.dev
 erbfmt --version
 ```
 
@@ -33,7 +33,7 @@ The global install is convenient for quick trials, but Bundler is preferred for
 project use because it pins the formatter version.
 
 RubyGems.org releases include platform-specific gems with the packaged Rust
-binary and may include `erbfmt-0.3.0-dev.gem` as a binary-free Bundler fallback for
+binary and may include `erbfmt-0.3.0.dev.gem` as a binary-free Bundler fallback for
 multi-platform lockfiles. The fallback resolves dependency installation but
 needs either a matching platform gem or `ERBFMT_BINARY` to run.
 
@@ -46,10 +46,10 @@ unpacked path dependency:
 
 ```bash
 curl -L \
-  -o erbfmt-0.3.0-dev-x86_64-linux-gnu.gem \
-  https://github.com/hinamimi/erbfmt/releases/download/v0.3.0-dev/erbfmt-0.3.0-dev-x86_64-linux-gnu.gem
+  -o erbfmt-0.3.0.dev-x86_64-linux-gnu.gem \
+  https://github.com/hinamimi/erbfmt/releases/download/v0.3.0-dev/erbfmt-0.3.0.dev-x86_64-linux-gnu.gem
 mkdir -p vendor/gems
-gem unpack erbfmt-0.3.0-dev-x86_64-linux-gnu.gem --target vendor/gems
+gem unpack erbfmt-0.3.0.dev-x86_64-linux-gnu.gem --target vendor/gems
 ```
 
 Add the unpacked gem to the project Gemfile:
@@ -57,7 +57,7 @@ Add the unpacked gem to the project Gemfile:
 ```ruby
 group :development do
   gem "erbfmt",
-    path: "vendor/gems/erbfmt-0.3.0-dev-x86_64-linux-gnu",
+    path: "vendor/gems/erbfmt-0.3.0.dev-x86_64-linux-gnu",
     require: false
 end
 ```
