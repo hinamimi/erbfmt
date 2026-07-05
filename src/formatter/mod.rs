@@ -5,7 +5,11 @@ mod ignore_directive;
 mod inline;
 mod options;
 mod preserve;
+mod ruby_scan;
 mod ruby_wrap;
+mod ruby_wrap_ast;
+#[cfg(test)]
+mod ruby_wrap_tests;
 mod tag;
 
 use crate::mixed_parser::Document;
