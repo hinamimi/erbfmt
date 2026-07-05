@@ -1,4 +1,5 @@
 mod engine;
+mod engine_support;
 mod erb;
 mod erb_block;
 mod ignore_directive;
@@ -34,5 +35,7 @@ pub fn format_document_with_source(
     engine::format_document_with_source(document, source, options)
 }
 
+#[cfg(test)]
+mod ruby_format_tests;
 #[cfg(test)]
 mod tests;

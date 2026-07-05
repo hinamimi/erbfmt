@@ -2,8 +2,15 @@ use std::collections::HashMap;
 
 use crate::mixed_parser::{Document, Node, SourceRange};
 
-use crate::lexer::{ErbTag, ErbTagOpen, ErbTagSyntax};
+use crate::lexer::{ErbTag, ErbTagSyntax};
 
+use super::engine_support::{
+    HtmlElementBoundaries, contains_heredoc_marker, has_inline_boundary_content,
+    has_multiline_unfoldable_erb_output_child, is_erb_output_syntax, is_line_ending_char,
+    is_multiline_unfoldable_erb_output_tag, single_foldable_erb_output_child,
+    single_foldable_erb_output_formatting_node, single_foldable_erb_output_inline_child,
+    wrapped_erb_output_lines,
+};
 use super::erb::{format_erb_comment, format_erb_tag_inline, formatted_erb_code_lines};
 use super::erb_block::ErbBlockParts;
 use super::ignore_directive::formatter_ignore_ranges;
@@ -14,7 +21,6 @@ use super::inline::{
 };
 use super::options::{FormatOptions, IndentStyle};
 use super::preserve::{is_format_sensitive_html_element, render_preserved_nodes};
-use super::ruby_wrap;
 use super::tag::{
     TagRenderContext, normalize_close_tag, normalize_tag, render_tag,
     should_expand_tag_with_erb_attributes,
@@ -916,121 +922,4 @@ impl<'a> Formatter<'a> {
                 .is_some_and(|ch| !is_line_ending_char(ch)),
         }
     }
-}
-
-#[derive(Default)]
-struct HtmlElementBoundaries {
-    open_child_same_line: bool,
-    child_close_same_line: bool,
-}
-
-impl HtmlElementBoundaries {
-    fn preserve_inline_children(&self) -> bool {
-        self.open_child_same_line && self.child_close_same_line
-    }
-}
-
-fn has_inline_boundary_content(node: &Node) -> bool {
-    match node.unspanned() {
-        Node::HtmlText(text) => !text.trim().is_empty(),
-        _ => true,
-    }
-}
-
-fn has_multiline_unfoldable_erb_output_child(children: &[Node]) -> bool {
-    children.iter().any(|child| {
-        matches!(
-            child.unspanned(),
-            Node::ErbOutput(tag) if is_multiline_unfoldable_erb_output_tag(tag)
-        )
-    })
-}
-
-fn is_multiline_unfoldable_erb_output_tag(tag: &ErbTag) -> bool {
-    tag.code.contains('\n') && ruby_wrap::fold_command_call(&tag.code).is_none()
-}
-
-fn single_foldable_erb_output_child(children: &[Node]) -> Option<&ErbTag> {
-    let mut erb_output = None;
-
-    for child in children {
-        match child.unspanned() {
-            Node::HtmlText(text) if text.trim().is_empty() => {}
-            Node::ErbOutput(tag) if wrapped_erb_output_lines(tag.syntax, &tag.code).is_some() => {
-                if erb_output.replace(tag).is_some() {
-                    return None;
-                }
-            }
-            _ => return None,
-        }
-    }
-
-    erb_output
-}
-
-fn single_foldable_erb_output_inline_child(
-    children: &[Node],
-) -> Option<(usize, &ErbTag, Vec<String>)> {
-    let mut foldable = None;
-
-    for (index, child) in children.iter().enumerate() {
-        if let Node::ErbOutput(tag) = child.unspanned() {
-            let Some(lines) = wrapped_erb_output_lines(tag.syntax, &tag.code) else {
-                continue;
-            };
-
-            if foldable.replace((index, tag, lines)).is_some() {
-                return None;
-            }
-        }
-    }
-
-    foldable
-}
-
-fn single_foldable_erb_output_formatting_node<'a>(
-    nodes: &'a [FormattingNode<'a>],
-) -> Option<(&'a ErbTag, Vec<String>)> {
-    let mut foldable = None;
-
-    for node in nodes {
-        match node {
-            FormattingNode::HtmlText { text, .. } if text.trim().is_empty() => {}
-            FormattingNode::Node(node) => match node.unspanned() {
-                Node::HtmlText(text) if text.trim().is_empty() => {}
-                Node::ErbOutput(tag) => {
-                    let lines = wrapped_erb_output_lines(tag.syntax, &tag.code)?;
-
-                    if foldable.replace((tag, lines)).is_some() {
-                        return None;
-                    }
-                }
-                _ => return None,
-            },
-            _ => return None,
-        }
-    }
-
-    foldable
-}
-
-fn wrapped_erb_output_lines(syntax: ErbTagSyntax, code: &str) -> Option<Vec<String>> {
-    if !is_erb_output_syntax(syntax) {
-        return None;
-    }
-
-    let lines = formatted_erb_code_lines(code.trim());
-    (lines.len() > 1).then_some(lines)
-}
-
-fn is_erb_output_syntax(syntax: ErbTagSyntax) -> bool {
-    matches!(syntax.open, ErbTagOpen::Output | ErbTagOpen::RawOutput)
-}
-
-fn is_line_ending_char(ch: char) -> bool {
-    matches!(ch, '\n' | '\r')
-}
-
-fn contains_heredoc_marker(code: &str) -> bool {
-    code.contains("<<")
 }
