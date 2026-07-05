@@ -1,4 +1,4 @@
-use crate::mixed_parser::Node;
+use crate::syntax::template::Node;
 
 use super::erb::{format_erb_comment, format_erb_tag_inline};
 use super::tag::{ParsedTag, attribute_name, attribute_value};

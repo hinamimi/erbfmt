@@ -1,6 +1,6 @@
 # erbfmt
 
-[Documentation](https://hinamimi.github.io/erbfmt/) · [日本語](README_ja.md)
+[Documentation](https://hinamimi.github.io/erbfmt/) · [AI agent commands](https://hinamimi.github.io/erbfmt/commands.md) · [日本語](README_ja.md)
 
 **A fast, Prettier/Biome-like formatter and linter for ERB and HTML+ERB.**
 
@@ -24,7 +24,7 @@ first-party VSCode extension.
 > Review formatting diffs before committing them and pin an exact version in
 > automated environments.
 
-> erbfmt is currently in pre-release development. Version `0.2.1` is available
+> erbfmt is currently in pre-release development. Version `0.3.0-dev` is available
 > through RubyGems.org and GitHub Releases.
 
 ## Install
@@ -46,7 +46,7 @@ bundle exec erbfmt --write app/views/users/show.html.erb
 For a global local command, install the RubyGem directly:
 
 ```bash
-gem install erbfmt -v 0.2.1
+gem install erbfmt -v 0.3.0.dev
 erbfmt --version
 ```
 
@@ -55,7 +55,7 @@ project use because it pins the formatter version.
 
 Alternative installation methods are still available. Download a standalone
 archive from the
-[v0.2.1 release](https://github.com/hinamimi/erbfmt/releases/tag/v0.2.1), extract
+[v0.3.0-dev release](https://github.com/hinamimi/erbfmt/releases/tag/v0.3.0-dev), extract
 it, and place `erbfmt` or `erbfmt.exe` on your `PATH`.
 
 - Linux x64: `x86_64-unknown-linux-gnu`
@@ -66,7 +66,7 @@ it, and place `erbfmt` or `erbfmt.exe` on your `PATH`.
 With a Rust toolchain, install the tagged source directly from GitHub:
 
 ```bash
-cargo install --git https://github.com/hinamimi/erbfmt --tag v0.2.1 --locked
+cargo install --git https://github.com/hinamimi/erbfmt --tag v0.3.0-dev --locked
 ```
 
 See [Ruby Gem Wrapper](docs/RubyGem.md#installing-from-a-gemfile) for Bundler,
@@ -112,7 +112,9 @@ erbfmt --lint app/views
 ```
 
 Lint output defaults to a human-readable format with source excerpts. Use
-`--lint-format plain` when a script needs the compact legacy line format.
+`--lint-format plain` when a script needs the compact legacy line format, or
+`--lint-format json` when an AI agent or editor integration needs
+machine-readable diagnostics.
 
 `--write`, `--check`, and `--lint` are mutually exclusive. Check mode returns a
 nonzero status when formatting would change a file; lint mode does so when an
@@ -160,8 +162,8 @@ erbfmt --config path/to/erbfmt.json app/views/users/show.html.erb
 ```
 
 Common options include indentation style and width, HTML indentation, line
-width, line endings, and per-rule lint severity. See
-[Configuration](docs/Configuration.md) for the complete format and
+width, line endings, per-rule lint severity, and future assist action settings.
+See [Configuration](docs/Configuration.md) for the complete format and
 [Lint Rules](docs/LintRules.md) for available diagnostics.
 
 `formatter.trailingNewline` defaults to `true`, which is appropriate for normal

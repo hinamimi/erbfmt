@@ -1,6 +1,6 @@
 # erbfmt
 
-[ドキュメント](https://hinamimi.github.io/erbfmt/ja/) · [English](README.md)
+[ドキュメント](https://hinamimi.github.io/erbfmt/ja/) · [AI agent commands](https://hinamimi.github.io/erbfmt/commands.md) · [English](README.md)
 
 **ERBとHTML+ERB向けの高速な、Prettier/BiomeのようなFormatter/Linterです。**
 
@@ -22,7 +22,7 @@ first-party VSCode extensionから利用できます。
 > 後方互換性なく変更される可能性があります。format差分を確認してからcommitし、
 > 自動実行する環境ではversionを固定してください。
 
-> erbfmtは現在プレリリース開発中です。Version `0.2.1`をRubyGems.orgと
+> erbfmtは現在プレリリース開発中です。Version `0.3.0-dev`をRubyGems.orgと
 > GitHub Releasesで公開しています。
 
 ## インストール
@@ -44,7 +44,7 @@ bundle exec erbfmt --write app/views/users/show.html.erb
 手元でglobal commandとして使いたい場合は、RubyGemを直接installします。
 
 ```bash
-gem install erbfmt -v 0.2.1
+gem install erbfmt -v 0.3.0.dev
 erbfmt --version
 ```
 
@@ -52,7 +52,7 @@ global installは試用には便利ですが、projectではformatter versionを
 優先してください。
 
 その他のinstall方法も利用できます。
-[v0.2.1 release](https://github.com/hinamimi/erbfmt/releases/tag/v0.2.1)から
+[v0.3.0-dev release](https://github.com/hinamimi/erbfmt/releases/tag/v0.3.0-dev)から
 利用するplatformのarchiveをdownloadして展開し、`erbfmt`または `erbfmt.exe`を
 `PATH`へ配置します。
 
@@ -64,7 +64,7 @@ global installは試用には便利ですが、projectではformatter versionを
 Rust toolchainがある場合は、tagged sourceをGitHubから直接installできます。
 
 ```bash
-cargo install --git https://github.com/hinamimi/erbfmt --tag v0.2.1 --locked
+cargo install --git https://github.com/hinamimi/erbfmt --tag v0.3.0-dev --locked
 ```
 
 Bundler、global gem install、platformごとの注意点は
@@ -110,7 +110,8 @@ erbfmt --lint app/views
 ```
 
 lint出力はデフォルトでsource excerpt付きの人間向け表示になります。scriptから旧来の
-compactな1行形式を扱いたい場合は `--lint-format plain` を指定してください。
+compactな1行形式を扱いたい場合は `--lint-format plain`、AI agentやeditor integrationで
+機械可読なdiagnosticsが必要な場合は `--lint-format json` を指定してください。
 
 `--write`、`--check`、`--lint` は同時に指定できません。checkは整形による変更が
 必要な場合、lintはerror levelの診断が見つかった場合にnonzero statusで終了します。
@@ -152,9 +153,10 @@ erbfmt init
 erbfmt --config path/to/erbfmt.json app/views/users/show.html.erb
 ```
 
-indent style/width、HTML indentation、line width、line ending、lint ruleごとのseverityを
-設定できます。全項目は [Configuration](docs/Configuration.md)、診断内容は
-[Lint Rules](docs/LintRules.md) を参照してください。
+indent style/width、HTML indentation、line width、line ending、lint ruleごとのseverity、
+将来のassist action設定を指定できます。全項目は
+[Configuration](docs/Configuration.md)、診断内容は [Lint Rules](docs/LintRules.md) を
+参照してください。
 
 `formatter.trailingNewline` はdefaultで `true` です。通常のtemplate fileではこの設定を
 推奨します。周囲のtextへinline partialとして差し込むERB fileで、末尾newlineを

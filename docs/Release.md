@@ -186,12 +186,15 @@ Keep these files in the release verification surface:
 
 ## Versioning
 
-The repository is currently set to `0.2.1` for the next prerelease.
+The repository is currently set to `0.3.0-dev` for the next prerelease.
 Earlier milestone work used the fixed development version `0.0.0-dev`, and the
 first public prerelease used `0.1.0`.
 
 The canonical CLI version is read from `Cargo.toml`. Ruby gem and VSCode
 versions are checked against it by `scripts/version.rb`.
+RubyGems normalizes prerelease hyphen separators to dots, so Cargo and VSCode
+use `0.3.0-dev` while the Ruby gem version and `.gem` filenames use
+`0.3.0.dev`.
 
 Before a public release:
 
@@ -206,7 +209,8 @@ Before a public release:
 ## Tagged Release Workflow
 
 The `Release` workflow runs when a tag matching `v*.*.*` is pushed, then
-requires the exact `vMAJOR.MINOR.PATCH` form. It:
+requires the `vMAJOR.MINOR.PATCH` form with an optional prerelease suffix such
+as `v0.3.0-dev`. It:
 
 1. verifies that the tag version matches every repository version source;
 2. calls `Release Binaries` to build on Linux, Intel and Apple Silicon macOS,
@@ -241,7 +245,7 @@ Download the gem assets from the draft or published GitHub Release:
 
 ```bash
 mkdir -p release-assets
-gh release download v0.2.1 \
+gh release download v0.3.0-dev \
   --pattern '*.gem' \
   --dir release-assets
 ```
@@ -250,7 +254,7 @@ Validate the asset set without publishing:
 
 ```bash
 scripts/publish-rubygems.sh \
-  --version 0.2.1 \
+  --version 0.3.0-dev \
   --asset-dir release-assets \
   --dry-run
 ```
@@ -259,26 +263,29 @@ Publish the fallback gem and all four platform gems:
 
 ```bash
 scripts/publish-rubygems.sh \
-  --version 0.2.1 \
+  --version 0.3.0-dev \
   --asset-dir release-assets \
   --yes
 ```
 
 The script expects exactly these RubyGems assets for the version:
 
-- `erbfmt-${version}.gem`
-- `erbfmt-${version}-x86_64-linux-gnu.gem`
-- `erbfmt-${version}-x86_64-darwin.gem`
-- `erbfmt-${version}-arm64-darwin.gem`
-- `erbfmt-${version}-x64-mingw-ucrt.gem`
+- `erbfmt-${ruby_gem_version}.gem`
+- `erbfmt-${ruby_gem_version}-x86_64-linux-gnu.gem`
+- `erbfmt-${ruby_gem_version}-x86_64-darwin.gem`
+- `erbfmt-${ruby_gem_version}-arm64-darwin.gem`
+- `erbfmt-${ruby_gem_version}-x64-mingw-ucrt.gem`
+
+For example, `--version 0.3.0-dev` expects RubyGems assets named with
+`0.3.0.dev`.
 
 If a release version was already partially published to RubyGems.org before the
 fallback gem existed, do not rerun the full publish script for the already
-published platform gems. Build or download `erbfmt-${version}.gem` and push only
-that missing fallback variant:
+published platform gems. Build or download `erbfmt-${ruby_gem_version}.gem` and
+push only that missing fallback variant:
 
 ```bash
-gem push release-assets/erbfmt-${version}.gem --host https://rubygems.org
+gem push release-assets/erbfmt-${ruby_gem_version}.gem --host https://rubygems.org
 ```
 
 After publishing, verify from a clean Bundler project that RubyGems.org can
@@ -294,10 +301,10 @@ bundle exec erbfmt --version
 For the next release:
 
 ```bash
-ruby scripts/version.rb set 0.2.1
-ruby scripts/version.rb verify 0.2.1
+ruby scripts/version.rb set 0.3.0-dev
+ruby scripts/version.rb verify 0.3.0-dev
 # Run the release verification commands above, then commit.
-git tag -a v0.2.1 -m "erbfmt 0.2.1"
+git tag -a v0.3.0-dev -m "erbfmt 0.3.0-dev"
 git push origin main
-git push origin v0.2.1
+git push origin v0.3.0-dev
 ```

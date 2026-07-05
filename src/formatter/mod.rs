@@ -1,14 +1,19 @@
 mod engine;
+mod engine_support;
 mod erb;
 mod erb_block;
 mod ignore_directive;
 mod inline;
 mod options;
 mod preserve;
+mod ruby_scan;
 mod ruby_wrap;
+mod ruby_wrap_ast;
+#[cfg(test)]
+mod ruby_wrap_tests;
 mod tag;
 
-use crate::mixed_parser::Document;
+use crate::syntax::template::Document;
 
 pub use options::{FormatOptions, IndentStyle, LineEnding};
 
@@ -30,5 +35,7 @@ pub fn format_document_with_source(
     engine::format_document_with_source(document, source, options)
 }
 
+#[cfg(test)]
+mod ruby_format_tests;
 #[cfg(test)]
 mod tests;

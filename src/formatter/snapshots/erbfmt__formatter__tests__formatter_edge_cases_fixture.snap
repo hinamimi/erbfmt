@@ -1,5 +1,6 @@
 ---
 source: src/formatter/tests.rs
+assertion_line: 1113
 expression: format_source(formatter_edge_cases_fixture())
 ---
 <%
@@ -22,13 +23,11 @@ TEXT
     >
       Open profile
     </a>
-    <%=
-      link_to(
-        "Edit profile",
-        edit_user_path(user),
-        class: "button button--primary"
-      )
-    %>
+    <%= link_to(
+      "Edit profile",
+      edit_user_path(user),
+      class: "button button--primary"
+    ) %>
     <button
       class="button <%= 'button--hidden' if hidden? %>"
       id=<%= button_id %>

@@ -29,6 +29,7 @@
         <nav aria-label="Documentation">
           <a aria-current="page" href="./">Overview</a>
           <a href="./cli/">CLI</a>
+          <a href="./commands/">Commands</a>
           <a href="./configuration/">Configuration</a>
         </nav>
         <div class="on-page">
@@ -75,9 +76,9 @@
         <pre><code class="language-bash">bundle add erbfmt --group development --require false
 bundle exec erbfmt --version</code></pre>
         <p>For a global local command, install the RubyGem directly.</p>
-        <pre><code class="language-bash">gem install erbfmt -v 0.2.1
+        <pre><code class="language-bash">gem install erbfmt -v 0.3.0.dev
 erbfmt --version</code></pre>
-        <div class="callout"><p>Bundler is preferred for projects because it pins the formatter version. Standalone binaries are also available from the <a href="https://github.com/hinamimi/erbfmt/releases/tag/v0.2.1">v0.2.1 release</a>.</p></div>
+        <div class="callout"><p>Bundler is preferred for projects because it pins the formatter version. Standalone binaries are also available from the <a href="https://github.com/hinamimi/erbfmt/releases/tag/v0.3.0-dev">v0.3.0-dev release</a>.</p></div>
 
         <h2 id="quick-start">Quick start</h2>
         <p>Create <code>erbfmt.json</code> in the Rails project, then format or lint templates.</p>
@@ -88,7 +89,7 @@ erbfmt --check app/views/users/show.html.erb
 erbfmt --lint app/views/users/show.html.erb</code></pre>
         <p><code>--write</code>, <code>--check</code>, and <code>--lint</code> are mutually exclusive. Check mode fails when formatting would change a file. Lint mode fails when it finds an error-level diagnostic.</p>
         <div class="callout"><p>Standalone ERB trim, escaped, and raw-output markers such as <code>&lt;%-</code>, <code>-%&gt;</code>, <code>&lt;%%</code>, and <code>&lt;%==</code> are currently rejected. erbfmt fails without writing the file rather than changing their semantics.</p></div>
-        <p>Continue with the <a href="./configuration/">configuration reference</a> to choose indentation, line width, and lint severities.</p>
+        <p>Continue with the <a href="./configuration/">configuration reference</a> to choose indentation, line width, and lint severities. For AI agents and editor integrations, use the hosted <a href="./commands.md">commands.md</a> reference.</p>
 
         <h2 id="principles">Principles</h2>
         <h3>HTML and ERB belong together</h3>

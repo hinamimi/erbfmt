@@ -54,7 +54,10 @@ pub(super) fn classify_code(tag: ErbTag) -> Token {
         }
     } else if starts_with_keyword(&tag.code, "end") {
         Token::ErbBlockEnd(tag)
-    } else if starts_with_keyword(&tag.code, "do") || ends_with_do_block(&tag.code) {
+    } else if starts_with_keyword(&tag.code, "do")
+        || ends_with_do_block(&tag.code)
+        || starts_with_multiline_do_block_opener(&tag.code)
+    {
         Token::ErbBlockStart {
             kind: ErbBlockKind::Do,
             tag,
@@ -149,6 +152,18 @@ fn ends_with_do_block(code: &str) -> bool {
 
     let rest = trimmed[index + "do".len()..].trim();
     rest.is_empty() || (rest.starts_with('|') && rest.ends_with('|'))
+}
+
+fn starts_with_multiline_do_block_opener(code: &str) -> bool {
+    if !code.contains('\n') {
+        return false;
+    }
+
+    let Some(first_line) = code.lines().find(|line| !line.trim().is_empty()) else {
+        return false;
+    };
+
+    ends_with_do_block(first_line)
 }
 
 fn find_last_keyword(code: &str, keyword: &str) -> Option<usize> {

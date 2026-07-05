@@ -1,4 +1,4 @@
-use crate::lexer::SourceLocation;
+use crate::syntax::erb::SourceLocation;
 
 use super::{Diagnostic, LintOptions};
 

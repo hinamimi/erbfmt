@@ -1,6 +1,7 @@
-use crate::{
+use crate::syntax::{
+    erb as lexer,
     html::{self, HtmlToken},
-    lexer, mixed_parser,
+    template as mixed_parser,
 };
 
 use super::{Diagnostic, LintOptions};
@@ -136,6 +137,7 @@ pub(super) fn lint_html_tokens(
                     fragment_start,
                     spanned.span.start,
                     tag,
+                    stack,
                     options,
                     diagnostics,
                 );
@@ -420,10 +422,11 @@ fn lint_self_closing_html_tag(
     fragment_start: usize,
     html_token_start: usize,
     tag: &html::HtmlTag,
+    stack: &[HtmlElementLintFrame],
     options: LintOptions,
     diagnostics: &mut Vec<Diagnostic>,
 ) {
-    if !options.rules.no_self_closing_html_tag {
+    if !options.rules.no_self_closing_html_tag || is_inside_foreign_html_content(tag, stack) {
         return;
     }
 
@@ -432,6 +435,17 @@ fn lint_self_closing_html_tag(
         lexer::source_location(input, fragment_start + html_token_start),
         options.rule_severities.no_self_closing_html_tag,
     ));
+}
+
+fn is_inside_foreign_html_content(tag: &html::HtmlTag, stack: &[HtmlElementLintFrame]) -> bool {
+    html_tag_is_foreign_content(&tag.name)
+        || stack
+            .iter()
+            .any(|frame| html_tag_is_foreign_content(&frame.name))
+}
+
+fn html_tag_is_foreign_content(name: &str) -> bool {
+    matches!(name.to_ascii_lowercase().as_str(), "svg" | "math")
 }
 
 fn lint_deprecated_html_tag(

@@ -1,5 +1,5 @@
 use super::ruby_wrap;
-use crate::lexer::{ErbTag, ErbTagOpen, ErbTagSyntax};
+use crate::syntax::erb::{ErbTag, ErbTagOpen, ErbTagSyntax};
 
 pub(super) fn format_erb_tag_inline(syntax: ErbTagSyntax, code: &str) -> String {
     if code.is_empty() {

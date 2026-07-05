@@ -30,7 +30,7 @@ jobs:
           tag="${GITHUB_REF_NAME}"
           version="${tag#v}"
 
-          if [[ ! "$version" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+          if [[ ! "$version" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?$ ]]; then
             echo "invalid release tag: $tag" >&2
             exit 1
           fi
@@ -64,6 +64,7 @@ jobs:
           set -euo pipefail
 
           version="${GITHUB_REF_NAME#v}"
+          gem_version="${version//-/.}"
           expected=(
             "erbfmt-${version}-x86_64-unknown-linux-gnu.tar.gz"
             "erbfmt-${version}-x86_64-unknown-linux-gnu.tar.gz.sha256"
@@ -73,11 +74,11 @@ jobs:
             "erbfmt-${version}-aarch64-apple-darwin.tar.gz.sha256"
             "erbfmt-${version}-x86_64-pc-windows-msvc.zip"
             "erbfmt-${version}-x86_64-pc-windows-msvc.zip.sha256"
-            "erbfmt-${version}.gem"
-            "erbfmt-${version}-x86_64-linux-gnu.gem"
-            "erbfmt-${version}-x86_64-darwin.gem"
-            "erbfmt-${version}-arm64-darwin.gem"
-            "erbfmt-${version}-x64-mingw-ucrt.gem"
+            "erbfmt-${gem_version}.gem"
+            "erbfmt-${gem_version}-x86_64-linux-gnu.gem"
+            "erbfmt-${gem_version}-x86_64-darwin.gem"
+            "erbfmt-${gem_version}-arm64-darwin.gem"
+            "erbfmt-${gem_version}-x64-mingw-ucrt.gem"
             "erbfmt-vscode-${version}.vsix"
           )
 
@@ -146,5 +147,5 @@ jobs:
             echo
             echo "[$tag]($release_url)"
             echo
-            echo "Verified and attached 13 release assets. Review the notes and publish manually."
+            echo "Verified and attached ${#expected[@]} release assets. Review the notes and publish manually."
           } >> "$GITHUB_STEP_SUMMARY"

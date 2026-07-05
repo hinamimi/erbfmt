@@ -1,6 +1,6 @@
-use crate::{
+use crate::syntax::{
+    erb::{ErbBlockKind, ErbBranchKind, ErbTag, SourceLocation},
     html::HtmlTag,
-    lexer::{ErbBlockKind, ErbBranchKind, ErbTag, SourceLocation},
 };
 
 use super::{ErbBranch, Node, SourceRange};

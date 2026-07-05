@@ -55,6 +55,34 @@ fn tokenizes_attributes_with_erb_output() {
 }
 
 #[test]
+fn tokenizes_tag_with_erb_control_attribute_after_name() {
+    let tokens = tokenize(r#"<tr<% if selected? %> class="active"<% end %>><td>Item</td></tr>"#);
+
+    assert_eq!(
+        tokens,
+        vec![
+            HtmlToken::OpenTag(HtmlTag {
+                name: "tr".to_string(),
+                raw: r#"<tr<% if selected? %> class="active"<% end %>>"#.to_string()
+            }),
+            HtmlToken::OpenTag(HtmlTag {
+                name: "td".to_string(),
+                raw: "<td>".to_string()
+            }),
+            HtmlToken::Text("Item".to_string()),
+            HtmlToken::CloseTag(HtmlTag {
+                name: "td".to_string(),
+                raw: "</td>".to_string()
+            }),
+            HtmlToken::CloseTag(HtmlTag {
+                name: "tr".to_string(),
+                raw: "</tr>".to_string()
+            })
+        ]
+    );
+}
+
+#[test]
 fn tokenizes_self_closing_and_void_tags() {
     let tokens = tokenize(r#"<img src="avatar.png"><custom />"#);
 

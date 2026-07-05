@@ -1,6 +1,6 @@
-use crate::{
+use crate::syntax::{
+    erb::{self, ErbBranchKind, SourceLocation, SpannedToken, Token},
     html::{self, HtmlTag, HtmlToken},
-    lexer::{self, ErbBranchKind, SourceLocation, SpannedToken, Token},
 };
 
 mod ast;
@@ -14,6 +14,7 @@ use frame::{Frame, FrameKind};
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct ParserOptions {
     pub allow_html_optional_closing_tags: bool,
+    pub allow_unbalanced_html_fragments: bool,
 }
 
 #[allow(dead_code)]
@@ -81,7 +82,7 @@ fn relative_source_location(
     fragment: &str,
     position: usize,
 ) -> SourceLocation {
-    let relative = lexer::source_location(fragment, position);
+    let relative = erb::source_location(fragment, position);
 
     if relative.line == 1 {
         SourceLocation {
@@ -267,6 +268,11 @@ impl Parser {
     ) -> Result<(), ParseError> {
         self.close_optional_html_tags_before_close(&tag.name, close_start);
 
+        if self.is_at_root() && self.options.allow_unbalanced_html_fragments {
+            self.push_raw_html_text(tag.raw, close_start, end);
+            return Ok(());
+        }
+
         let Some(frame) = self.stack.pop() else {
             return Err(ParseError::UnexpectedHtmlCloseTag {
                 name: tag.name,
@@ -352,7 +358,7 @@ impl Parser {
     fn close_erb_block(
         &mut self,
         token_index: usize,
-        end_tag: &lexer::ErbTag,
+        end_tag: &erb::ErbTag,
         end: Option<usize>,
     ) -> Result<(), ParseError> {
         let Some(frame) = self.stack.pop() else {
@@ -421,7 +427,7 @@ impl Parser {
         &mut self,
         token_index: usize,
         kind: ErbBranchKind,
-        tag: &lexer::ErbTag,
+        tag: &erb::ErbTag,
     ) -> Result<(), ParseError> {
         let Some(frame) = self.stack.last_mut() else {
             return Err(ParseError::UnexpectedErbBranch {
@@ -458,6 +464,12 @@ impl Parser {
                 .current_html_name()
                 .is_some_and(optional_html_close_at_eof)
             {
+                self.close_optional_html_tag(self.source_end);
+            }
+        }
+
+        if self.options.allow_unbalanced_html_fragments {
+            while self.current_html_name().is_some() {
                 self.close_optional_html_tag(self.source_end);
             }
         }
@@ -504,6 +516,22 @@ impl Parser {
             node: Box::new(node),
             range,
         });
+    }
+
+    fn push_raw_html_text(&mut self, raw: String, start: Option<usize>, end: Option<usize>) {
+        let node = Node::HtmlText(raw);
+
+        match (start, end) {
+            (Some(start), Some(end)) => self.push_spanned_node(node, SourceRange { start, end }),
+            _ => self.push_node(node),
+        }
+    }
+
+    fn is_at_root(&self) -> bool {
+        matches!(
+            self.stack.last().map(|frame| &frame.kind),
+            Some(FrameKind::Root)
+        )
     }
 
     fn close_optional_html_tags_before_open(&mut self, next_name: &str, end: Option<usize>) {

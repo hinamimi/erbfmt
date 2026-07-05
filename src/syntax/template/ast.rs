@@ -1,4 +1,4 @@
-use crate::lexer::{ErbBlockKind, ErbBranchKind, ErbTag};
+use crate::syntax::erb::{ErbBlockKind, ErbBranchKind, ErbTag};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Document {

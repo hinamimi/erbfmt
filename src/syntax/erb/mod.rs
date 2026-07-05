@@ -9,7 +9,7 @@ mod tests;
 
 use classifier::{classify_code, classify_output_code};
 pub use error::LexError;
-use html_context::is_inside_html_tag;
+use html_context::{is_inside_html_tag, is_inside_raw_text_element};
 use location::spanned_token;
 pub use location::{SourceLocation, SpannedToken, source_location};
 pub use token::{
@@ -32,7 +32,7 @@ pub fn tokenize_with_spans(input: &str) -> Result<Vec<SpannedToken>, LexError> {
     while let Some(relative_start) = input[search_cursor..].find("<%") {
         let start = search_cursor + relative_start;
 
-        if is_inside_html_tag(input, start) {
+        if is_inside_html_tag(input, start) || is_inside_raw_text_element(input, start) {
             search_cursor = start + "<%".len();
             continue;
         }

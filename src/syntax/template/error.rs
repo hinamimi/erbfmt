@@ -1,6 +1,6 @@
 use std::fmt;
 
-use crate::lexer::SourceLocation;
+use crate::syntax::erb::SourceLocation;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ParseError {

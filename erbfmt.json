@@ -4,7 +4,8 @@
     "includes": ["**/*.html.erb"]
   },
   "parser": {
-    "allowHtmlOptionalClosingTags": false
+    "allowHtmlOptionalClosingTags": false,
+    "allowUnbalancedHtmlFragments": false
   },
   "formatter": {
     "enabled": true,
@@ -29,6 +30,16 @@
       "noNonDoubleQuotedHtmlAttributeValue": "error",
       "noSelfClosingHtmlTag": "error",
       "unsupportedErbBlockStarter": "error"
+    }
+  },
+  "assist": {
+    "enabled": false,
+    "includes": ["**/*.html.erb"],
+    "actions": {
+      "html.useDoubleQuotedAttributes": true,
+      "html.fixSelfClosingTags": true,
+      "html.simplifyBooleanAttributes": true,
+      "erb.removeEmptyTags": true
     }
   }
 }

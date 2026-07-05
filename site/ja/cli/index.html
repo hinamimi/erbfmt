@@ -29,6 +29,7 @@
         <nav aria-label="ドキュメント">
           <a href="../">概要</a>
           <a aria-current="page" href="./">CLI</a>
+          <a href="../commands/">Commands</a>
           <a href="../configuration/">設定</a>
         </nav>
         <div class="on-page">
@@ -70,7 +71,7 @@ erbfmt --lint app/views</code></pre>
         <h2 id="options">オプション</h2>
         <dl class="option-list">
           <div class="option"><dt><code>--config PATH</code></dt><dd><p>指定した <code>erbfmt.json</code>を使います。指定しない場合はcurrent directoryから親directoryへ向かって検索し、見つからなければbuilt-in defaultを使います。</p></dd></div>
-          <div class="option"><dt><code>--lint-format pretty|plain</code></dt><dd><p>lint diagnosticの表示形式を指定します。defaultの <code>pretty</code> はseverity、source excerpt、caret、summaryを表示します。<code>plain</code> はscriptやeditor integration向けに、compactな <code>file: message at line, column</code> 形式を保ちます。</p></dd></div>
+          <div class="option"><dt><code>--lint-format pretty|plain|json</code></dt><dd><p>lint diagnosticの表示形式を指定します。defaultの <code>pretty</code> はseverity、source excerpt、caret、summaryを表示します。<code>plain</code> はcompactな <code>file: message at line, column</code> 形式を保ちます。<code>json</code> はAI agent、script、editor integration向けに、fileごとに機械可読なJSON objectを出力します。</p></dd></div>
           <div class="option"><dt><code>-h, --help</code></dt><dd><p>command helpを表示して終了します。</p></dd></div>
           <div class="option"><dt><code>-V, --version</code></dt><dd><p>installされているerbfmtのversionを表示して終了します。</p></dd></div>
         </dl>
@@ -93,7 +94,7 @@ erbfmt --lint app/views</code></pre>
         <pre><code class="language-bash">erbfmt --check app/views/**/*.html.erb
 erbfmt --lint app/views/**/*.html.erb</code></pre>
 
-        <footer class="footer">erbfmt 0.1.2 CLI reference · <a href="https://github.com/hinamimi/erbfmt/blob/main/src/main.rs">CLI sourceを見る</a></footer>
+        <footer class="footer">erbfmt 0.3.0-dev CLI reference · <a href="https://github.com/hinamimi/erbfmt/blob/main/src/main.rs">CLI sourceを見る</a></footer>
       </main>
     </div>
   </body>

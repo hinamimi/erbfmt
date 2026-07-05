@@ -29,6 +29,7 @@
         <nav aria-label="ドキュメント">
           <a aria-current="page" href="./">概要</a>
           <a href="./cli/">CLI</a>
+          <a href="./commands/">Commands</a>
           <a href="./configuration/">設定</a>
         </nav>
         <div class="on-page">
@@ -75,9 +76,9 @@
         <pre><code class="language-bash">bundle add erbfmt --group development --require false
 bundle exec erbfmt --version</code></pre>
         <p>手元でglobal commandとして使いたい場合は、RubyGemを直接installします。</p>
-        <pre><code class="language-bash">gem install erbfmt -v 0.2.1
+        <pre><code class="language-bash">gem install erbfmt -v 0.3.0.dev
 erbfmt --version</code></pre>
-        <div class="callout"><p>projectではformatter versionを固定できるBundlerを優先してください。standalone binaryは<a href="https://github.com/hinamimi/erbfmt/releases/tag/v0.2.1">v0.2.1 release</a>からも入手できます。</p></div>
+        <div class="callout"><p>projectではformatter versionを固定できるBundlerを優先してください。standalone binaryは<a href="https://github.com/hinamimi/erbfmt/releases/tag/v0.3.0-dev">v0.3.0-dev release</a>からも入手できます。</p></div>
 
         <h2 id="quick-start">クイックスタート</h2>
         <p>Rails projectに <code>erbfmt.json</code>を作り、templateをformatまたはlintします。</p>
@@ -88,7 +89,7 @@ erbfmt --check app/views/users/show.html.erb
 erbfmt --lint app/views/users/show.html.erb</code></pre>
         <p><code>--write</code>、<code>--check</code>、<code>--lint</code>は同時に指定できません。checkはformatによる変更が必要な場合、lintはerror levelの診断が見つかった場合に失敗します。</p>
         <div class="callout"><p><code>&lt;%-</code>、<code>-%&gt;</code>、<code>&lt;%%</code>、<code>&lt;%==</code>などのstandalone ERB trim、escaped、raw-output markerは現在errorになります。semanticを変更する代わりに、fileを書き込まず終了します。</p></div>
-        <p>indent、line width、lint severityの変更は<a href="./configuration/">設定リファレンス</a>を参照してください。</p>
+        <p>indent、line width、lint severityの変更は<a href="./configuration/">設定リファレンス</a>を参照してください。AI agentやeditor integrationからは、hosted <a href="../commands.md">commands.md</a> referenceを利用できます。</p>
 
         <h2 id="principles">設計方針</h2>
         <h3>HTMLとERBを一緒に扱う</h3>

@@ -1,7 +1,7 @@
 use super::*;
-use crate::{
-    lexer::{tokenize, tokenize_with_spans},
-    mixed_parser::{parse, parse_spanned},
+use crate::syntax::{
+    erb::{tokenize, tokenize_with_spans},
+    template::{parse, parse_spanned},
 };
 
 fn format(input: &str) -> String {
@@ -88,7 +88,7 @@ fn wraps_standalone_erb_attributes_in_long_html_tags() {
                 ..FormatOptions::default()
             }
         ),
-        "<details\n  <%= \"open\" unless request.user_agent&.match?(/Mobile|Android|iPhone|iPad/) %>\n  class=\"\"\n>\n</details>\n"
+        "<details\n  <%= \"open\" unless request.user_agent&.match?(/Mobile|Android|iPhone|iPad/) %>\n  class=\"\"\n></details>\n"
     );
 }
 
@@ -106,7 +106,7 @@ fn preserves_inline_link_to_inside_list_items() {
                 ..FormatOptions::default()
             }
         ),
-        expected
+        "<li class=\"\"><%= link_to(\n  \"home\",\n  root_path,\n  class: \"\"\n) %></li>\n"
     );
 }
 
@@ -263,6 +263,59 @@ fn preserves_source_boundaries_between_opening_tags_and_inline_children() {
 }
 
 #[test]
+fn preserves_boundaries_when_wrapping_long_tags_with_inline_text_children() {
+    let options = FormatOptions {
+        line_width: 48,
+        ..FormatOptions::default()
+    };
+    let input = "<span class=\"very very very very very long class name\" data-controller=\"x\">Text</span>\n";
+    let expected = "<span\n  class=\"very very very very very long class name\"\n  data-controller=\"x\"\n>Text</span>\n";
+
+    assert_eq!(format_source_with_options(input, options), expected);
+    assert_eq!(format_source_with_options(expected, options), expected);
+}
+
+#[test]
+fn preserves_boundaries_when_wrapping_long_tags_with_inline_erb_children() {
+    let options = FormatOptions {
+        line_width: 48,
+        ..FormatOptions::default()
+    };
+    let input = "<div class=\"very very very very very long class name\" data-controller=\"x\"><%= helper %></div>\n";
+    let expected = "<div\n  class=\"very very very very very long class name\"\n  data-controller=\"x\"\n><%= helper %></div>\n";
+
+    assert_eq!(format_source_with_options(input, options), expected);
+    assert_eq!(format_source_with_options(expected, options), expected);
+}
+
+#[test]
+fn preserves_empty_element_boundaries_when_wrapping_long_tags() {
+    let options = FormatOptions {
+        line_width: 48,
+        ..FormatOptions::default()
+    };
+    let input = "<i class=\"very very very very very long icon name\" aria-hidden=\"true\"></i>\n";
+    let expected =
+        "<i\n  class=\"very very very very very long icon name\"\n  aria-hidden=\"true\"\n></i>\n";
+
+    assert_eq!(format_source_with_options(input, options), expected);
+    assert_eq!(format_source_with_options(expected, options), expected);
+}
+
+#[test]
+fn preserves_inline_child_boundaries_when_wrapping_long_button_tags() {
+    let options = FormatOptions {
+        line_width: 48,
+        ..FormatOptions::default()
+    };
+    let input = "<button class=\"button button--primary button--wide\" data-controller=\"confirm\" type=\"button\">Save</button>\n";
+    let expected = "<button\n  class=\"button button--primary button--wide\"\n  data-controller=\"confirm\"\n  type=\"button\"\n>Save</button>\n";
+
+    assert_eq!(format_source_with_options(input, options), expected);
+    assert_eq!(format_source_with_options(expected, options), expected);
+}
+
+#[test]
 fn preserves_source_boundaries_between_closing_tags_and_inline_children() {
     let input = "<p>Lead\n<strong>Body</strong>\nTail</p>\n";
     let expected = "<p>Lead\n  <strong>Body</strong>\n  Tail</p>\n";
@@ -392,7 +445,7 @@ fn falls_back_when_formatter_ignore_target_is_not_on_the_next_line() {
                 ..FormatOptions::default()
             }
         ),
-        "<!-- erbfmt-ignore format: separated -->\n\n<article\n  class=\"card\"\n  data-controller=\"profile\"\n  aria-label=\"Profile card\"\n>\n</article>\n"
+        "<!-- erbfmt-ignore format: separated -->\n\n<article\n  class=\"card\"\n  data-controller=\"profile\"\n  aria-label=\"Profile card\"\n></article>\n"
     );
 }
 
@@ -522,6 +575,33 @@ fn preserves_erb_spacing_inside_format_sensitive_subtrees() {
 }
 
 #[test]
+fn safety_preserves_erb_inside_format_sensitive_subtrees() {
+    let input = r#"<section>
+<pre><%=   render partial: "profile", locals: { user: user }   %></pre>
+<textarea><%=   form.text_area :body, class: "body-field body-field--wide"   %></textarea>
+<script>const label = "<%=   t("labels.save")   %>";</script>
+<style>.button::before { content: "<%=   label   %>"; }</style>
+<svg><text><%=   title   %></text></svg>
+<math><mi><%=   variable   %></mi></math>
+<div contenteditable="true"><%=   render partial: "editable", locals: { record: record }   %></div>
+</section>
+"#;
+    let expected = r#"<section>
+  <pre><%=   render partial: "profile", locals: { user: user }   %></pre>
+  <textarea><%=   form.text_area :body, class: "body-field body-field--wide"   %></textarea>
+  <script>const label = "<%=   t("labels.save")   %>";</script>
+  <style>.button::before { content: "<%=   label   %>"; }</style>
+  <svg><text><%=   title   %></text></svg>
+  <math><mi><%=   variable   %></mi></math>
+  <div contenteditable="true"><%=   render partial: "editable", locals: { record: record }   %></div>
+</section>
+"#;
+
+    assert_eq!(format_source(input), expected);
+    assert_eq!(format_source(expected), expected);
+}
+
+#[test]
 fn indents_erb_block_children() {
     assert_eq!(
         format("<% if user %>\n<p>Hello</p>\n<% end %>\n"),
@@ -569,7 +649,7 @@ fn preserves_conditional_erb_attribute_blocks_even_when_long() {
                 ..FormatOptions::default()
             }
         ),
-        "<tr <% if clickable? %>class=\"clickable cursor-pointer\" data-controller=\"row-link\" data-action=\"click->row-link#open\"<% end %>>\n</tr>\n"
+        "<tr <% if clickable? %>class=\"clickable cursor-pointer\" data-controller=\"row-link\" data-action=\"click->row-link#open\"<% end %>></tr>\n"
     );
 }
 
@@ -650,7 +730,7 @@ fn wraps_long_inline_html_elements_by_attribute() {
                 ..FormatOptions::default()
             }
         ),
-        "<div\n  class=\"a-long-long-class-name\"\n  style=\"<%= long_logic %>\"\n>\n</div>\n"
+        "<div\n  class=\"a-long-long-class-name\"\n  style=\"<%= long_logic %>\"\n></div>\n"
     );
 }
 
@@ -680,7 +760,7 @@ fn normalizes_single_quoted_html_attributes_when_wrapping_tags() {
                 ..FormatOptions::default()
             }
         ),
-        "<div\n  class=\"a-long-long-class-name\"\n  style=\"<%= long_logic %>\"\n>\n</div>\n"
+        "<div\n  class=\"a-long-long-class-name\"\n  style=\"<%= long_logic %>\"\n></div>\n"
     );
 }
 
@@ -723,258 +803,10 @@ fn normalizes_existing_multiline_html_tags() {
 #[test]
 fn normalizes_multiline_html_tags_with_erb_attributes() {
     assert_eq!(
-        format(
+        format_source(
             "<a\nhref=\"/users/<%= user.id %>\"\naria-label=\"<%= user.name %>\"\n>Profile</a>\n"
         ),
-        "<a\n  href=\"/users/<%= user.id %>\"\n  aria-label=\"<%= user.name %>\"\n>\n  Profile\n</a>\n"
-    );
-}
-
-#[test]
-fn wraps_long_erb_output_command_calls() {
-    assert_eq!(
-        format_with_options(
-            r#"<%= link_to "Edit profile", edit_user_path(user), class: "button button--primary", data: { turbo_frame: "_top" } %>"#,
-            FormatOptions {
-                line_width: 60,
-                ..FormatOptions::default()
-            }
-        ),
-        "<%=\n  link_to(\n    \"Edit profile\",\n    edit_user_path(user),\n    class: \"button button--primary\",\n    data: { turbo_frame: \"_top\" }\n  )\n%>\n"
-    );
-}
-
-#[test]
-fn wraps_long_erb_output_keyword_hash_arguments() {
-    assert_eq!(
-        format_with_options(
-            r#"<%= render partial: "profile", locals: { current_user: current_user, account: account, selected_status: selected_status } %>"#,
-            FormatOptions {
-                line_width: 60,
-                ..FormatOptions::default()
-            }
-        ),
-        "<%=\n  render(\n    partial: \"profile\",\n    locals: {\n      current_user: current_user,\n      account: account,\n      selected_status: selected_status\n    }\n  )\n%>\n"
-    );
-}
-
-#[test]
-fn wraps_long_erb_output_single_keyword_hash_argument() {
-    assert_eq!(
-        format_with_options(
-            r#"<%= render locals: { current_user: current_user, account: account, selected_status: selected_status } %>"#,
-            FormatOptions {
-                line_width: 60,
-                ..FormatOptions::default()
-            }
-        ),
-        "<%=\n  render(\n    locals: {\n      current_user: current_user,\n      account: account,\n      selected_status: selected_status\n    }\n  )\n%>\n"
-    );
-}
-
-#[test]
-fn preserves_long_erb_code_tags_when_arguments_are_not_safely_splittable() {
-    assert_eq!(
-        format_with_options(
-            r#"<% cache ["profile-card", user.cache_key_with_version, current_user.cache_key_with_version] %>"#,
-            FormatOptions {
-                line_width: 60,
-                ..FormatOptions::default()
-            }
-        ),
-        "<%\n  cache [\"profile-card\", user.cache_key_with_version, current_user.cache_key_with_version]\n%>\n"
-    );
-}
-
-#[test]
-fn preserves_heredoc_erb_tags() {
-    let root = "<%\nmessage = <<TEXT\nhello\nTEXT\n%>\n";
-    assert_eq!(format_source(root), root);
-
-    assert_eq!(
-        format_source("<div>\n<%\nmessage = <<TEXT\nhello\nTEXT\n%>\n</div>\n"),
-        "<div>\n  <%\nmessage = <<TEXT\nhello\nTEXT\n%>\n</div>\n"
-    );
-}
-
-#[test]
-fn preserves_self_contained_multiline_erb_case_tags() {
-    let input = "<% name = 1 %>\n\n<%\n  case name\n  when 1\n    x = \"1\"\n  when 2\n    x = \"2\"\n  end\n%>\n";
-
-    assert_eq!(format_source(input), input);
-}
-
-#[test]
-fn preserves_long_erb_block_opening_tags_when_they_are_control_flow() {
-    assert_eq!(
-        format_with_options(
-            "<% if current_user.admin? && feature_enabled?(:new_dashboard) && account.active? %>\n<p>Hello</p>\n<% end %>\n",
-            FormatOptions {
-                line_width: 60,
-                ..FormatOptions::default()
-            }
-        ),
-        "<%\n  if current_user.admin? && feature_enabled?(:new_dashboard) && account.active?\n%>\n  <p>Hello</p>\n<% end %>\n"
-    );
-}
-
-#[test]
-fn wraps_long_erb_code_command_calls() {
-    assert_eq!(
-        format_with_options(
-            r#"<% tag.div class: "card", data: { controller: "profile" }, aria: { label: "Profile" } %>"#,
-            FormatOptions {
-                line_width: 48,
-                ..FormatOptions::default()
-            }
-        ),
-        "<%\n  tag.div(\n    class: \"card\",\n    data: { controller: \"profile\" },\n    aria: { label: \"Profile\" }\n  )\n%>\n"
-    );
-}
-
-#[test]
-fn preserves_multistatement_erb_code_tags_when_wrapping() {
-    let input = "<%\n  content_for :header, render(\"header\")\n  content_for :footer, render(\"footer\")\n%>\n";
-
-    assert_eq!(
-        format_source_with_options(
-            input,
-            FormatOptions {
-                line_width: 40,
-                ..FormatOptions::default()
-            }
-        ),
-        input
-    );
-}
-
-#[test]
-fn wraps_long_erb_output_command_calls_with_do_blocks() {
-    assert_eq!(
-        format_with_options(
-            r#"<%= form_with model: user, url: user_path(user), data: { turbo_frame: "profile" } do |form| %><div></div><% end %>"#,
-            FormatOptions {
-                line_width: 60,
-                ..FormatOptions::default()
-            }
-        ),
-        "<%=\n  form_with(\n    model: user,\n    url: user_path(user),\n    data: { turbo_frame: \"profile\" }\n  ) do |form|\n%>\n  <div></div>\n<% end %>\n"
-    );
-}
-
-#[test]
-fn wraps_long_link_to_output_command_calls_with_do_blocks() {
-    assert_eq!(
-        format_with_options(
-            r#"<%= link_to "Edit profile", edit_user_path(user), class: "button button--primary", data: { turbo_frame: "_top", controller: "profile-link" } do %><span>Edit</span><% end %>"#,
-            FormatOptions {
-                line_width: 60,
-                ..FormatOptions::default()
-            }
-        ),
-        "<%=\n  link_to(\n    \"Edit profile\",\n    edit_user_path(user),\n    class: \"button button--primary\",\n    data: {\n      turbo_frame: \"_top\",\n      controller: \"profile-link\"\n    }\n  ) do\n%>\n  <span>Edit</span>\n<% end %>\n"
-    );
-}
-
-#[test]
-fn wraps_long_parenthesized_rails_helper_calls() {
-    let options = FormatOptions {
-        line_width: 60,
-        ..FormatOptions::default()
-    };
-
-    assert_eq!(
-        format_with_options(
-            r#"<%= image_tag("user-placeholder.png", alt: "User profile image", class: "avatar avatar--large") %>"#,
-            options
-        ),
-        "<%=\n  image_tag(\n    \"user-placeholder.png\",\n    alt: \"User profile image\",\n    class: \"avatar avatar--large\"\n  )\n%>\n"
-    );
-
-    assert_eq!(
-        format_with_options(
-            r#"<%= video_tag(["intro.mp4", "intro.webm"], controls: true, autoplay: false, class: "hero-video") %>"#,
-            options
-        ),
-        "<%=\n  video_tag(\n    [\"intro.mp4\", \"intro.webm\"],\n    controls: true,\n    autoplay: false,\n    class: \"hero-video\"\n  )\n%>\n"
-    );
-
-    let formatted = format_with_options(
-        r#"<%= form_with(model: user, url: user_path(user), data: { turbo_frame: "profile" }) do |form| %><div></div><% end %>"#,
-        options,
-    );
-    let expected = "<%=\n  form_with(\n    model: user,\n    url: user_path(user),\n    data: { turbo_frame: \"profile\" }\n  ) do |form|\n%>\n  <div></div>\n<% end %>\n";
-
-    assert_eq!(formatted, expected);
-    assert_eq!(format_with_options(&formatted, options), expected);
-}
-
-#[test]
-fn preserves_long_erb_output_when_expression_is_not_safely_splittable() {
-    assert_eq!(
-        format_with_options(
-            r#"<%= current_user.admin? ? link_to("Admin", admin_path) : link_to("Home", root_path) %>"#,
-            FormatOptions {
-                line_width: 48,
-                ..FormatOptions::default()
-            }
-        ),
-        "<%=\n  current_user.admin? ? link_to(\"Admin\", admin_path) : link_to(\"Home\", root_path)\n%>\n"
-    );
-}
-
-#[test]
-fn preserves_existing_multiline_erb_output_shape() {
-    assert_eq!(
-        format(
-            "<%=\n  link_to(\n    \"Edit profile\",\n    edit_user_path(user),\n    class: \"button\"\n  )\n%>\n"
-        ),
-        "<%=\n  link_to(\n    \"Edit profile\",\n    edit_user_path(user),\n    class: \"button\"\n  )\n%>\n"
-    );
-}
-
-#[test]
-fn normalizes_multiline_erb_output_opening_marker_inside_html() {
-    assert_eq!(
-        format("<p><%= render(\n  partial: \"partial\",\n  locals: {key: \"value\"}\n) %></p>\n"),
-        "<p>\n  <%=\n    render(\n      partial: \"partial\",\n      locals: {key: \"value\"}\n    )\n  %>\n</p>\n"
-    );
-}
-
-#[test]
-fn preserves_inline_single_foldable_erb_output_child_at_line_width() {
-    let options = FormatOptions {
-        line_width: 40,
-        ..FormatOptions::default()
-    };
-    let input = "<p><%= render(partial: \"foo\", locals: { key: \"value\" }) %></p>\n";
-
-    assert_eq!(format_source_with_options(input, options), input);
-}
-
-#[test]
-fn preserves_text_adjacent_to_foldable_erb_output_child() {
-    let input = "<p>Before <%= render(partial: \"foo\", locals: { key: \"value\" }) %> after</p>\n";
-
-    assert_eq!(
-        format_source_with_options(
-            input,
-            FormatOptions {
-                line_width: 40,
-                ..FormatOptions::default()
-            }
-        ),
-        input
-    );
-}
-
-#[test]
-fn normalizes_existing_multiline_parenthesized_erb_output_arguments() {
-    assert_eq!(
-        format(
-            "<%= react_component(\"ReactComponent\",\n  props: {\n    key1: \"value1\",\n    key2: \"value2\"\n  }\n) %>\n"
-        ),
-        "<%=\n  react_component(\n    \"ReactComponent\",\n    props: {\n      key1: \"value1\",\n      key2: \"value2\"\n    }\n  )\n%>\n"
+        "<a\n  href=\"/users/<%= user.id %>\"\n  aria-label=\"<%= user.name %>\"\n>Profile</a>\n"
     );
 }
 

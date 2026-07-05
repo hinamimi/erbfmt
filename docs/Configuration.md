@@ -16,9 +16,9 @@ You can also pass an explicit path:
 erbfmt --config path/to/erbfmt.json app/views/users/show.html.erb
 ```
 
-The shape is intentionally close to Biome's `formatter` and `linter`
-configuration sections, with a small erbfmt-specific `parser` section and
-`formatter.indentHtml` option for ERB and HTML-specific behavior.
+The shape is intentionally close to Biome's `formatter`, `linter`, and
+`assist` configuration sections, with a small erbfmt-specific `parser` section
+and `formatter.indentHtml` option for ERB and HTML-specific behavior.
 
 ## Example
 
@@ -28,7 +28,8 @@ configuration sections, with a small erbfmt-specific `parser` section and
     "includes": ["**/*.html.erb", "!vendor/**"]
   },
   "parser": {
-    "allowHtmlOptionalClosingTags": false
+    "allowHtmlOptionalClosingTags": false,
+    "allowUnbalancedHtmlFragments": false
   },
   "formatter": {
     "enabled": true,
@@ -54,6 +55,16 @@ configuration sections, with a small erbfmt-specific `parser` section and
       "noSelfClosingHtmlTag": "error",
       "unsupportedErbBlockStarter": "error"
     }
+  },
+  "assist": {
+    "enabled": false,
+    "includes": ["**/*.html.erb"],
+    "actions": {
+      "html.useDoubleQuotedAttributes": true,
+      "html.fixSelfClosingTags": true,
+      "html.simplifyBooleanAttributes": true,
+      "erb.removeEmptyTags": true
+    }
   }
 }
 ```
@@ -78,6 +89,14 @@ configuration sections, with a small erbfmt-specific `parser` section and
   ERB-heavy templates do not get reformatted under an inferred tree. When set
   to `true`, erbfmt accepts these forms but preserves the omitted closing tags
   instead of inserting them.
+- `parser.allowUnbalancedHtmlFragments`: allow partial HTML fragments that have
+  close tags from an outer template or open tags that are closed by a caller.
+  The default is `false`. When set to `true`, erbfmt preserves unmatched close
+  tags as text and allows unclosed HTML tags at the end of the file. Internal
+  mismatched tags still fail because they are unsafe to reformat structurally.
+  This option is not intended for HTML open/close pairs that cross separate ERB
+  blocks; those templates should remain parse failures or be handled with
+  `erbfmt-ignore`.
 
 ## Formatter
 
@@ -126,5 +145,40 @@ VSCode diagnostics use the matching warning or error severity.
 
 See [LintRules.md](LintRules.md) for the current lint rule design and the next
 planned rules.
+
+## Assist
+
+The `assist` section configures safe code actions. Assist is separate from
+formatting and linting: linter rules report problems, while assist actions
+offer edits that erbfmt can apply without needing Ruby or Rails semantic
+analysis.
+
+- `assist.enabled`: enable or disable assist actions. The default is `false`.
+  `assist.enable` is also accepted as an alias. The CLI `--assist` mode runs
+  assist explicitly even when the default config keeps this value `false`.
+- `assist.includes`: file include and exclude patterns used by assist actions.
+  The pattern syntax matches `files.includes`.
+- `assist.actions`: action-name to boolean map. Known actions default to enabled
+  when assist runs, unless explicitly set to `false`.
+
+Current actions:
+
+- `html.useDoubleQuotedAttributes`: replace single-quoted or unquoted HTML
+  attribute values with double-quoted values when the value itself does not
+  contain a double quote.
+- `html.fixSelfClosingTags`: replace `<br />` with `<br>` and `<div />` with
+  `<div></div>`.
+- `html.simplifyBooleanAttributes`: replace redundant boolean attributes such
+  as `checked="checked"` with `checked`. Values such as `disabled="false"` are
+  not changed because they may indicate a semantic bug.
+- `erb.removeEmptyTags`: remove empty `<% %>` and `<%= %>` tags.
+
+CLI examples:
+
+```bash
+erbfmt --assist app/views
+erbfmt --assist --assist-format json app/views
+erbfmt --assist --write app/views
+```
 
 See [Ignore.md](Ignore.md) for `erbfmt-ignore` lint and formatter directives.

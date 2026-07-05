@@ -1,4 +1,4 @@
-use crate::{html, lexer, mixed_parser};
+use crate::syntax::{erb as lexer, html, template as mixed_parser};
 
 mod diagnostic;
 mod erb;

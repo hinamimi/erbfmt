@@ -25,6 +25,9 @@
       "properties": {
         "allowHtmlOptionalClosingTags": {
           "type": "boolean"
+        },
+        "allowUnbalancedHtmlFragments": {
+          "type": "boolean"
         }
       }
     },
@@ -100,6 +103,44 @@
             },
             "unsupportedErbBlockStarter": {
               "enum": ["off", "warn", "error"]
+            }
+          }
+        }
+      }
+    },
+    "assist": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false
+        },
+        "enable": {
+          "type": "boolean",
+          "default": false
+        },
+        "includes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "actions": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "html.useDoubleQuotedAttributes": {
+              "type": "boolean"
+            },
+            "html.fixSelfClosingTags": {
+              "type": "boolean"
+            },
+            "html.simplifyBooleanAttributes": {
+              "type": "boolean"
+            },
+            "erb.removeEmptyTags": {
+              "type": "boolean"
             }
           }
         }

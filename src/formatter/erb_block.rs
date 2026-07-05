@@ -1,6 +1,6 @@
-use crate::{
-    lexer::ErbTag,
-    mixed_parser::{ErbBranch, Node, SourceRange},
+use crate::syntax::{
+    erb::ErbTag,
+    template::{ErbBranch, Node, SourceRange},
 };
 
 use super::engine::Formatter;
@@ -9,6 +9,7 @@ use super::inline::{
     FormattingNode, is_inline_formatting_node, render_inline_formatting_nodes_untrimmed,
 };
 use super::preserve::render_preserved_node;
+use super::ruby_wrap;
 
 pub(super) struct ErbBlockParts<'a> {
     pub(super) tag: &'a ErbTag,
@@ -115,7 +116,14 @@ impl<'a> Formatter<'a> {
             return;
         }
 
-        if prefix.is_empty() {
+        if prefix.is_empty()
+            && should_preserve_raw_multiline_erb_block_opener(parts.tag)
+            && let Some(raw) = self
+                .raw_erb_block_open_tag(parts.range, parts.tag)
+                .map(str::to_string)
+        {
+            self.write_indented_raw(&raw, depth);
+        } else if prefix.is_empty() {
             self.write_erb_tag(depth, parts.tag, None);
         } else {
             self.write_indented_line(
@@ -158,4 +166,57 @@ impl<'a> Formatter<'a> {
 
         !raw.contains(['\n', '\r'])
     }
+}
+
+fn should_preserve_raw_multiline_erb_block_opener(tag: &ErbTag) -> bool {
+    should_preserve_multiline_setup_do_block_opener(tag)
+        || should_preserve_multiline_unfoldable_do_block_opener(tag)
+}
+
+fn should_preserve_multiline_setup_do_block_opener(tag: &ErbTag) -> bool {
+    if !tag.code.contains('\n') {
+        return false;
+    }
+
+    let Some(first_line) = tag.code.lines().find(|line| !line.trim().is_empty()) else {
+        return false;
+    };
+
+    line_ends_with_do_block_opener(first_line)
+}
+
+fn should_preserve_multiline_unfoldable_do_block_opener(tag: &ErbTag) -> bool {
+    tag.code.contains('\n')
+        && line_ends_with_do_block_opener(tag.code.trim_end())
+        && ruby_wrap::fold_command_call(&tag.code).is_none()
+}
+
+fn line_ends_with_do_block_opener(line: &str) -> bool {
+    let trimmed = line.trim_end();
+    let Some(index) = find_last_keyword(trimmed, "do") else {
+        return false;
+    };
+
+    let rest = trimmed[index + "do".len()..].trim();
+    rest.is_empty() || (rest.starts_with('|') && rest.ends_with('|'))
+}
+
+fn find_last_keyword(code: &str, keyword: &str) -> Option<usize> {
+    code.match_indices(keyword)
+        .filter_map(|(index, _)| {
+            let before = code[..index].chars().next_back();
+            let after = code[index + keyword.len()..].chars().next();
+
+            let has_left_boundary = before.is_none_or(char::is_whitespace);
+            let has_right_boundary = after.is_none_or(|c| !is_identifier_char(c));
+
+            has_left_boundary
+                .then_some(index)
+                .filter(|_| has_right_boundary)
+        })
+        .last()
+}
+
+fn is_identifier_char(c: char) -> bool {
+    c.is_ascii_alphanumeric() || matches!(c, '_' | '?' | '!')
 }

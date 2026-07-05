@@ -29,6 +29,7 @@
         <nav aria-label="Documentation">
           <a href="../">Overview</a>
           <a href="../cli/">CLI</a>
+          <a href="../commands/">Commands</a>
           <a aria-current="page" href="./">Configuration</a>
         </nav>
         <div class="on-page">
@@ -39,6 +40,7 @@
             <a href="#formatter">Formatter</a>
             <a href="#linter">Linter</a>
             <a href="#rules">Rules</a>
+            <a href="#assist">Assist</a>
           </nav>
         </div>
       </aside>
@@ -65,7 +67,8 @@ erbfmt init --force</code></pre>
     "includes": ["**/*.html.erb", "!vendor/**"]
   },
   "parser": {
-    "allowHtmlOptionalClosingTags": false
+    "allowHtmlOptionalClosingTags": false,
+    "allowUnbalancedHtmlFragments": false
   },
   "formatter": {
     "enabled": true,
@@ -91,6 +94,16 @@ erbfmt init --force</code></pre>
       "noSelfClosingHtmlTag": "error",
       "unsupportedErbBlockStarter": "error"
     }
+  },
+  "assist": {
+    "enabled": false,
+    "includes": ["**/*.html.erb"],
+    "actions": {
+      "html.useDoubleQuotedAttributes": true,
+      "html.fixSelfClosingTags": true,
+      "html.simplifyBooleanAttributes": true,
+      "erb.removeEmptyTags": true
+    }
   }
 }</code></pre>
 
@@ -102,6 +115,7 @@ erbfmt init --force</code></pre>
         <h2 id="parser">Parser</h2>
         <dl class="option-list">
           <div class="option"><dt><code>parser.allowHtmlOptionalClosingTags</code><span class="meta">boolean · default: false</span></dt><dd><p>Allows common HTML optional closing tags such as omitted <code>&lt;/li&gt;</code>, <code>&lt;/p&gt;</code>, <code>&lt;/td&gt;</code>, and <code>&lt;/tr&gt;</code>. By default erbfmt treats omitted close tags as parse errors. When enabled, erbfmt accepts these forms but preserves the omitted closing tags instead of inserting them.</p></dd></div>
+          <div class="option"><dt><code>parser.allowUnbalancedHtmlFragments</code><span class="meta">boolean · default: false</span></dt><dd><p>Allows partial HTML fragments that have close tags from an outer template or open tags that are closed by a caller. When enabled, erbfmt preserves unmatched close tags as text and allows unclosed HTML tags at the end of the file. Internal mismatched tags still fail because they are unsafe to reformat structurally. This option is not intended for HTML open/close pairs that cross separate ERB blocks; those templates should remain parse failures or be handled with <code>erbfmt-ignore</code>.</p></dd></div>
         </dl>
 
         <h2 id="formatter">Formatter</h2>
@@ -136,7 +150,14 @@ erbfmt init --force</code></pre>
           <div class="option"><dt><code>unsupportedErbBlockStarter</code><span class="meta">off | warn | error</span></dt><dd><p><span class="rule-name">Reports unsupported block starters.</span> Identifies Ruby control-flow forms that look like ERB blocks but are outside the formatter's supported block set.</p></dd></div>
         </dl>
 
-        <footer class="footer">Configuration for erbfmt 0.2.1 · <a href="https://github.com/hinamimi/erbfmt/blob/main/docs/schema/erbfmt.schema.json">View schema source</a></footer>
+        <h2 id="assist">Assist</h2>
+        <dl class="option-list">
+          <div class="option"><dt><code>assist.enabled</code><span class="meta">boolean · default: false</span></dt><dd><p>Enables or disables assist actions. <code>assist.enable</code> is also accepted as an alias. The CLI <code>--assist</code> mode runs assist explicitly even when the default config keeps this value <code>false</code>.</p></dd></div>
+          <div class="option"><dt><code>assist.includes</code><span class="meta">array of glob patterns</span></dt><dd><p>Filters files for assist actions. Pattern syntax matches <code>files.includes</code>, including <code>!</code> exclusions.</p></dd></div>
+          <div class="option"><dt><code>assist.actions</code><span class="meta">object of action booleans</span></dt><dd><p>Maps assist action names to booleans. Known actions are <code>html.useDoubleQuotedAttributes</code>, <code>html.fixSelfClosingTags</code>, <code>html.simplifyBooleanAttributes</code>, and <code>erb.removeEmptyTags</code>.</p></dd></div>
+        </dl>
+
+        <footer class="footer">Configuration for erbfmt 0.3.0-dev · <a href="https://github.com/hinamimi/erbfmt/blob/main/docs/schema/erbfmt.schema.json">View schema source</a></footer>
       </main>
     </div>
   </body>
