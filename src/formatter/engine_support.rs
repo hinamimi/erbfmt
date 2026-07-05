@@ -1,5 +1,5 @@
-use crate::lexer::{ErbTag, ErbTagOpen, ErbTagSyntax};
-use crate::mixed_parser::Node;
+use crate::syntax::erb::{ErbTag, ErbTagOpen, ErbTagSyntax};
+use crate::syntax::template::Node;
 
 use super::erb::formatted_erb_code_lines;
 use super::inline::FormattingNode;

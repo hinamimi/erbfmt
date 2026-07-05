@@ -1,4 +1,4 @@
-use crate::ruby_ast::{Argument, Call, Expression, HashKey, HashPair, Modifier, Program};
+use crate::syntax::ruby::{Argument, Call, Expression, HashKey, HashPair, Modifier, Program};
 
 pub(super) fn foldable_call(program: &Program) -> Option<&Call> {
     if program.statements.len() != 1 {

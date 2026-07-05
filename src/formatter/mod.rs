@@ -13,7 +13,7 @@ mod ruby_wrap_ast;
 mod ruby_wrap_tests;
 mod tag;
 
-use crate::mixed_parser::Document;
+use crate::syntax::template::Document;
 
 pub use options::{FormatOptions, IndentStyle, LineEnding};
 

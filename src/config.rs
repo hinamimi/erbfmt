@@ -10,7 +10,7 @@ use serde::Deserialize;
 use crate::{
     formatter::{FormatOptions, IndentStyle, LineEnding},
     linter::{DiagnosticSeverity, LintOptions, LintRuleSeverities, LintRules},
-    mixed_parser::ParserOptions,
+    syntax::template::ParserOptions,
 };
 
 const CONFIG_FILE: &str = "erbfmt.json";

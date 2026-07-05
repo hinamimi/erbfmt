@@ -1,6 +1,7 @@
-use crate::{
+use crate::syntax::{
+    erb as lexer,
     html::{self, HtmlToken},
-    lexer, mixed_parser,
+    template as mixed_parser,
 };
 
 use super::{Diagnostic, LintOptions};

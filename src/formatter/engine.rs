@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
-use crate::mixed_parser::{Document, Node, SourceRange};
+use crate::syntax::template::{Document, Node, SourceRange};
 
-use crate::lexer::{ErbTag, ErbTagSyntax};
+use crate::syntax::erb::{ErbTag, ErbTagSyntax};
 
 use super::engine_support::{
     HtmlElementBoundaries, contains_heredoc_marker, has_inline_boundary_content,

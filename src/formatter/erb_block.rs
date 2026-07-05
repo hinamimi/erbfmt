@@ -1,6 +1,6 @@
-use crate::{
-    lexer::ErbTag,
-    mixed_parser::{ErbBranch, Node, SourceRange},
+use crate::syntax::{
+    erb::ErbTag,
+    template::{ErbBranch, Node, SourceRange},
 };
 
 use super::engine::Formatter;

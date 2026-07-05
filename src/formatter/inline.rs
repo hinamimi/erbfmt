@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::mixed_parser::{Node, SourceRange};
+use crate::syntax::template::{Node, SourceRange};
 
 use super::erb::{format_erb_comment, format_erb_tag_inline};
 use super::preserve::is_format_sensitive_html_element;

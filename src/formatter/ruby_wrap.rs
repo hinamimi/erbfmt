@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 
-use crate::ruby_ast::{Expression, parse};
+use crate::syntax::ruby::{Expression, parse};
 
 use super::ruby_scan::{
     RubyScanState, contains_top_level_newline, is_single_array_literal,

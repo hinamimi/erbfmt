@@ -1,5 +1,5 @@
 use super::*;
-use crate::lexer::{
+use crate::syntax::erb::{
     ErbBlockKind, ErbTag, ErbTagClose, ErbTagOpen, ErbTagSyntax, tokenize, tokenize_with_spans,
 };
 

@@ -1,7 +1,7 @@
 use super::*;
-use crate::{
-    lexer::{tokenize, tokenize_with_spans},
-    mixed_parser::{parse, parse_spanned},
+use crate::syntax::{
+    erb::{tokenize, tokenize_with_spans},
+    template::{parse, parse_spanned},
 };
 
 fn format(input: &str) -> String {

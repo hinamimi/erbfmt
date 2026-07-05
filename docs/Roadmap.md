@@ -149,7 +149,7 @@ ERB tag 内 Ruby expression を安全に理解するための AST 基盤を育�
 
 やること:
 
-- `src/ruby_ast/` の lexer / parser / AST を小さく保つ。
+- `src/syntax/ruby/` の lexer / parser / AST を小さく保つ。
 - helper call、keyword argument、array、hash、assignment、operator expression、
   modifier `if` / `unless`、ternary、range、splat、constant path、
   percent literal、safe navigation、index access、top-level multiple statements、

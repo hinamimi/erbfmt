@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use crate::ignore::{IgnoreSelector, parse_ignore_directive};
-use crate::mixed_parser::{Node, SourceRange};
+use crate::syntax::template::{Node, SourceRange};
 
 pub(super) fn formatter_ignore_ranges(
     nodes: &[Node],

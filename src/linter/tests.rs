@@ -1,5 +1,5 @@
 use super::*;
-use crate::lexer::SourceLocation;
+use crate::syntax::erb::SourceLocation;
 
 #[test]
 fn reports_no_diagnostics_for_valid_template() {

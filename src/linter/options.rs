@@ -1,4 +1,4 @@
-use crate::mixed_parser::ParserOptions;
+use crate::syntax::template::ParserOptions;
 
 use super::DiagnosticSeverity;
 

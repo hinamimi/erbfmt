@@ -1,11 +1,8 @@
 mod config;
 mod formatter;
-mod html;
 mod ignore;
-mod lexer;
 mod linter;
-mod mixed_parser;
-mod ruby_ast;
+mod syntax;
 
 use anyhow::{Context, Result, bail};
 use clap::{ArgGroup, Parser, ValueEnum};
@@ -13,6 +10,7 @@ use std::ffi::OsString;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
+use syntax::{erb as lexer, template as mixed_parser};
 
 const CONFIG_FILE: &str = "erbfmt.json";
 const DEFAULT_CONFIG: &str = r#"{

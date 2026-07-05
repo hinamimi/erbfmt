@@ -1,6 +1,6 @@
-use crate::{
+use crate::syntax::{
+    erb::{self, ErbBranchKind, SourceLocation, SpannedToken, Token},
     html::{self, HtmlTag, HtmlToken},
-    lexer::{self, ErbBranchKind, SourceLocation, SpannedToken, Token},
 };
 
 mod ast;
@@ -82,7 +82,7 @@ fn relative_source_location(
     fragment: &str,
     position: usize,
 ) -> SourceLocation {
-    let relative = lexer::source_location(fragment, position);
+    let relative = erb::source_location(fragment, position);
 
     if relative.line == 1 {
         SourceLocation {
@@ -358,7 +358,7 @@ impl Parser {
     fn close_erb_block(
         &mut self,
         token_index: usize,
-        end_tag: &lexer::ErbTag,
+        end_tag: &erb::ErbTag,
         end: Option<usize>,
     ) -> Result<(), ParseError> {
         let Some(frame) = self.stack.pop() else {
@@ -427,7 +427,7 @@ impl Parser {
         &mut self,
         token_index: usize,
         kind: ErbBranchKind,
-        tag: &lexer::ErbTag,
+        tag: &erb::ErbTag,
     ) -> Result<(), ParseError> {
         let Some(frame) = self.stack.last_mut() else {
             return Err(ParseError::UnexpectedErbBranch {
