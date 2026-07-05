@@ -233,6 +233,7 @@ fn hash_key_is_foldable(key: &HashKey) -> bool {
 
 fn format_argument_lines(argument: &str, comma: bool) -> Vec<String> {
     let mut lines = fold_keyword_hash_argument(argument)
+        .or_else(|| fold_keyword_array_argument(argument))
         .or_else(|| fold_keyword_call_value_argument(argument))
         .or_else(|| fold_chained_method_argument(argument))
         .unwrap_or_else(|| normalize_multiline_argument(argument));
@@ -250,7 +251,7 @@ fn format_argument_lines(argument: &str, comma: bool) -> Vec<String> {
 }
 
 fn fold_keyword_call_value_argument(argument: &str) -> Option<Vec<String>> {
-    let (keyword, value) = split_keyword_value_argument(argument)?;
+    let (keyword, value) = split_label_value_argument(argument)?;
 
     if !value.contains('(') || (!value.contains('\n') && value.len() <= 80) {
         return None;
@@ -270,7 +271,7 @@ fn fold_chained_method_argument(argument: &str) -> Option<Vec<String>> {
         return None;
     }
 
-    let (prefix, expression) = split_keyword_value_argument(argument)
+    let (prefix, expression) = split_label_value_argument(argument)
         .map(|(keyword, value)| (format!("{keyword}: "), value))
         .unwrap_or_else(|| (String::new(), argument.trim()));
 
@@ -322,6 +323,7 @@ fn compact_chained_method_segments(parts: Vec<&str>) -> Vec<String> {
 fn is_plain_method_segment(segment: &str) -> bool {
     segment
         .strip_prefix('.')
+        .or_else(|| segment.strip_prefix("&."))
         .is_some_and(is_keyword_argument_name)
 }
 
@@ -329,7 +331,7 @@ fn method_segment_has_arguments(segment: &str) -> bool {
     segment.contains('(')
 }
 
-fn split_keyword_value_argument(argument: &str) -> Option<(&str, &str)> {
+fn split_label_value_argument(argument: &str) -> Option<(&str, &str)> {
     let mut state = RubyScanState::default();
 
     for (index, ch) in argument.char_indices() {
@@ -337,7 +339,7 @@ fn split_keyword_value_argument(argument: &str) -> Option<(&str, &str)> {
             let keyword = argument[..index].trim();
             let value = argument[index + ch.len_utf8()..].trim();
 
-            return (is_keyword_argument_name(keyword) && !value.is_empty())
+            return (is_label_argument_name(keyword) && !value.is_empty())
                 .then_some((keyword, value));
         }
 
@@ -355,7 +357,7 @@ fn split_top_level_method_chain(expression: &str) -> Option<Vec<&str>> {
     let mut segment_start = 0;
 
     for (index, ch) in expression.char_indices() {
-        if state.is_top_level() && ch == '.' && is_method_chain_dot(expression, index) {
+        if state.is_top_level() && is_method_chain_separator(expression, index, ch) {
             if parts.is_empty() {
                 let base = expression[..index].trim();
                 if base.is_empty() {
@@ -393,15 +395,26 @@ fn split_top_level_method_chain(expression: &str) -> Option<Vec<&str>> {
     Some(parts)
 }
 
-fn is_method_chain_dot(expression: &str, index: usize) -> bool {
+fn is_method_chain_separator(expression: &str, index: usize, ch: char) -> bool {
+    if expression[index..].starts_with("&.") {
+        return true;
+    }
+
+    if ch != '.' {
+        return false;
+    }
+
     let previous = expression[..index].chars().next_back();
     let next = expression[index + '.'.len_utf8()..].chars().next();
 
-    !matches!(previous, Some('.')) && !matches!(next, Some('.'))
+    !matches!(previous, Some('.' | '&')) && !matches!(next, Some('.'))
 }
 
 fn is_method_chain_segment(segment: &str) -> bool {
-    let Some(rest) = segment.strip_prefix('.') else {
+    let Some(rest) = segment
+        .strip_prefix('.')
+        .or_else(|| segment.strip_prefix("&."))
+    else {
         return false;
     };
 
@@ -425,6 +438,38 @@ fn fold_keyword_hash_argument(argument: &str) -> Option<Vec<String>> {
     let mut lines = vec![format!("{keyword}: {{")];
 
     for (index, entry) in entries.iter().enumerate() {
+        lines.extend(format_hash_entry_lines(entry, index + 1 < entries.len()));
+    }
+
+    lines.push("}".to_string());
+    Some(lines)
+}
+
+fn fold_keyword_array_argument(argument: &str) -> Option<Vec<String>> {
+    if argument.contains('\n') || argument.len() <= 80 {
+        return None;
+    }
+
+    let (keyword, value) = split_label_value_argument(argument)?;
+    if !is_single_array_literal(value) {
+        return None;
+    }
+
+    let program = parse(value).ok()?;
+    if !matches!(
+        program.statements.as_slice(),
+        [Expression::Array(values)] if values.len() >= 2 && values.iter().all(expression_is_foldable)
+    ) {
+        return None;
+    }
+
+    let entries = split_top_level_arguments(&value[1..value.len() - 1])?;
+    if entries.len() < 2 {
+        return None;
+    }
+
+    let mut lines = vec![format!("{keyword}: [")];
+    for (index, entry) in entries.iter().enumerate() {
         let mut line = format!("  {entry}");
 
         if index + 1 < entries.len() {
@@ -433,8 +478,8 @@ fn fold_keyword_hash_argument(argument: &str) -> Option<Vec<String>> {
 
         lines.push(line);
     }
+    lines.push("]".to_string());
 
-    lines.push("}".to_string());
     Some(lines)
 }
 
@@ -446,7 +491,7 @@ fn split_keyword_hash_argument(argument: &str) -> Option<(&str, &str)> {
             let keyword = argument[..index].trim();
             let hash = argument[index + ch.len_utf8()..].trim();
 
-            return (is_keyword_argument_name(keyword) && is_single_hash_literal(hash))
+            return (is_label_argument_name(keyword) && is_single_hash_literal(hash))
                 .then_some((keyword, hash));
         }
 
@@ -456,6 +501,76 @@ fn split_keyword_hash_argument(argument: &str) -> Option<(&str, &str)> {
     }
 
     None
+}
+
+fn format_hash_entry_lines(entry: &str, comma: bool) -> Vec<String> {
+    let mut lines = fold_hash_entry_call_value(entry).unwrap_or_else(|| vec![format!("  {entry}")]);
+
+    if comma && let Some(last) = lines.last_mut() {
+        last.push(',');
+    }
+
+    lines
+}
+
+fn fold_hash_entry_call_value(entry: &str) -> Option<Vec<String>> {
+    let (prefix, value) = split_hash_entry_value_argument(entry)?;
+
+    if !value.contains('(') || (!value.contains('\n') && value.len() <= 80) {
+        return None;
+    }
+
+    let mut lines = fold_command_call(value)?;
+    if lines.len() < 2 {
+        return None;
+    }
+
+    lines[0] = format!("  {prefix}{}", lines[0]);
+    for line in lines.iter_mut().skip(1) {
+        *line = format!("  {line}");
+    }
+
+    Some(lines)
+}
+
+fn split_hash_entry_value_argument(entry: &str) -> Option<(String, &str)> {
+    if let Some((keyword, value)) = split_label_value_argument(entry) {
+        return Some((format!("{keyword}: "), value));
+    }
+
+    let mut state = RubyScanState::default();
+
+    for (index, ch) in entry.char_indices() {
+        if state.is_top_level() && ch == '=' && entry[index..].starts_with("=>") {
+            let key = entry[..index].trim();
+            let value = entry[index + "=>".len()..].trim();
+
+            return (!key.is_empty() && !value.is_empty()).then(|| (format!("{key} => "), value));
+        }
+
+        if !state.consume(ch) {
+            return None;
+        }
+    }
+
+    None
+}
+
+fn is_label_argument_name(value: &str) -> bool {
+    is_keyword_argument_name(value) || is_quoted_label_argument_name(value)
+}
+
+fn is_quoted_label_argument_name(value: &str) -> bool {
+    let mut chars = value.chars();
+    let Some(first) = chars.next() else {
+        return false;
+    };
+
+    if !matches!(first, '\'' | '"') {
+        return false;
+    }
+
+    value.len() >= 2 && value.ends_with(first)
 }
 
 fn is_keyword_argument_name(value: &str) -> bool {
@@ -471,6 +586,26 @@ fn is_keyword_argument_name(value: &str) -> bool {
 
 fn is_single_hash_literal(value: &str) -> bool {
     if !value.starts_with('{') || !value.ends_with('}') {
+        return false;
+    }
+
+    let mut state = RubyScanState::default();
+
+    for (offset, ch) in value.char_indices() {
+        if offset > 0 && state.is_top_level() {
+            return false;
+        }
+
+        if !state.consume(ch) {
+            return false;
+        }
+    }
+
+    state.is_balanced()
+}
+
+fn is_single_array_literal(value: &str) -> bool {
+    if !value.starts_with('[') || !value.ends_with(']') {
         return false;
     }
 
@@ -1082,6 +1217,103 @@ mod tests {
                 "    account: account,".to_string(),
                 "    selected_status: selected_status".to_string(),
                 "  }".to_string(),
+                ")".to_string(),
+            ])
+        );
+    }
+
+    #[test]
+    fn folds_nested_helper_calls_inside_keyword_hash_entries() {
+        assert_eq!(
+            fold_command_call(
+                r#"render partial: "card", locals: { action: link_to("Edit profile", edit_user_profile_settings_path(user), class: "button button--primary"), label: t(".label") }"#
+            ),
+            Some(vec![
+                "render(".to_string(),
+                r#"  partial: "card","#.to_string(),
+                "  locals: {".to_string(),
+                "    action: link_to(".to_string(),
+                r#"      "Edit profile","#.to_string(),
+                "      edit_user_profile_settings_path(user),".to_string(),
+                r#"      class: "button button--primary""#.to_string(),
+                "    ),".to_string(),
+                r#"    label: t(".label")"#.to_string(),
+                "  }".to_string(),
+                ")".to_string(),
+            ])
+        );
+    }
+
+    #[test]
+    fn folds_nested_helper_calls_inside_hashrocket_entries() {
+        assert_eq!(
+            fold_command_call(
+                r#"render locals: { :action => link_to("Edit profile", edit_user_profile_settings_path(user), class: "button button--primary"), :label => t(".label") }"#
+            ),
+            Some(vec![
+                "render(".to_string(),
+                "  locals: {".to_string(),
+                "    :action => link_to(".to_string(),
+                r#"      "Edit profile","#.to_string(),
+                "      edit_user_profile_settings_path(user),".to_string(),
+                r#"      class: "button button--primary""#.to_string(),
+                "    ),".to_string(),
+                r#"    :label => t(".label")"#.to_string(),
+                "  }".to_string(),
+                ")".to_string(),
+            ])
+        );
+    }
+
+    #[test]
+    fn folds_safe_navigation_chained_method_arguments() {
+        assert_eq!(
+            fold_command_call(
+                r#"render partial: "team", collection: current_user&.organization&.teams&.visible&.for_sidebar_navigation&.ordered_by_name, as: :team"#
+            ),
+            Some(vec![
+                "render(".to_string(),
+                r#"  partial: "team","#.to_string(),
+                "  collection: current_user".to_string(),
+                "    &.organization".to_string(),
+                "    &.teams".to_string(),
+                "    &.visible".to_string(),
+                "    &.for_sidebar_navigation".to_string(),
+                "    &.ordered_by_name,".to_string(),
+                "  as: :team".to_string(),
+                ")".to_string(),
+            ])
+        );
+    }
+
+    #[test]
+    fn folds_long_keyword_array_arguments() {
+        assert_eq!(
+            fold_command_call(
+                r#"tag.div "Content", class: ["profile-card", "profile-card--featured", current_user.admin? ? "profile-card--admin" : nil, extra_class]"#
+            ),
+            Some(vec![
+                "tag.div(".to_string(),
+                r#"  "Content","#.to_string(),
+                "  class: [".to_string(),
+                r#"    "profile-card","#.to_string(),
+                r#"    "profile-card--featured","#.to_string(),
+                r#"    current_user.admin? ? "profile-card--admin" : nil,"#.to_string(),
+                "    extra_class".to_string(),
+                "  ]".to_string(),
+                ")".to_string(),
+            ])
+        );
+    }
+
+    #[test]
+    fn keeps_short_keyword_array_arguments_inline() {
+        assert_eq!(
+            fold_command_call(r#"render partial: "profile", formats: [:html, :turbo_stream]"#),
+            Some(vec![
+                "render(".to_string(),
+                r#"  partial: "profile","#.to_string(),
+                "  formats: [:html, :turbo_stream]".to_string(),
                 ")".to_string(),
             ])
         );

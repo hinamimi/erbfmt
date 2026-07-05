@@ -183,6 +183,24 @@ Ruby AST を使って、既存の heuristic wrapping を段階的に置き換え
 現在は、method call を折りたためるかどうかの安全判定に AST を使い、
 出力生成は既存の conservative wrapper が担当しています。
 
+現在の状態:
+
+- 開発版では Milestone C の完了条件を満たした扱いにする。
+- `render`, `form_with`, `link_to`, `image_tag`, `video_tag`,
+  `react_component`, `tag.*`, `content_tag` などの frequent helper call は
+  AST で安全判定してから wrapping する。
+- receiver method call、brace block suffix、modifier suffix、quoted label keyword、
+  legacy hash pair、splat / keyword splat / block argument、constant path、percent literal、
+  ternary argument、safe navigation chain を安全判定に使える。
+- nested helper call は top-level keyword value と keyword hash entry value の両方で
+  folding できる。
+- long keyword array argument は AST で array literal と foldable expression を確認して
+  folding できる。
+- assignment、top-level ternary、multiple statements、unsupported block parameter、
+  heredoc、slash regexp literal など、semantic を変えそうな式は folding しない。
+- 出力生成はまだ full AST pretty-printer ではなく、AST gate + conservative raw
+  segment formatter として維持する。full pretty-printer 化は別 milestone に切り出す。
+
 やること:
 
 - `render(...)`, `form_with(...)`, `link_to(...)`, `image_tag(...)`,

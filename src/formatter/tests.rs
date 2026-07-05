@@ -1410,6 +1410,28 @@ fn wraps_nested_helper_calls_inside_keyword_arguments() {
 }
 
 #[test]
+fn wraps_nested_helper_calls_inside_keyword_hash_entries() {
+    let input = r#"<%= render partial: "card", locals: { action: link_to("Edit profile", edit_user_profile_settings_path(user), class: "button button--primary"), label: t(".label") } %>
+"#;
+
+    assert_eq!(
+        format_source(input),
+        "<%= render(\n  partial: \"card\",\n  locals: {\n    action: link_to(\n      \"Edit profile\",\n      edit_user_profile_settings_path(user),\n      class: \"button button--primary\"\n    ),\n    label: t(\".label\")\n  }\n) %>\n"
+    );
+}
+
+#[test]
+fn wraps_long_keyword_array_arguments() {
+    let input = r#"<%= tag.div "Content", class: ["profile-card", "profile-card--featured", current_user.admin? ? "profile-card--admin" : nil, extra_class] %>
+"#;
+
+    assert_eq!(
+        format_source(input),
+        "<%= tag.div(\n  \"Content\",\n  class: [\n    \"profile-card\",\n    \"profile-card--featured\",\n    current_user.admin? ? \"profile-card--admin\" : nil,\n    extra_class\n  ]\n) %>\n"
+    );
+}
+
+#[test]
 fn safety_keeps_quoted_label_and_nested_helper_wrapping_idempotent() {
     let input = r#"<%= link_to "Save", admin_path(filters: { state: params[:state] }, action: f.select(:credit_action, options_for_select({ t("views.admin.users.actions.adjust_credit.add") => "Add" }), {}, class: "js-credit-action crayons-select w-auto")), class: "crayons-btn crayons-btn--primary", "aria-label": t("views.admin.users.actions.adjust_credit.aria_save") %>
 "#;
