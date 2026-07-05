@@ -559,7 +559,7 @@ fn normalizes_forem_multiline_command_helper_continuations() {
 
     assert_eq!(
         format_source(input),
-        "<%= link_to(\n  \"Delete\",\n  admin_subforem_community_bot_scheduled_automation_path(@subforem, @bot, automation),\n  method: :delete,\n  data: { confirm: \"Are you sure you want to delete this automation? This action cannot be undone.\" },\n  class: \"crayons-btn crayons-btn--danger crayons-btn--s\"\n) %>\n"
+        "<%= link_to(\n  \"Delete\",\n  admin_subforem_community_bot_scheduled_automation_path(\n    @subforem,\n    @bot,\n    automation\n  ),\n  method: :delete,\n  data: { confirm: \"Are you sure you want to delete this automation? This action cannot be undone.\" },\n  class: \"crayons-btn crayons-btn--danger crayons-btn--s\"\n) %>\n"
     );
 }
 
@@ -603,7 +603,7 @@ fn wraps_forem_link_helpers_with_quoted_label_keyword_arguments() {
 
     assert_eq!(
         format_source(input),
-        "<%= link_to(\n  \"‹\",\n  calendar_path(month: prev_month.strftime(\"%Y-%m\"), start: params[:start].presence, end: params[:end].presence, type_of: params[:type_of].presence),\n  class: \"calendar__nav-btn\",\n  \"aria-label\": t(\"views.calendar.nav.previous_month\")\n) %>\n"
+        "<%= link_to(\n  \"‹\",\n  calendar_path(\n    month: prev_month.strftime(\"%Y-%m\"),\n    start: params[:start].presence,\n    end: params[:end].presence,\n    type_of: params[:type_of].presence\n  ),\n  class: \"calendar__nav-btn\",\n  \"aria-label\": t(\"views.calendar.nav.previous_month\")\n) %>\n"
     );
 }
 
@@ -640,6 +640,28 @@ fn wraps_nested_helper_calls_inside_keyword_hash_entries() {
 }
 
 #[test]
+fn wraps_nested_positional_helper_call_arguments() {
+    let input = r#"<%= select_tag :user_id, options_from_collection_for_select(User.active.order(:name), :id, :name, selected_user_id), include_blank: true, class: "select select--wide" %>
+"#;
+
+    assert_eq!(
+        format_source(input),
+        "<%= select_tag(\n  :user_id,\n  options_from_collection_for_select(\n    User.active.order(:name),\n    :id,\n    :name,\n    selected_user_id\n  ),\n  include_blank: true,\n  class: \"select select--wide\"\n) %>\n"
+    );
+}
+
+#[test]
+fn wraps_nested_positional_helper_without_changing_inline_text_boundaries() {
+    let input = r#"<p>Assign <%= select_tag :user_id, options_from_collection_for_select(User.active.order(:name), :id, :name, selected_user_id), include_blank: true, class: "select select--wide" %> now</p>
+"#;
+
+    assert_eq!(
+        format_source(input),
+        "<p>Assign <%= select_tag(\n  :user_id,\n  options_from_collection_for_select(\n    User.active.order(:name),\n    :id,\n    :name,\n    selected_user_id\n  ),\n  include_blank: true,\n  class: \"select select--wide\"\n) %> now</p>\n"
+    );
+}
+
+#[test]
 fn wraps_long_keyword_array_arguments() {
     let input = r#"<%= tag.div "Content", class: ["profile-card", "profile-card--featured", current_user.admin? ? "profile-card--admin" : nil, extra_class] %>
 "#;
@@ -654,7 +676,7 @@ fn wraps_long_keyword_array_arguments() {
 fn safety_keeps_quoted_label_and_nested_helper_wrapping_idempotent() {
     let input = r#"<%= link_to "Save", admin_path(filters: { state: params[:state] }, action: f.select(:credit_action, options_for_select({ t("views.admin.users.actions.adjust_credit.add") => "Add" }), {}, class: "js-credit-action crayons-select w-auto")), class: "crayons-btn crayons-btn--primary", "aria-label": t("views.admin.users.actions.adjust_credit.aria_save") %>
 "#;
-    let expected = "<%= link_to(\n  \"Save\",\n  admin_path(filters: { state: params[:state] }, action: f.select(:credit_action, options_for_select({ t(\"views.admin.users.actions.adjust_credit.add\") => \"Add\" }), {}, class: \"js-credit-action crayons-select w-auto\")),\n  class: \"crayons-btn crayons-btn--primary\",\n  \"aria-label\": t(\"views.admin.users.actions.adjust_credit.aria_save\")\n) %>\n";
+    let expected = "<%= link_to(\n  \"Save\",\n  admin_path(\n    filters: { state: params[:state] },\n    action: f.select(\n      :credit_action,\n      options_for_select({ t(\"views.admin.users.actions.adjust_credit.add\") => \"Add\" }),\n      {},\n      class: \"js-credit-action crayons-select w-auto\"\n    )\n  ),\n  class: \"crayons-btn crayons-btn--primary\",\n  \"aria-label\": t(\"views.admin.users.actions.adjust_credit.aria_save\")\n) %>\n";
 
     assert_eq!(format_source(input), expected);
     assert_eq!(format_source(expected), expected);

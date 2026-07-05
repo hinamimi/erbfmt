@@ -76,6 +76,7 @@ The core implementation is developed incrementally:
 4. `src/syntax/ruby/` parses the Ruby expressions that are safe to understand.
 5. `src/formatter/` produces formatted output.
 6. `src/linter/` reports configurable diagnostics.
+7. `src/ignore/` parses shared ignore directives used by formatter and linter.
 
 The `src/syntax/` tree owns parsing and tokenization. Formatter and linter code
 should consume syntax structures from this tree instead of implementing another

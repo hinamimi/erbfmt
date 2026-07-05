@@ -88,12 +88,12 @@ HTML、ERB、Ruby、template parser の責務を整理し、今後の拡張で�
 - `src/syntax/ruby/`: Ruby AST parser
 - `src/formatter/`: formatting policy and rendering
 - `src/linter/`: lint rule orchestration
+- `src/ignore/`: shared ignore directive parsing
 
 やること:
 
 - `src/syntax/template/` の parser body を必要に応じて分割する。
 - `src/linter/html_rules.rs` を rule domain ごとに分割する。
-- ignore directive の formatter / linter 共有部分を整理する。
 - `src/main.rs` が肥大化したら CLI orchestration を `src/cli/` に切り出す。
 
 完了条件:

@@ -135,6 +135,7 @@ fn format_argument_lines(argument: &str, comma: bool) -> Vec<String> {
     let mut lines = fold_keyword_hash_argument(argument)
         .or_else(|| fold_keyword_array_argument(argument))
         .or_else(|| fold_keyword_call_value_argument(argument))
+        .or_else(|| fold_positional_call_argument(argument))
         .or_else(|| fold_chained_method_argument(argument))
         .unwrap_or_else(|| normalize_multiline_argument(argument));
     let last_index = lines.len().saturating_sub(1);
@@ -164,6 +165,17 @@ fn fold_keyword_call_value_argument(argument: &str) -> Option<Vec<String>> {
 
     lines[0] = format!("{keyword}: {}", lines[0]);
     Some(lines)
+}
+
+fn fold_positional_call_argument(argument: &str) -> Option<Vec<String>> {
+    let argument = argument.trim();
+
+    if !argument.contains('(') || (!argument.contains('\n') && argument.len() <= 80) {
+        return None;
+    }
+
+    let lines = fold_command_call(argument)?;
+    (lines.len() >= 2).then_some(lines)
 }
 
 fn fold_chained_method_argument(argument: &str) -> Option<Vec<String>> {
