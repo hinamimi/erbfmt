@@ -65,7 +65,7 @@ Configure the extension to use the project-pinned command:
 For a global local command, install the RubyGem directly:
 
 ```bash
-gem install erbfmt -v 0.3.0.dev
+gem install erbfmt -v 0.3.0
 erbfmt --version
 ```
 
@@ -76,7 +76,7 @@ pins the formatter version.
 ### GitHub Release Binary
 
 Download the CLI from the
-[v0.3.0-dev GitHub Release](https://github.com/hinamimi/erbfmt/releases/tag/v0.3.0-dev),
+[v0.3.0 GitHub Release](https://github.com/hinamimi/erbfmt/releases/tag/v0.3.0),
 extract it, and place `erbfmt` or `erbfmt.exe` on your `PATH`.
 
 ### Cargo
@@ -84,7 +84,7 @@ extract it, and place `erbfmt` or `erbfmt.exe` on your `PATH`.
 With a Rust toolchain, install the tagged source directly:
 
 ```bash
-cargo install --git https://github.com/hinamimi/erbfmt --tag v0.3.0-dev --locked
+cargo install --git https://github.com/hinamimi/erbfmt --tag v0.3.0 --locked
 erbfmt --version
 ```
 

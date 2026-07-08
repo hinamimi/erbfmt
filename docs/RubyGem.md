@@ -48,13 +48,13 @@ There is no Ruby formatter API and no Ruby implementation of ERB parsing.
 Platform-specific gems provide the intended user experience:
 
 ```bash
-gem install erbfmt -v 0.3.0.dev
+gem install erbfmt -v 0.3.0
 erbfmt --version
 ```
 
 Users do not need a Rust toolchain. For projects, the normal workflow is
 `bundle add erbfmt --group development --require false`; for quick local use,
-`gem install erbfmt -v 0.3.0.dev` provides a global `erbfmt` command. GitHub Release
+`gem install erbfmt -v 0.3.0` provides a global `erbfmt` command. GitHub Release
 `.gem` files remain useful for offline installation and release debugging.
 
 A source-build fallback would require Rust and duplicate the concerns already
@@ -165,7 +165,8 @@ Release version. A gem must contain the binary built from the same tagged commit
 The unpublished development wrapper used RubyGems version `0.0.0.dev` while
 Cargo and the VSCode extension used `0.0.0-dev`. Prerelease versions follow the
 same convention: Cargo, VSCode, Git tags, and standalone archives use
-`0.3.0-dev`, while RubyGems normalizes that version to `0.3.0.dev` for gem
+hyphenated versions like `0.3.1-dev`, while RubyGems normalizes them to dotted
+versions like `0.3.1.dev` for gem
 metadata and `.gem` filenames.
 
 `lib/erbfmt/version.rb` is the gem version source. The release verification task
@@ -209,7 +210,7 @@ will fail at runtime until a matching platform gem is published or
 For a global local command, install erbfmt directly from RubyGems.org:
 
 ```bash
-gem install erbfmt -v 0.3.0.dev
+gem install erbfmt -v 0.3.0
 erbfmt --version
 ```
 
@@ -227,8 +228,8 @@ For glibc Linux x64, first download the matching GitHub Release asset:
 
 ```bash
 curl -L \
-  -o erbfmt-0.3.0.dev-x86_64-linux-gnu.gem \
-  https://github.com/hinamimi/erbfmt/releases/download/v0.3.0-dev/erbfmt-0.3.0.dev-x86_64-linux-gnu.gem
+  -o erbfmt-0.3.0-x86_64-linux-gnu.gem \
+  https://github.com/hinamimi/erbfmt/releases/download/v0.3.0/erbfmt-0.3.0-x86_64-linux-gnu.gem
 ```
 
 Then unpack it into `vendor/gems`. New erbfmt gems include
@@ -237,7 +238,7 @@ gem.
 
 ```bash
 mkdir -p vendor/gems
-gem unpack erbfmt-0.3.0.dev-x86_64-linux-gnu.gem --target vendor/gems
+gem unpack erbfmt-0.3.0-x86_64-linux-gnu.gem --target vendor/gems
 ```
 
 Add the unpacked gem as a path dependency without auto-requiring Ruby code:
@@ -245,7 +246,7 @@ Add the unpacked gem as a path dependency without auto-requiring Ruby code:
 ```ruby
 group :development do
   gem "erbfmt",
-    path: "vendor/gems/erbfmt-0.3.0.dev-x86_64-linux-gnu",
+    path: "vendor/gems/erbfmt-0.3.0-x86_64-linux-gnu",
     require: false
 end
 ```
@@ -271,11 +272,11 @@ The package must match the local RubyGems platform:
 
 | Development platform | Release gem |
 | --- | --- |
-| Bundler fallback | `erbfmt-0.3.0.dev.gem` |
-| glibc Linux x64 | `erbfmt-0.3.0.dev-x86_64-linux-gnu.gem` |
-| macOS Intel | `erbfmt-0.3.0.dev-x86_64-darwin.gem` |
-| macOS Apple Silicon | `erbfmt-0.3.0.dev-arm64-darwin.gem` |
-| Windows RubyInstaller UCRT x64 | `erbfmt-0.3.0.dev-x64-mingw-ucrt.gem` |
+| Bundler fallback | `erbfmt-0.3.0.gem` |
+| glibc Linux x64 | `erbfmt-0.3.0-x86_64-linux-gnu.gem` |
+| macOS Intel | `erbfmt-0.3.0-x86_64-darwin.gem` |
+| macOS Apple Silicon | `erbfmt-0.3.0-arm64-darwin.gem` |
+| Windows RubyInstaller UCRT x64 | `erbfmt-0.3.0-x64-mingw-ucrt.gem` |
 
 Projects used on multiple platforms should unpack every required variant under
 `vendor/gems` and choose the path that matches the current platform in the
@@ -287,7 +288,7 @@ erbfmt_platform = Gem::Platform.local.to_s
 
 group :development do
   gem "erbfmt",
-    path: "vendor/gems/erbfmt-0.3.0.dev-#{erbfmt_platform}",
+    path: "vendor/gems/erbfmt-0.3.0-#{erbfmt_platform}",
     require: false
 end
 ```
@@ -299,7 +300,7 @@ One-off local installation from a downloaded release asset does not need a
 Gemfile:
 
 ```bash
-gem install --local ./erbfmt-0.3.0.dev-x86_64-linux-gnu.gem
+gem install --local ./erbfmt-0.3.0-x86_64-linux-gnu.gem
 erbfmt --version
 ```
 
@@ -307,7 +308,7 @@ Do not use a Git source as a substitute:
 
 ```ruby
 # Unsupported: the repository does not contain a staged Rust binary.
-gem "erbfmt", git: "https://github.com/hinamimi/erbfmt.git", tag: "v0.3.0-dev"
+gem "erbfmt", git: "https://github.com/hinamimi/erbfmt.git", tag: "v0.3.0"
 ```
 
 The Rust binary is inserted only while each release gem is built. Installing
@@ -345,15 +346,15 @@ name before running `gem push`.
 
 ```bash
 mkdir -p release-assets
-gh release download v0.3.0-dev --pattern '*.gem' --dir release-assets
+gh release download v0.3.0 --pattern '*.gem' --dir release-assets
 
 scripts/publish-rubygems.sh \
-  --version 0.3.0-dev \
+  --version 0.3.0 \
   --asset-dir release-assets \
   --dry-run
 
 scripts/publish-rubygems.sh \
-  --version 0.3.0-dev \
+  --version 0.3.0 \
   --asset-dir release-assets \
   --yes
 ```
