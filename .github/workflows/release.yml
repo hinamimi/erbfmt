@@ -28,7 +28,12 @@ jobs:
           set -euo pipefail
 
           tag="${GITHUB_REF_NAME}"
-          version="${tag#v}"
+          raw_version="${tag#v}"
+          version="$raw_version"
+
+          if [[ "$raw_version" =~ ^((0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*))\.([0-9A-Za-z][0-9A-Za-z.-]*)$ ]]; then
+            version="${BASH_REMATCH[1]}-${BASH_REMATCH[5]}"
+          fi
 
           if [[ ! "$version" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?$ ]]; then
             echo "invalid release tag: $tag" >&2
@@ -63,7 +68,13 @@ jobs:
         run: |
           set -euo pipefail
 
-          version="${GITHUB_REF_NAME#v}"
+          raw_version="${GITHUB_REF_NAME#v}"
+          version="$raw_version"
+
+          if [[ "$raw_version" =~ ^((0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*))\.([0-9A-Za-z][0-9A-Za-z.-]*)$ ]]; then
+            version="${BASH_REMATCH[1]}-${BASH_REMATCH[5]}"
+          fi
+
           gem_version="${version//-/.}"
           expected=(
             "erbfmt-${version}-x86_64-unknown-linux-gnu.tar.gz"

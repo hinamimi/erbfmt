@@ -63,6 +63,10 @@ if [[ -z "$version" || -z "$asset_dir" ]]; then
   exit 1
 fi
 
+if [[ "$version" =~ ^((0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*))\.([0-9A-Za-z][0-9A-Za-z.-]*)$ ]]; then
+  version="${BASH_REMATCH[1]}-${BASH_REMATCH[5]}"
+fi
+
 if [[ ! "$version" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?$ ]]; then
   echo "invalid release version: $version" >&2
   exit 1

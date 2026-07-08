@@ -223,6 +223,10 @@ Pre-1.0 versions are marked as prereleases. The workflow never publishes the
 draft automatically. Review the generated notes and assets, smoke test the
 matching local platform, and publish it manually.
 
+If a RubyGems-style prerelease tag such as `v0.3.0.dev` is pushed, the workflow
+normalizes it to the repository version `0.3.0-dev` before version verification
+and asset collection. Prefer the hyphenated Git tag form for new releases.
+
 The workflow refuses to overwrite assets on an already published release. A
 rerun may update assets only while the release remains a draft.
 
