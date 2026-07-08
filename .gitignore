@@ -2,6 +2,7 @@
 
 /target
 /dist
+/release-assets
 /editors/vscode/node_modules
 /editors/vscode/out
 /editors/vscode/.vscode-test

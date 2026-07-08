@@ -158,5 +158,5 @@ jobs:
             echo
             echo "[$tag]($release_url)"
             echo
-            echo "Verified and attached ${#expected[@]} release assets. Review the notes and publish manually."
+            echo "Verified and attached release assets. Review the notes and publish manually."
           } >> "$GITHUB_STEP_SUMMARY"
