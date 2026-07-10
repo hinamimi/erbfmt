@@ -436,6 +436,7 @@ fn lint_json_reports_no_issues_for_valid_file() {
     assert_eq!(value["summary"]["issues"], 0);
     assert_eq!(value["summary"]["errors"], 0);
     assert_eq!(value["summary"]["warnings"], 0);
+    assert_eq!(value["summary"]["infos"], 0);
     assert_eq!(value["diagnostics"].as_array().unwrap().len(), 0);
 }
 
@@ -475,6 +476,7 @@ fn lint_json_reports_diagnostics_with_locations() {
     assert_eq!(value["summary"]["issues"], 1);
     assert_eq!(value["summary"]["errors"], 1);
     assert_eq!(value["summary"]["warnings"], 0);
+    assert_eq!(value["summary"]["infos"], 0);
 
     let diagnostic = &value["diagnostics"][0];
     assert_eq!(diagnostic["severity"], "error");
@@ -514,7 +516,7 @@ fn lint_defaults_to_pretty_output() {
         "{stderr}"
     );
     assert!(
-        stderr.contains("1 lint issue found (1 error, 0 warnings)."),
+        stderr.contains("1 lint issue found (1 error, 0 warnings, 0 infos)."),
         "{stderr}"
     );
 }
@@ -1052,6 +1054,64 @@ fn config_lint_warning_rule_does_not_fail_cli() {
         stderr(&output),
         format!(
             "{}: warning: deprecated HTML tag `<center>` at line 1, column 1\n",
+            file.display()
+        )
+    );
+}
+
+#[test]
+fn config_lint_info_rule_does_not_fail_cli() {
+    let dir = TestDir::new("config_lint_info_rule");
+    let file = dir.write(
+        "input.html.erb",
+        r#"<table summary="Legacy table"></table>"#,
+    );
+
+    let output = run([
+        "--lint".as_ref(),
+        "--lint-format".as_ref(),
+        "plain".as_ref(),
+        file.as_path(),
+    ]);
+
+    assert_success(&output);
+    assert_eq!(stdout(&output), "");
+    assert_eq!(
+        stderr(&output),
+        format!(
+            "{}: info: deprecated HTML attribute `summary` on <table>: use CSS or semantic markup instead at line 1, column 8\n",
+            file.display()
+        )
+    );
+}
+
+#[test]
+fn config_lint_info_rule_can_be_promoted_to_error() {
+    let dir = TestDir::new("config_lint_info_rule_promoted");
+    let config = dir.write(
+        "erbfmt.json",
+        r#"{"linter":{"rules":{"noDeprecatedHtmlAttribute":"error"}}}"#,
+    );
+    let file = dir.write(
+        "input.html.erb",
+        r#"<table summary="Legacy table"></table>"#,
+    );
+
+    let output = run([
+        "--lint".as_ref(),
+        "--lint-format".as_ref(),
+        "plain".as_ref(),
+        "--config".as_ref(),
+        config.as_path(),
+        file.as_path(),
+    ]);
+
+    assert_failure(&output);
+    assert_eq!(stdout(&output), "");
+    assert_eq!(
+        stderr(&output),
+        format!(
+            "{}: deprecated HTML attribute `summary` on <table>: use CSS or semantic markup instead at line 1, column 8\n",
             file.display()
         )
     );

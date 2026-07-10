@@ -38,6 +38,7 @@ The rule name is the same camelCase name used in `erbfmt.json`, such as:
 - `emptyErbBranch`
 - `emptyErbCodeTag`
 - `emptyErbControlBlock`
+- `noDeprecatedHtmlAttribute`
 - `noDeprecatedHtmlTag`
 - `noDuplicateHtmlAttribute`
 - `noInvalidHtmlBooleanAttribute`

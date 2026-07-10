@@ -8,8 +8,8 @@
 - Rails semantic analysis はしない。
 - まずは lexer / mixed parser が既に持っている構造だけを使う。
 - diagnostic は CLI と VSCode の両方で読みやすい短いmessageにする。
-- `warn` / `error` はCLIとVSCode diagnosticsのseverityに反映する。
-- CLIは `error` diagnostic があれば失敗し、warningだけなら成功する。
+- `info` / `warn` / `error` はCLIとVSCode diagnosticsのseverityに反映する。
+- CLIは `error` diagnostic があれば失敗し、infoやwarningだけなら成功する。
 - `erbfmt-ignore` comment directive で次行のlint診断を抑制できる。
 
 ## ruleの分類
@@ -119,6 +119,51 @@ config:
   "linter": {
     "rules": {
       "noDeprecatedHtmlTag": "error"
+    }
+  }
+}
+```
+
+### `noDeprecatedHtmlAttribute`
+
+HTML5ではobsolete、またはCSS/semantic markupへ移行した方がよい古いHTML attributeを
+検出します。
+
+対象例:
+
+```erb
+<a name="legacy"></a>
+<table summary="Legacy table" align="center" cellpadding="0">
+<td bgcolor="#fff" valign="middle">
+<iframe frameborder="0"></iframe>
+```
+
+message:
+
+```text
+deprecated HTML attribute `summary` on <table>: use CSS or semantic markup instead
+```
+
+初期severity:
+
+- `info`
+
+理由:
+
+- メールHTMLや古い埋め込みHTMLでは、`align`, `bgcolor`, `valign`, `frameborder`
+  などが実用上まだ使われます。
+- `unknown HTML attribute` として扱うと誤検知に見えやすい一方、完全に黙ると
+  モダンなHTMLへ寄せたいユーザーが気づけません。
+- デフォルトは `info` として通知だけ行い、project方針に応じて `off`, `warn`,
+  `error` を選べるようにします。
+
+config:
+
+```json
+{
+  "linter": {
+    "rules": {
+      "noDeprecatedHtmlAttribute": "info"
     }
   }
 }
@@ -301,7 +346,7 @@ HTML tag に存在しない、または typo の可能性が高い attribute を
 
 メールHTMLや埋め込みHTMLで実運用上よく使われる古い属性 (`align`, `bgcolor`,
 `valign`, `frameborder` など) は、unknown attributeとしては扱いません。これらは
-将来的にdeprecated/style ruleとして別途検出する余地を残します。
+`noDeprecatedHtmlAttribute` で `info` として検出します。
 
 今後追加するtag:
 

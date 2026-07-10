@@ -164,6 +164,37 @@ fn reports_rule_warning_severity() {
 }
 
 #[test]
+fn reports_deprecated_html_attributes_as_info_by_default() {
+    let diagnostics = lint(
+        r##"<a name="legacy"></a>
+<iframe frameborder="0"></iframe>
+<table summary="Legacy table" align="center" bgcolor="#fff" border="0" cellpadding="0" cellspacing="0" width="100%">
+  <tr><th width="25%" align="left">Name</th><td valign="middle" vertical-align="middle" bgcolor="#fff">Alice</td></tr>
+</table>
+<ul type="disc"><li>Item</li></ul>"##,
+    );
+
+    assert_eq!(
+        diagnostics.len(),
+        15,
+        "all deprecated attributes should be reported"
+    );
+    assert!(
+        diagnostics
+            .iter()
+            .all(|diagnostic| diagnostic.severity == DiagnosticSeverity::Info)
+    );
+    assert_eq!(
+        diagnostics[0],
+        Diagnostic::located_with_severity(
+            "deprecated HTML attribute `name` on <a>: use `id` for document anchors",
+            SourceLocation { line: 1, column: 4 },
+            DiagnosticSeverity::Info
+        )
+    );
+}
+
+#[test]
 fn reports_duplicate_html_attributes() {
     let diagnostics = lint(
         "<main>\n  <article class=\"card\" id=\"one\" class=\"wide\" data-user-id=\"1\" DATA-USER-ID=\"2\"></article>\n</main>\n",
@@ -345,7 +376,12 @@ fn allows_unknown_html_attribute_rule_on_media_embed_and_table_tags() {
 <table><tr><th width="25%">Title</th><td width="75%">Value</td></tr></table>"##,
     );
 
-    assert_eq!(diagnostics, Vec::new());
+    assert!(
+        diagnostics
+            .iter()
+            .all(|diagnostic| diagnostic.severity == DiagnosticSeverity::Info),
+        "deprecated attributes may be reported, but supported attributes should not produce warnings/errors"
+    );
 }
 
 #[test]
@@ -385,6 +421,7 @@ fn reports_typo_candidates_on_expanded_supported_tags() {
     assert_eq!(
         diagnostics
             .iter()
+            .filter(|diagnostic| diagnostic.severity == DiagnosticSeverity::Warning)
             .map(|diagnostic| diagnostic.message.as_str())
             .collect::<Vec<_>>(),
         vec![
@@ -413,6 +450,7 @@ fn reports_typo_candidates_on_media_embed_and_table_tags() {
     assert_eq!(
         diagnostics
             .iter()
+            .filter(|diagnostic| diagnostic.severity == DiagnosticSeverity::Warning)
             .map(|diagnostic| diagnostic.message.as_str())
             .collect::<Vec<_>>(),
         vec![

@@ -47,6 +47,7 @@ and `formatter.indentHtml` option for ERB and HTML-specific behavior.
       "emptyErbBranch": "error",
       "emptyErbCodeTag": "error",
       "emptyErbControlBlock": "error",
+      "noDeprecatedHtmlAttribute": "info",
       "noDeprecatedHtmlTag": "error",
       "noDuplicateHtmlAttribute": "error",
       "noInvalidHtmlBooleanAttribute": "error",
@@ -128,28 +129,33 @@ and `formatter.indentHtml` option for ERB and HTML-specific behavior.
 - `linter.enabled`: enable or disable lint diagnostics.
 - `linter.rules.recommended`: default state for lint rules when a rule is not
   configured explicitly.
-- `linter.rules.emptyErbBranch`: `error`, `warn`, or `off`.
-- `linter.rules.emptyErbCodeTag`: `error`, `warn`, or `off`.
-- `linter.rules.emptyErbControlBlock`: `error`, `warn`, or `off`.
-- `linter.rules.noDeprecatedHtmlTag`: `error`, `warn`, or `off`.
-- `linter.rules.noDuplicateHtmlAttribute`: `error`, `warn`, or `off`.
-- `linter.rules.noInvalidHtmlBooleanAttribute`: `error`, `warn`, or `off`.
-- `linter.rules.noInvalidHtmlNesting`: `error`, `warn`, or `off`.
-- `linter.rules.noNonDoubleQuotedHtmlAttributeValue`: `error`, `warn`, or
+- `linter.rules.emptyErbBranch`: `error`, `warn`, `info`, or `off`.
+- `linter.rules.emptyErbCodeTag`: `error`, `warn`, `info`, or `off`.
+- `linter.rules.emptyErbControlBlock`: `error`, `warn`, `info`, or `off`.
+- `linter.rules.noDeprecatedHtmlAttribute`: `error`, `warn`, `info`, or
+  `off`. The default severity is `info`.
+- `linter.rules.noDeprecatedHtmlTag`: `error`, `warn`, `info`, or `off`.
+- `linter.rules.noDuplicateHtmlAttribute`: `error`, `warn`, `info`, or `off`.
+- `linter.rules.noInvalidHtmlBooleanAttribute`: `error`, `warn`, `info`, or
   `off`.
-- `linter.rules.noSelfClosingHtmlTag`: `error`, `warn`, or `off`.
-- `linter.rules.noUnknownHtmlAttribute`: `error`, `warn`, or `off`.
+- `linter.rules.noInvalidHtmlNesting`: `error`, `warn`, `info`, or `off`.
+- `linter.rules.noNonDoubleQuotedHtmlAttributeValue`: `error`, `warn`, `info`,
+  or `off`.
+- `linter.rules.noSelfClosingHtmlTag`: `error`, `warn`, `info`, or `off`.
+- `linter.rules.noUnknownHtmlAttribute`: `error`, `warn`, `info`, or `off`.
   The default severity is `warn`. The initial implementation covers frequent
   HTML tags such as `input`, `a`, `button`, `form`, `label`, `img`, `script`,
   `link`, `meta`, `textarea`, `select`, `option`, media/embed tags, and common
   list/table tags, skips tags with ERB attribute fragments, and allows
   `data-*`, `aria-*`, and common framework attributes such as `v-*`, `x-*`,
   and `hx-*`.
-- `linter.rules.unsupportedErbBlockStarter`: `error`, `warn`, or `off`.
+- `linter.rules.unsupportedErbBlockStarter`: `error`, `warn`, `info`, or
+  `off`.
 
-`error` diagnostics make `erbfmt --lint` exit with a failure status. `warn`
-diagnostics are reported, but warning-only lint results exit successfully.
-VSCode diagnostics use the matching warning or error severity.
+`error` diagnostics make `erbfmt --lint` exit with a failure status. `warn` and
+`info` diagnostics are reported, but warning/info-only lint results exit
+successfully. VSCode diagnostics use the matching info, warning, or error
+severity.
 
 See [LintRules.md](LintRules.md) for the current lint rule design and the next
 planned rules.

@@ -580,6 +580,7 @@ struct RawLintRules {
     empty_erb_branch: Option<RuleSetting>,
     empty_erb_code_tag: Option<RuleSetting>,
     empty_erb_control_block: Option<RuleSetting>,
+    no_deprecated_html_attribute: Option<RuleSetting>,
     no_deprecated_html_tag: Option<RuleSetting>,
     no_duplicate_html_attribute: Option<RuleSetting>,
     no_invalid_html_boolean_attribute: Option<RuleSetting>,
@@ -605,6 +606,10 @@ impl RawLintRules {
                 empty_erb_branch: rule_enabled(self.empty_erb_branch, recommended),
                 empty_erb_code_tag: rule_enabled(self.empty_erb_code_tag, recommended),
                 empty_erb_control_block: rule_enabled(self.empty_erb_control_block, recommended),
+                no_deprecated_html_attribute: rule_enabled(
+                    self.no_deprecated_html_attribute,
+                    recommended,
+                ),
                 no_deprecated_html_tag: rule_enabled(self.no_deprecated_html_tag, recommended),
                 no_duplicate_html_attribute: rule_enabled(
                     self.no_duplicate_html_attribute,
@@ -633,6 +638,10 @@ impl RawLintRules {
                 empty_erb_branch: rule_severity(self.empty_erb_branch),
                 empty_erb_code_tag: rule_severity(self.empty_erb_code_tag),
                 empty_erb_control_block: rule_severity(self.empty_erb_control_block),
+                no_deprecated_html_attribute: rule_severity_or(
+                    self.no_deprecated_html_attribute,
+                    DiagnosticSeverity::Info,
+                ),
                 no_deprecated_html_tag: rule_severity(self.no_deprecated_html_tag),
                 no_duplicate_html_attribute: rule_severity(self.no_duplicate_html_attribute),
                 no_invalid_html_boolean_attribute: rule_severity(
@@ -657,6 +666,7 @@ impl RawLintRules {
 #[serde(rename_all = "camelCase")]
 enum RuleSetting {
     Off,
+    Info,
     Warn,
     Error,
 }
@@ -668,6 +678,7 @@ impl RuleSetting {
 
     fn diagnostic_severity(self) -> DiagnosticSeverity {
         match self {
+            Self::Info => DiagnosticSeverity::Info,
             Self::Warn => DiagnosticSeverity::Warning,
             Self::Error | Self::Off => DiagnosticSeverity::Error,
         }

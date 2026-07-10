@@ -9,6 +9,7 @@ pub struct Diagnostic {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DiagnosticSeverity {
+    Info,
     Warning,
     Error,
 }

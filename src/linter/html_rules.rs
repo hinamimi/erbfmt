@@ -51,6 +51,14 @@ pub(super) fn lint_html_tokens(
                     options,
                     diagnostics,
                 );
+                lint_deprecated_html_attributes(
+                    input,
+                    fragment_start,
+                    spanned.span.start,
+                    tag,
+                    options,
+                    diagnostics,
+                );
                 lint_duplicate_html_attributes(
                     input,
                     fragment_start,
@@ -99,6 +107,14 @@ pub(super) fn lint_html_tokens(
                     diagnostics,
                 );
                 lint_deprecated_html_tag(
+                    input,
+                    fragment_start,
+                    spanned.span.start,
+                    tag,
+                    options,
+                    diagnostics,
+                );
+                lint_deprecated_html_attributes(
                     input,
                     fragment_start,
                     spanned.span.start,
@@ -160,6 +176,14 @@ pub(super) fn lint_html_tokens(
                     diagnostics,
                 );
                 lint_deprecated_html_tag(
+                    input,
+                    fragment_start,
+                    spanned.span.start,
+                    tag,
+                    options,
+                    diagnostics,
+                );
+                lint_deprecated_html_attributes(
                     input,
                     fragment_start,
                     spanned.span.start,
@@ -492,6 +516,50 @@ fn lint_deprecated_html_tag(
         lexer::source_location(input, fragment_start + html_token_start),
         options.rule_severities.no_deprecated_html_tag,
     ));
+}
+
+fn lint_deprecated_html_attributes(
+    input: &str,
+    fragment_start: usize,
+    html_token_start: usize,
+    tag: &html::HtmlTag,
+    options: LintOptions,
+    diagnostics: &mut Vec<Diagnostic>,
+) {
+    if !options.rules.no_deprecated_html_attribute || tag.raw.contains("<%") {
+        return;
+    }
+
+    for attribute in html_attributes(tag) {
+        let Some(reason) = deprecated_html_attribute_reason(&tag.name, &attribute.name) else {
+            continue;
+        };
+
+        diagnostics.push(Diagnostic::located_with_severity(
+            format!(
+                "deprecated HTML attribute `{}` on <{}>: {reason}",
+                attribute.raw_name, tag.name
+            ),
+            lexer::source_location(input, fragment_start + html_token_start + attribute.offset),
+            options.rule_severities.no_deprecated_html_attribute,
+        ));
+    }
+}
+
+fn deprecated_html_attribute_reason(tag_name: &str, attribute_name: &str) -> Option<&'static str> {
+    match (tag_name.to_ascii_lowercase().as_str(), attribute_name) {
+        ("a", "name") => Some("use `id` for document anchors"),
+        ("iframe", "frameborder") => Some("use CSS instead"),
+        (
+            "table",
+            "align" | "bgcolor" | "border" | "cellpadding" | "cellspacing" | "summary" | "width",
+        ) => Some("use CSS or semantic markup instead"),
+        ("td" | "th", "align" | "bgcolor" | "valign" | "vertical-align" | "width") => {
+            Some("use CSS instead")
+        }
+        ("ul", "type") => Some("use CSS list styling instead"),
+        _ => None,
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

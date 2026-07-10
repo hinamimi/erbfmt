@@ -39,6 +39,7 @@ const DEFAULT_CONFIG: &str = r#"{
       "emptyErbBranch": "error",
       "emptyErbCodeTag": "error",
       "emptyErbControlBlock": "error",
+      "noDeprecatedHtmlAttribute": "info",
       "noDeprecatedHtmlTag": "error",
       "noDuplicateHtmlAttribute": "error",
       "noInvalidHtmlBooleanAttribute": "error",
@@ -453,15 +454,17 @@ fn run_lint(
 
 fn print_plain_lint_diagnostics(file: &Path, diagnostics: &[linter::Diagnostic]) {
     for diagnostic in diagnostics {
-        if diagnostic.severity == linter::DiagnosticSeverity::Warning {
-            eprintln!(
-                "{}: warning: {}",
-                file.display(),
-                diagnostic.message_with_location()
-            );
-        } else {
+        if diagnostic.severity == linter::DiagnosticSeverity::Error {
             eprintln!("{}: {}", file.display(), diagnostic.message_with_location());
+            continue;
         }
+
+        eprintln!(
+            "{}: {}: {}",
+            file.display(),
+            lint_severity_label(diagnostic.severity),
+            diagnostic.message_with_location()
+        );
     }
 }
 
@@ -470,7 +473,14 @@ fn print_json_lint_diagnostics(file: &Path, diagnostics: &[linter::Diagnostic]) 
         .iter()
         .filter(|diagnostic| diagnostic.severity == linter::DiagnosticSeverity::Error)
         .count();
-    let warnings = diagnostics.len() - errors;
+    let warnings = diagnostics
+        .iter()
+        .filter(|diagnostic| diagnostic.severity == linter::DiagnosticSeverity::Warning)
+        .count();
+    let infos = diagnostics
+        .iter()
+        .filter(|diagnostic| diagnostic.severity == linter::DiagnosticSeverity::Info)
+        .count();
     let diagnostics = diagnostics
         .iter()
         .map(|diagnostic| {
@@ -495,6 +505,7 @@ fn print_json_lint_diagnostics(file: &Path, diagnostics: &[linter::Diagnostic]) 
             "issues": diagnostics.len(),
             "errors": errors,
             "warnings": warnings,
+            "infos": infos,
         },
         "diagnostics": diagnostics,
     });
@@ -531,20 +542,28 @@ fn print_pretty_lint_diagnostics(file: &Path, content: &str, diagnostics: &[lint
         .filter(|diagnostic| diagnostic.severity == linter::DiagnosticSeverity::Error)
         .count();
     let warnings = diagnostics.len() - errors;
+    let infos = diagnostics
+        .iter()
+        .filter(|diagnostic| diagnostic.severity == linter::DiagnosticSeverity::Info)
+        .count();
+    let warnings = warnings.saturating_sub(infos);
 
     eprintln!(
-        "{} lint {} found ({} {}, {} {}).",
+        "{} lint {} found ({} {}, {} {}, {} {}).",
         diagnostics.len(),
         plural(diagnostics.len(), "issue", "issues"),
         errors,
         plural(errors, "error", "errors"),
         warnings,
-        plural(warnings, "warning", "warnings")
+        plural(warnings, "warning", "warnings"),
+        infos,
+        plural(infos, "info", "infos")
     );
 }
 
 fn lint_severity_label(severity: linter::DiagnosticSeverity) -> &'static str {
     match severity {
+        linter::DiagnosticSeverity::Info => "info",
         linter::DiagnosticSeverity::Warning => "warning",
         linter::DiagnosticSeverity::Error => "error",
     }

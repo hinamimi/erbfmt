@@ -68,6 +68,8 @@ fn diagnostic_rule_id(message: &str) -> Option<&'static str> {
         Some("emptyErbControlBlock")
     } else if message.starts_with("deprecated HTML tag") {
         Some("noDeprecatedHtmlTag")
+    } else if message.starts_with("deprecated HTML attribute") {
+        Some("noDeprecatedHtmlAttribute")
     } else if message.starts_with("duplicate HTML attribute") {
         Some("noDuplicateHtmlAttribute")
     } else if message.starts_with("invalid HTML boolean attribute value")

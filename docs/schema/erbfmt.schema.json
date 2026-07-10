@@ -75,37 +75,40 @@
               "type": "boolean"
             },
             "emptyErbBranch": {
-              "enum": ["off", "warn", "error"]
+              "enum": ["off", "info", "warn", "error"]
             },
             "emptyErbCodeTag": {
-              "enum": ["off", "warn", "error"]
+              "enum": ["off", "info", "warn", "error"]
             },
             "emptyErbControlBlock": {
-              "enum": ["off", "warn", "error"]
+              "enum": ["off", "info", "warn", "error"]
+            },
+            "noDeprecatedHtmlAttribute": {
+              "enum": ["off", "info", "warn", "error"]
             },
             "noDeprecatedHtmlTag": {
-              "enum": ["off", "warn", "error"]
+              "enum": ["off", "info", "warn", "error"]
             },
             "noDuplicateHtmlAttribute": {
-              "enum": ["off", "warn", "error"]
+              "enum": ["off", "info", "warn", "error"]
             },
             "noInvalidHtmlBooleanAttribute": {
-              "enum": ["off", "warn", "error"]
+              "enum": ["off", "info", "warn", "error"]
             },
             "noInvalidHtmlNesting": {
-              "enum": ["off", "warn", "error"]
+              "enum": ["off", "info", "warn", "error"]
             },
             "noNonDoubleQuotedHtmlAttributeValue": {
-              "enum": ["off", "warn", "error"]
+              "enum": ["off", "info", "warn", "error"]
             },
             "noSelfClosingHtmlTag": {
-              "enum": ["off", "warn", "error"]
+              "enum": ["off", "info", "warn", "error"]
             },
             "noUnknownHtmlAttribute": {
-              "enum": ["off", "warn", "error"]
+              "enum": ["off", "info", "warn", "error"]
             },
             "unsupportedErbBlockStarter": {
-              "enum": ["off", "warn", "error"]
+              "enum": ["off", "info", "warn", "error"]
             }
           }
         }

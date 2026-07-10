@@ -23,6 +23,7 @@
       "emptyErbBranch": "error",
       "emptyErbCodeTag": "error",
       "emptyErbControlBlock": "error",
+      "noDeprecatedHtmlAttribute": "info",
       "noDeprecatedHtmlTag": "error",
       "noDuplicateHtmlAttribute": "error",
       "noInvalidHtmlBooleanAttribute": "error",
