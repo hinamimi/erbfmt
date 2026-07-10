@@ -302,6 +302,22 @@ fn allows_global_framework_and_custom_attributes() {
 }
 
 #[test]
+fn allows_unknown_html_attribute_rule_on_expanded_supported_tags() {
+    let diagnostics = lint(
+        r#"<form accept-charset="UTF-8" action="/users" autocomplete="off" method="post"></form>
+<label for="email">Email</label>
+<img src="/avatar.png" srcset="/avatar@2x.png 2x" alt="Avatar" loading="lazy" referrerpolicy="no-referrer">
+<script type="module" src="/app.js" crossorigin="anonymous" defer></script>
+<link rel="preload" href="/app.css" as="style" imagesizes="100vw">
+<meta http-equiv="refresh" content="0">
+<textarea name="bio" maxlength="200" readonly></textarea>
+<select name="role" multiple required><option value="admin" selected>Admin</option></select>"#,
+    );
+
+    assert_eq!(diagnostics, Vec::new());
+}
+
+#[test]
 fn reports_camel_case_attribute_typos() {
     let diagnostics = lint(r#"<button tabIndex="0">Open</button><input maxLength="20">"#);
 
@@ -321,6 +337,33 @@ fn reports_camel_case_attribute_typos() {
                 },
                 DiagnosticSeverity::Warning
             )
+        ]
+    );
+}
+
+#[test]
+fn reports_typo_candidates_on_expanded_supported_tags() {
+    let diagnostics = lint(
+        r#"<form acceptCharset="UTF-8"></form>
+<img srcSet="/avatar@2x.png 2x" referrerPolicy="no-referrer">
+<script noModule src="/legacy.js"></script>
+<meta httpEquiv="refresh" content="0">
+<textarea readOnly maxLength="200"></textarea>"#,
+    );
+
+    assert_eq!(
+        diagnostics
+            .iter()
+            .map(|diagnostic| diagnostic.message.as_str())
+            .collect::<Vec<_>>(),
+        vec![
+            "unknown HTML attribute `acceptCharset`; did you mean `accept-charset`?",
+            "unknown HTML attribute `srcSet`; did you mean `srcset`?",
+            "unknown HTML attribute `referrerPolicy`; did you mean `referrerpolicy`?",
+            "unknown HTML attribute `noModule`; did you mean `nomodule`?",
+            "unknown HTML attribute `httpEquiv`; did you mean `http-equiv`?",
+            "unknown HTML attribute `readOnly`; did you mean `readonly`?",
+            "unknown HTML attribute `maxLength`; did you mean `maxlength`?"
         ]
     );
 }

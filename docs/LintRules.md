@@ -264,15 +264,23 @@ HTML tag に存在しない、または typo の可能性が高い attribute を
 - `input`
 - `a`
 - `button`
-
-次に追加するtag:
-
 - `form`
 - `label`
 - `img`
 - `script`
 - `link`
 - `meta`
+- `textarea`
+- `select`
+- `option`
+
+今後追加するtag:
+
+- `audio`
+- `video`
+- `source`
+- `iframe`
+- table関連tag
 
 初期対象外:
 
@@ -422,6 +430,18 @@ tagごとのattribute setは、小さく始めて増やします。
 - `popovertargetaction`
 - `type`
 - `value`
+
+追加済みtag:
+
+- `form`
+- `label`
+- `img`
+- `script`
+- `link`
+- `meta`
+- `textarea`
+- `select`
+- `option`
 
 ### framework / library attribute
 
@@ -582,12 +602,14 @@ typo候補のうち、置換が明らかなものは将来的にassist actionへ
 2. `input`, `a`, `button` のtag-specific attribute setを実装する。
 3. `data-*`, `aria-*`, framework patternを許可する。
 4. `tab-index` / `tabIndex` などのtypo候補messageを実装する。
-5. `form`, `label`, `img`, `script`, `link`, `meta` を追加する。
+5. `form`, `label`, `img`, `script`, `link`, `meta`, `textarea`, `select`, `option`
+   を追加する。
 6. 実プロジェクトauditで誤検知を確認し、allowlist configが必要か判断する。
 
 完了条件:
 
-- `input`, `a`, `button` で明らかなtypoを検出できる。
+- `input`, `a`, `button`, `form`, `label`, `img`, `script`, `link`, `meta`,
+  `textarea`, `select`, `option` で明らかなtypoを検出できる。
 - `data-*`, `aria-*`, `v-model`, `x-*`, `hx-*` などを誤検知しない。
 - tag内ERB fragmentを含む不確実なtagでは診断しない。
 - messageがVS Code diagnostics上で短く読める。

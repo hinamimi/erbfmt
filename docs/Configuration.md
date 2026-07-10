@@ -139,10 +139,11 @@ and `formatter.indentHtml` option for ERB and HTML-specific behavior.
   `off`.
 - `linter.rules.noSelfClosingHtmlTag`: `error`, `warn`, or `off`.
 - `linter.rules.noUnknownHtmlAttribute`: `error`, `warn`, or `off`.
-  The default severity is `warn`. The initial implementation covers simple
-  HTML tags such as `input`, `a`, and `button`, skips tags with ERB attribute
-  fragments, and allows `data-*`, `aria-*`, and common framework attributes
-  such as `v-*`, `x-*`, and `hx-*`.
+  The default severity is `warn`. The initial implementation covers frequent
+  HTML tags such as `input`, `a`, `button`, `form`, `label`, `img`, `script`,
+  `link`, `meta`, `textarea`, `select`, and `option`, skips tags with ERB
+  attribute fragments, and allows `data-*`, `aria-*`, and common framework
+  attributes such as `v-*`, `x-*`, and `hx-*`.
 - `linter.rules.unsupportedErbBlockStarter`: `error`, `warn`, or `off`.
 
 `error` diagnostics make `erbfmt --lint` exit with a failure status. `warn`
