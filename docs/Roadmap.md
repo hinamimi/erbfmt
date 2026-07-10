@@ -111,6 +111,8 @@ HTML / ERB の lint を、実用上の発見力と誤検知の少なさの両方
 - style / normalization 系の rule は、可能なら assist action として提供する。
 - HTML content model rule の range と message を改善する。
 - unquoted attribute、duplicate attribute、invalid nesting の例を増やす。
+- `input`, `a`, `button` など頻出tagから、unknown / typo HTML attribute
+  lintを段階的に追加する。
 - ignore directive と lint rule の相互作用を整理する。
 - rule severity / enable / disable の設定を見直す。
 - VS Code diagnostics で見たときの message を短くする。

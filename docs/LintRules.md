@@ -252,6 +252,343 @@ config:
 }
 ```
 
+## planned rule: `noUnknownHtmlAttribute`
+
+HTML tag に存在しない、または typo の可能性が高い attribute を検出します。
+
+このruleは最初からHTML仕様全体を網羅しません。まず利用頻度が高く、誤検知時の影響を
+制御しやすいtagから段階的に実装します。
+
+初期対象tag:
+
+- `input`
+- `a`
+- `button`
+- `form`
+- `label`
+- `img`
+- `script`
+- `link`
+- `meta`
+
+初期対象外:
+
+- custom element (`my-component` のようにtag名に `-` を含むもの)
+- SVG / MathML foreign content
+- tag内にERB fragmentを含むattribute list
+- `data-*`
+- `aria-*`
+- framework / library specific attribute
+
+### severity
+
+初期値は `warn` を想定します。
+
+理由:
+
+- Rails viewではStimulus、Vue、Alpine.js、Hotwire系のattributeが混ざることがある。
+- HTML仕様に存在しないattributeが、projectやlibraryでは意味を持つ場合がある。
+- 初期実装では対応tagとattribute setが限定的なため、errorにすると導入時の摩擦が大きい。
+
+config:
+
+```json
+{
+  "linter": {
+    "rules": {
+      "noUnknownHtmlAttribute": "warn"
+    }
+  }
+}
+```
+
+### attribute分類
+
+attributeは次の順で判定します。
+
+1. HTML global attribute
+2. `data-*`
+3. `aria-*`
+4. configured ignore pattern
+5. framework / library known attribute
+6. tag-specific attribute
+7. typo candidate
+8. unknown attribute
+
+### global attribute
+
+まずHTML global attributeを共有setとして持ちます。
+
+初期set:
+
+- `accesskey`
+- `autocapitalize`
+- `autofocus`
+- `class`
+- `contenteditable`
+- `dir`
+- `draggable`
+- `enterkeyhint`
+- `hidden`
+- `id`
+- `inert`
+- `inputmode`
+- `is`
+- `itemid`
+- `itemprop`
+- `itemref`
+- `itemscope`
+- `itemtype`
+- `lang`
+- `nonce`
+- `part`
+- `popover`
+- `slot`
+- `spellcheck`
+- `style`
+- `tabindex`
+- `title`
+- `translate`
+
+event handler attribute (`onclick` など) は、将来的には別方針で扱います。初期実装では
+HTML仕様上は存在するattributeとして許可するか、security/style lintとして別ruleに分ける
+余地を残します。
+
+### tag-specific attribute
+
+tagごとのattribute setは、小さく始めて増やします。
+
+`input` 初期set:
+
+- `accept`
+- `alt`
+- `autocomplete`
+- `capture`
+- `checked`
+- `dirname`
+- `disabled`
+- `form`
+- `formaction`
+- `formenctype`
+- `formmethod`
+- `formnovalidate`
+- `formtarget`
+- `height`
+- `list`
+- `max`
+- `maxlength`
+- `min`
+- `minlength`
+- `multiple`
+- `name`
+- `pattern`
+- `placeholder`
+- `readonly`
+- `required`
+- `size`
+- `src`
+- `step`
+- `type`
+- `value`
+- `width`
+
+`a` 初期set:
+
+- `download`
+- `href`
+- `hreflang`
+- `ping`
+- `referrerpolicy`
+- `rel`
+- `target`
+- `type`
+
+`button` 初期set:
+
+- `command`
+- `commandfor`
+- `disabled`
+- `form`
+- `formaction`
+- `formenctype`
+- `formmethod`
+- `formnovalidate`
+- `formtarget`
+- `name`
+- `popovertarget`
+- `popovertargetaction`
+- `type`
+- `value`
+
+### framework / library attribute
+
+HTMLでは未定義でも、frameworkやlibraryが使うattributeがあります。これらは初期実装では
+warning対象にしません。
+
+常に許可するpattern:
+
+- `data-*`
+- `aria-*`
+
+初期のknown framework pattern:
+
+- `v-*` (`v-model`, `v-if`, `v-bind`, `v-on` など)
+- `:*` (Vue shorthand)
+- `@*` (Vue event shorthand)
+- `x-*` (Alpine.js)
+- `hx-*` (htmx)
+- `ng-*` (AngularJS / Angular template style)
+- `phx-*` (Phoenix LiveView)
+- `turbo-*` は原則 `data-turbo-*` を推奨するが、実プロジェクト互換のため最初は許可候補に入れる
+
+Stimulus / Turbo は基本的に `data-controller`, `data-action`, `data-*-target`,
+`data-*-value` を使うため、`data-*` 許可で対応します。
+
+Rails helperが生成するattributeや、project独自のlibrary attributeを扱うために、
+将来的にconfigを追加します。
+
+想定config:
+
+```json
+{
+  "linter": {
+    "html": {
+      "allowUnknownAttributes": [
+        "v-*",
+        "x-*",
+        "hx-*",
+        "my-library-*"
+      ]
+    }
+  }
+}
+```
+
+ただし、初期実装では `linter.rules.noUnknownHtmlAttribute` のseverityだけを公開し、
+allowlist configは必要になった時点で追加します。
+
+### typo detection
+
+未知attributeのうち、既知attributeに近いものはtypo候補としてmessageを変えます。
+
+対象例:
+
+```erb
+<button tab-index="0">Open</button>
+<button tabIndex="0">Open</button>
+<input auto-complete="email">
+```
+
+message案:
+
+```text
+unknown HTML attribute `tab-index`; did you mean `tabindex`?
+unknown HTML attribute `tabIndex`; did you mean `tabindex`?
+unknown HTML attribute `auto-complete`; did you mean `autocomplete`?
+```
+
+方針:
+
+- HTML attribute名はASCII case-insensitiveに扱います。
+- diagnosticの表示では元のattribute名を保持します。
+- `tabIndex` のようなcamelCaseは、小文字化した上で既知attributeと比較します。
+- `tab-index` のようなkebab-case typoは、`-` を除去した文字列でも比較します。
+- 編集候補を出す場合はlinterではなくassist actionに寄せます。
+
+初期typo候補:
+
+- `tab-index` / `tabIndex` -> `tabindex`
+- `auto-complete` / `autoComplete` -> `autocomplete`
+- `read-only` / `readOnly` -> `readonly`
+- `max-length` / `maxLength` -> `maxlength`
+- `min-length` / `minLength` -> `minlength`
+- `form-action` / `formAction` -> `formaction`
+- `form-method` / `formMethod` -> `formmethod`
+- `form-target` / `formTarget` -> `formtarget`
+- `ariaLabel` -> `aria-label`
+
+`ariaLabel` はHTMLの `aria-*` としては無効なのでtypo候補にします。ただし React/JSX
+では `aria-label` ではなく `aria-label` をHTML文字列として書くため、ERBでは
+`aria-label` を推奨します。
+
+### ERBとの相互作用
+
+tag内にERB fragmentがある場合は、初期実装では診断しません。
+
+対象外例:
+
+```erb
+<input <%= field_options %> name="email">
+<a href="<%= path %>" <%= link_options %>>Link</a>
+```
+
+理由:
+
+- ERB側でattribute名そのものが生成される可能性がある。
+- Ruby/Rails semantic analysisなしでattribute listを確定できない。
+- 誤検知よりも安全側を優先する。
+
+attribute valueにERB outputが含まれるだけなら診断対象にできます。
+
+対象例:
+
+```erb
+<input auto-complete="<%= autocomplete %>">
+```
+
+### custom elements
+
+custom elementは未定義attributeを許可します。
+
+対象外例:
+
+```erb
+<my-combobox selected-value="1" on-select="save"></my-combobox>
+```
+
+理由:
+
+- custom elementはproject固有attributeを持つ。
+- HTML標準のtag-specific attribute setで判定すると誤検知が多い。
+
+ただし、custom element上でもglobal attribute typoだけ検出したい需要はありえます。
+これは将来のoptionとして検討します。
+
+### assistとの関係
+
+`noUnknownHtmlAttribute` は最初はlinter ruleです。
+
+typo候補のうち、置換が明らかなものは将来的にassist actionへ移せます。
+
+想定action:
+
+- `html.fixAttributeName`
+
+例:
+
+```erb
+- <button tab-index="0">Open</button>
++ <button tabindex="0">Open</button>
+```
+
+初期実装ではassistを同時に実装せず、diagnostic messageで候補だけ示します。
+
+### 実装順
+
+1. global attribute setを実装する。
+2. `input`, `a`, `button` のtag-specific attribute setを実装する。
+3. `data-*`, `aria-*`, framework patternを許可する。
+4. `tab-index` / `tabIndex` などのtypo候補messageを実装する。
+5. `form`, `label`, `img`, `script`, `link`, `meta` を追加する。
+6. 実プロジェクトauditで誤検知を確認し、allowlist configが必要か判断する。
+
+完了条件:
+
+- `input`, `a`, `button` で明らかなtypoを検出できる。
+- `data-*`, `aria-*`, `v-model`, `x-*`, `hx-*` などを誤検知しない。
+- tag内ERB fragmentを含む不確実なtagでは診断しない。
+- messageがVS Code diagnostics上で短く読める。
+
 ### `noInvalidHtmlNesting`
 
 HTML content model に反する代表的な親子関係を検出します。
