@@ -318,6 +318,33 @@ fn allows_unknown_html_attribute_rule_on_expanded_supported_tags() {
 }
 
 #[test]
+fn allows_unknown_html_attribute_rule_on_media_embed_and_table_tags() {
+    let diagnostics = lint(
+        r##"<video src="/movie.mp4" controls controlslist="nodownload" disableremoteplayback playsinline poster="/poster.png" width="640" height="360"></video>
+<audio src="/sound.mp3" controls preload="metadata"></audio>
+<source src="/movie.webm" srcset="/image@2x.png 2x" sizes="100vw" media="(min-width: 800px)" type="video/webm">
+<track src="/captions.vtt" kind="captions" srclang="en" label="English" default>
+<iframe src="/embed" srcdoc="<p>Inline</p>" allowfullscreen sandbox loading="lazy" referrerpolicy="no-referrer"></iframe>
+<object data="/chart.svg" type="image/svg+xml" width="400" height="300" usemap="#map"></object>
+<embed src="/chart.svg" type="image/svg+xml" width="400" height="300">
+<map name="nav"><area href="/home" shape="rect" coords="0,0,10,10" alt="Home"></map>
+<table border="0" cellspacing="0" cellpadding="0"><colgroup span="2"><col span="1"></colgroup><tr><th colspan="2" scope="col">Name</th></tr><tr><td rowspan="2" headers="name">Alice</td></tr></table>
+<ol start="3" reversed type="A"><li value="4">Item</li></ol>
+<ul type="disc"><li>Item</li></ul>
+<details name="help" open><summary>Help</summary></details>
+<dialog open></dialog>
+<progress max="100" value="40"></progress>
+<meter min="0" max="10" low="3" high="8" optimum="7" value="6"></meter>
+<time datetime="2026-07-10">today</time>
+<canvas width="300" height="150"></canvas>
+<base href="/" target="_blank">
+<style media="screen" blocking="render"></style>"##,
+    );
+
+    assert_eq!(diagnostics, Vec::new());
+}
+
+#[test]
 fn reports_camel_case_attribute_typos() {
     let diagnostics = lint(r#"<button tabIndex="0">Open</button><input maxLength="20">"#);
 
@@ -364,6 +391,38 @@ fn reports_typo_candidates_on_expanded_supported_tags() {
             "unknown HTML attribute `httpEquiv`; did you mean `http-equiv`?",
             "unknown HTML attribute `readOnly`; did you mean `readonly`?",
             "unknown HTML attribute `maxLength`; did you mean `maxlength`?"
+        ]
+    );
+}
+
+#[test]
+fn reports_typo_candidates_on_media_embed_and_table_tags() {
+    let diagnostics = lint(
+        r#"<video controlsList="nodownload" disableRemotePlayback playsInline></video>
+<iframe allowFullScreen srcDoc="<p>Inline</p>"></iframe>
+<track srcLang="en">
+<td colSpan="2" rowSpan="3"></td>
+<table cellPadding="0" cellSpacing="0"></table>
+<time dateTime="2026-07-10"></time>"#,
+    );
+
+    assert_eq!(
+        diagnostics
+            .iter()
+            .map(|diagnostic| diagnostic.message.as_str())
+            .collect::<Vec<_>>(),
+        vec![
+            "unknown HTML attribute `controlsList`; did you mean `controlslist`?",
+            "unknown HTML attribute `disableRemotePlayback`; did you mean `disableremoteplayback`?",
+            "unknown HTML attribute `playsInline`; did you mean `playsinline`?",
+            "unknown HTML attribute `allowFullScreen`; did you mean `allowfullscreen`?",
+            "unknown HTML attribute `srcDoc`; did you mean `srcdoc`?",
+            "unknown HTML attribute `srcLang`; did you mean `srclang`?",
+            "unknown HTML attribute `colSpan`; did you mean `colspan`?",
+            "unknown HTML attribute `rowSpan`; did you mean `rowspan`?",
+            "unknown HTML attribute `cellPadding`; did you mean `cellpadding`?",
+            "unknown HTML attribute `cellSpacing`; did you mean `cellspacing`?",
+            "unknown HTML attribute `dateTime`; did you mean `datetime`?"
         ]
     );
 }

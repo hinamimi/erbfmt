@@ -273,14 +273,40 @@ HTML tag に存在しない、または typo の可能性が高い attribute を
 - `textarea`
 - `select`
 - `option`
-
-今後追加するtag:
-
 - `audio`
 - `video`
 - `source`
+- `track`
 - `iframe`
-- table関連tag
+- `object`
+- `embed`
+- `map`
+- `area`
+- `table`
+- `colgroup`
+- `col`
+- `th`
+- `td`
+- `ol`
+- `ul`
+- `li`
+- `details`
+- `dialog`
+- `progress`
+- `meter`
+- `time`
+- `canvas`
+- `base`
+- `style`
+
+今後追加するtag:
+
+- `del`
+- `ins`
+- `blockquote`
+- `q`
+- `data`
+- `output`
 
 初期対象外:
 
