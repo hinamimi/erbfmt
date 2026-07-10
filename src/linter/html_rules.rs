@@ -742,6 +742,7 @@ fn known_html_attributes_for_tag(name: &str) -> Option<&'static [&'static str]> 
             "download",
             "href",
             "hreflang",
+            "name",
             "ping",
             "referrerpolicy",
             "rel",
@@ -861,6 +862,7 @@ fn known_html_attributes_for_tag(name: &str) -> Option<&'static [&'static str]> 
             "allowfullscreen",
             "credentialless",
             "csp",
+            "frameborder",
             "height",
             "loading",
             "name",
@@ -891,7 +893,14 @@ fn known_html_attributes_for_tag(name: &str) -> Option<&'static [&'static str]> 
         ]),
         "map" => Some(&["name"]),
         "meter" => Some(&["high", "low", "max", "min", "optimum", "value"]),
-        "meta" => Some(&["charset", "content", "http-equiv", "media", "name"]),
+        "meta" => Some(&[
+            "charset",
+            "content",
+            "http-equiv",
+            "media",
+            "name",
+            "property",
+        ]),
         "object" => Some(&["data", "form", "height", "name", "type", "usemap", "width"]),
         "ol" => Some(&["reversed", "start", "type"]),
         "option" => Some(&["disabled", "label", "selected", "value"]),
@@ -920,8 +929,26 @@ fn known_html_attributes_for_tag(name: &str) -> Option<&'static [&'static str]> 
         ]),
         "source" => Some(&["height", "media", "sizes", "src", "srcset", "type", "width"]),
         "style" => Some(&["blocking", "media", "nonce", "title", "type"]),
-        "table" => Some(&["border", "cellpadding", "cellspacing", "summary", "width"]),
-        "td" => Some(&["abbr", "colspan", "headers", "rowspan"]),
+        "table" => Some(&[
+            "align",
+            "bgcolor",
+            "border",
+            "cellpadding",
+            "cellspacing",
+            "summary",
+            "width",
+        ]),
+        "td" => Some(&[
+            "abbr",
+            "align",
+            "bgcolor",
+            "colspan",
+            "headers",
+            "rowspan",
+            "valign",
+            "vertical-align",
+            "width",
+        ]),
         "textarea" => Some(&[
             "autocomplete",
             "cols",
@@ -937,7 +964,18 @@ fn known_html_attributes_for_tag(name: &str) -> Option<&'static [&'static str]> 
             "rows",
             "wrap",
         ]),
-        "th" => Some(&["abbr", "colspan", "headers", "rowspan", "scope"]),
+        "th" => Some(&[
+            "abbr",
+            "align",
+            "bgcolor",
+            "colspan",
+            "headers",
+            "rowspan",
+            "scope",
+            "valign",
+            "vertical-align",
+            "width",
+        ]),
         "time" => Some(&["datetime"]),
         "track" => Some(&["default", "kind", "label", "src", "srclang"]),
         "ul" => Some(&["type"]),
@@ -985,6 +1023,7 @@ fn is_global_html_attribute(name: &str) -> bool {
             | "nonce"
             | "part"
             | "popover"
+            | "role"
             | "slot"
             | "spellcheck"
             | "style"

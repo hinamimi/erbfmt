@@ -310,6 +310,7 @@ fn allows_unknown_html_attribute_rule_on_expanded_supported_tags() {
 <script type="module" src="/app.js" crossorigin="anonymous" defer></script>
 <link rel="preload" href="/app.css" as="style" imagesizes="100vw">
 <meta http-equiv="refresh" content="0">
+<meta property="og:title" content="Title">
 <textarea name="bio" maxlength="200" readonly></textarea>
 <select name="role" multiple required><option value="admin" selected>Admin</option></select>"#,
     );
@@ -324,11 +325,11 @@ fn allows_unknown_html_attribute_rule_on_media_embed_and_table_tags() {
 <audio src="/sound.mp3" controls preload="metadata"></audio>
 <source src="/movie.webm" srcset="/image@2x.png 2x" sizes="100vw" media="(min-width: 800px)" type="video/webm">
 <track src="/captions.vtt" kind="captions" srclang="en" label="English" default>
-<iframe src="/embed" srcdoc="<p>Inline</p>" allowfullscreen sandbox loading="lazy" referrerpolicy="no-referrer"></iframe>
+<iframe src="/embed" srcdoc="<p>Inline</p>" allowfullscreen frameborder="0" sandbox loading="lazy" referrerpolicy="no-referrer"></iframe>
 <object data="/chart.svg" type="image/svg+xml" width="400" height="300" usemap="#map"></object>
 <embed src="/chart.svg" type="image/svg+xml" width="400" height="300">
 <map name="nav"><area href="/home" shape="rect" coords="0,0,10,10" alt="Home"></map>
-<table border="0" cellspacing="0" cellpadding="0"><colgroup span="2"><col span="1"></colgroup><tr><th colspan="2" scope="col">Name</th></tr><tr><td rowspan="2" headers="name">Alice</td></tr></table>
+<table align="center" border="0" cellspacing="0" cellpadding="0" bgcolor="#fff"><colgroup span="2"><col span="1"></colgroup><tr><th colspan="2" scope="col" align="left" bgcolor="#eee">Name</th></tr><tr><td rowspan="2" headers="name" align="center" valign="middle" vertical-align="middle" bgcolor="#fff">Alice</td></tr></table>
 <ol start="3" reversed type="A"><li value="4">Item</li></ol>
 <ul type="disc"><li>Item</li></ul>
 <details name="help" open><summary>Help</summary></details>
@@ -338,7 +339,10 @@ fn allows_unknown_html_attribute_rule_on_media_embed_and_table_tags() {
 <time datetime="2026-07-10">today</time>
 <canvas width="300" height="150"></canvas>
 <base href="/" target="_blank">
-<style media="screen" blocking="render"></style>"##,
+<style media="screen" blocking="render"></style>
+<a name="legacy-anchor"></a>
+<ul role="tablist"><li role="presentation">Tab</li></ul>
+<table><tr><th width="25%">Title</th><td width="75%">Value</td></tr></table>"##,
     );
 
     assert_eq!(diagnostics, Vec::new());

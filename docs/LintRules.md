@@ -299,6 +299,10 @@ HTML tag に存在しない、または typo の可能性が高い attribute を
 - `base`
 - `style`
 
+メールHTMLや埋め込みHTMLで実運用上よく使われる古い属性 (`align`, `bgcolor`,
+`valign`, `frameborder` など) は、unknown attributeとしては扱いません。これらは
+将来的にdeprecated/style ruleとして別途検出する余地を残します。
+
 今後追加するtag:
 
 - `del`
