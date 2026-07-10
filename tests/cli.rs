@@ -607,7 +607,7 @@ fn lint_fails_for_invalid_html_boolean_attributes() {
     let dir = TestDir::new("lint_invalid_html_boolean_attributes");
     let file = dir.write(
         "input.html.erb",
-        "<button disabled=\"false\" checked=\"checked\" hidden>Save</button>\n",
+        "<input disabled=\"false\" checked=\"checked\" hidden>\n",
     );
 
     let output = run_lint_plain([file.as_path()]);
@@ -617,7 +617,7 @@ fn lint_fails_for_invalid_html_boolean_attributes() {
     assert_eq!(
         stderr(&output),
         format!(
-            "{}: invalid HTML boolean attribute value `disabled=\"false\"` at line 1, column 9\n{}: redundant HTML boolean attribute value `checked=\"checked\"` at line 1, column 26\n",
+            "{}: invalid HTML boolean attribute value `disabled=\"false\"` at line 1, column 8\n{}: redundant HTML boolean attribute value `checked=\"checked\"` at line 1, column 25\n",
             file.display(),
             file.display()
         )
@@ -1195,7 +1195,7 @@ fn config_can_disable_invalid_html_boolean_attribute_rule() {
     );
     let file = dir.write(
         "input.html.erb",
-        r#"<button disabled="false" checked="checked">Save</button>"#,
+        r#"<input disabled="false" checked="checked">"#,
     );
 
     let output = run([

@@ -44,6 +44,7 @@ The rule name is the same camelCase name used in `erbfmt.json`, such as:
 - `noInvalidHtmlNesting`
 - `noNonDoubleQuotedHtmlAttributeValue`
 - `noSelfClosingHtmlTag`
+- `noUnknownHtmlAttribute`
 - `unsupportedErbBlockStarter`
 
 ## Formatter Ignore Contract

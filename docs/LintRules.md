@@ -252,18 +252,21 @@ config:
 }
 ```
 
-## planned rule: `noUnknownHtmlAttribute`
+### `noUnknownHtmlAttribute`
 
 HTML tag に存在しない、または typo の可能性が高い attribute を検出します。
 
 このruleは最初からHTML仕様全体を網羅しません。まず利用頻度が高く、誤検知時の影響を
 制御しやすいtagから段階的に実装します。
 
-初期対象tag:
+初期実装対象tag:
 
 - `input`
 - `a`
 - `button`
+
+次に追加するtag:
+
 - `form`
 - `label`
 - `img`
@@ -350,9 +353,9 @@ attributeは次の順で判定します。
 - `title`
 - `translate`
 
-event handler attribute (`onclick` など) は、将来的には別方針で扱います。初期実装では
-HTML仕様上は存在するattributeとして許可するか、security/style lintとして別ruleに分ける
-余地を残します。
+event handler attribute (`onclick` など) は、HTML仕様上は存在するattributeとして
+初期実装では許可します。inline event handlerを避けたい場合は、security/style lintとして
+別ruleに分けます。
 
 ### tag-specific attribute
 

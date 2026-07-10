@@ -586,6 +586,7 @@ struct RawLintRules {
     no_invalid_html_nesting: Option<RuleSetting>,
     no_non_double_quoted_html_attribute_value: Option<RuleSetting>,
     no_self_closing_html_tag: Option<RuleSetting>,
+    no_unknown_html_attribute: Option<RuleSetting>,
     unsupported_erb_block_starter: Option<RuleSetting>,
 }
 
@@ -619,6 +620,10 @@ impl RawLintRules {
                     recommended,
                 ),
                 no_self_closing_html_tag: rule_enabled(self.no_self_closing_html_tag, recommended),
+                no_unknown_html_attribute: rule_enabled(
+                    self.no_unknown_html_attribute,
+                    recommended,
+                ),
                 unsupported_erb_block_starter: rule_enabled(
                     self.unsupported_erb_block_starter,
                     recommended,
@@ -638,6 +643,10 @@ impl RawLintRules {
                     self.no_non_double_quoted_html_attribute_value,
                 ),
                 no_self_closing_html_tag: rule_severity(self.no_self_closing_html_tag),
+                no_unknown_html_attribute: rule_severity_or(
+                    self.no_unknown_html_attribute,
+                    DiagnosticSeverity::Warning,
+                ),
                 unsupported_erb_block_starter: rule_severity(self.unsupported_erb_block_starter),
             },
         }
@@ -670,9 +679,16 @@ fn rule_enabled(setting: Option<RuleSetting>, recommended: bool) -> bool {
 }
 
 fn rule_severity(setting: Option<RuleSetting>) -> DiagnosticSeverity {
+    rule_severity_or(setting, DiagnosticSeverity::Error)
+}
+
+fn rule_severity_or(
+    setting: Option<RuleSetting>,
+    default: DiagnosticSeverity,
+) -> DiagnosticSeverity {
     setting
         .map(RuleSetting::diagnostic_severity)
-        .unwrap_or(DiagnosticSeverity::Error)
+        .unwrap_or(default)
 }
 
 fn find_config() -> Option<PathBuf> {

@@ -75,6 +75,15 @@ pub(super) fn lint_html_tokens(
                     options,
                     diagnostics,
                 );
+                lint_unknown_html_attributes(
+                    input,
+                    fragment_start,
+                    spanned.span.start,
+                    tag,
+                    stack,
+                    options,
+                    diagnostics,
+                );
                 stack.push(HtmlElementLintFrame {
                     name: tag.name.clone(),
                 });
@@ -118,6 +127,15 @@ pub(super) fn lint_html_tokens(
                     fragment_start,
                     spanned.span.start,
                     tag,
+                    options,
+                    diagnostics,
+                );
+                lint_unknown_html_attributes(
+                    input,
+                    fragment_start,
+                    spanned.span.start,
+                    tag,
+                    stack,
                     options,
                     diagnostics,
                 );
@@ -170,6 +188,15 @@ pub(super) fn lint_html_tokens(
                     fragment_start,
                     spanned.span.start,
                     tag,
+                    options,
+                    diagnostics,
+                );
+                lint_unknown_html_attributes(
+                    input,
+                    fragment_start,
+                    spanned.span.start,
+                    tag,
+                    stack,
                     options,
                     diagnostics,
                 );
@@ -470,6 +497,7 @@ fn lint_deprecated_html_tag(
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct HtmlAttribute {
     name: String,
+    raw_name: String,
     offset: usize,
     value: Option<HtmlAttributeValue>,
     raw: String,
@@ -591,6 +619,67 @@ fn lint_non_double_quoted_html_attribute_values(
     }
 }
 
+fn lint_unknown_html_attributes(
+    input: &str,
+    fragment_start: usize,
+    html_token_start: usize,
+    tag: &html::HtmlTag,
+    stack: &[HtmlElementLintFrame],
+    options: LintOptions,
+    diagnostics: &mut Vec<Diagnostic>,
+) {
+    if !options.rules.no_unknown_html_attribute
+        || tag.raw.contains("<%")
+        || is_inside_foreign_html_content(tag, stack)
+        || is_custom_html_element(&tag.name)
+    {
+        return;
+    }
+
+    let Some(attribute_set) = known_html_attributes_for_tag(&tag.name) else {
+        return;
+    };
+
+    for attribute in html_attributes(tag) {
+        if let Some(candidate) = unknown_attribute_typo_candidate(&attribute.raw_name)
+            && attribute_has_typo_shape(&attribute.raw_name)
+            && attribute.raw_name != candidate
+        {
+            diagnostics.push(Diagnostic::located_with_severity(
+                format!(
+                    "unknown HTML attribute `{}`; did you mean `{candidate}`?",
+                    attribute.raw_name
+                ),
+                lexer::source_location(input, fragment_start + html_token_start + attribute.offset),
+                options.rule_severities.no_unknown_html_attribute,
+            ));
+            continue;
+        }
+
+        if is_known_html_attribute(&attribute.name, attribute_set)
+            || is_framework_html_attribute(&attribute.name)
+        {
+            continue;
+        }
+
+        let message = if let Some(candidate) = unknown_attribute_typo_candidate(&attribute.raw_name)
+        {
+            format!(
+                "unknown HTML attribute `{}`; did you mean `{candidate}`?",
+                attribute.raw_name
+            )
+        } else {
+            format!("unknown HTML attribute `{}`", attribute.raw_name)
+        };
+
+        diagnostics.push(Diagnostic::located_with_severity(
+            message,
+            lexer::source_location(input, fragment_start + html_token_start + attribute.offset),
+            options.rule_severities.no_unknown_html_attribute,
+        ));
+    }
+}
+
 fn html_attributes(tag: &html::HtmlTag) -> Vec<HtmlAttribute> {
     let Some(mut cursor) = tag.raw.find(&tag.name).map(|index| index + tag.name.len()) else {
         return Vec::new();
@@ -618,6 +707,7 @@ fn html_attributes(tag: &html::HtmlTag) -> Vec<HtmlAttribute> {
 
         let mut attribute = HtmlAttribute {
             name: raw[name_start..name_end].to_ascii_lowercase(),
+            raw_name: raw[name_start..name_end].to_string(),
             offset: name_start,
             value: None,
             raw: raw[name_start..name_end].to_string(),
@@ -636,6 +726,172 @@ fn html_attributes(tag: &html::HtmlTag) -> Vec<HtmlAttribute> {
     }
 
     attributes
+}
+
+fn is_known_html_attribute(name: &str, tag_specific_attributes: &[&str]) -> bool {
+    is_global_html_attribute(name)
+        || is_data_html_attribute(name)
+        || is_aria_html_attribute(name)
+        || is_event_handler_html_attribute(name)
+        || tag_specific_attributes.contains(&name)
+}
+
+fn known_html_attributes_for_tag(name: &str) -> Option<&'static [&'static str]> {
+    match name.to_ascii_lowercase().as_str() {
+        "a" => Some(&[
+            "download",
+            "href",
+            "hreflang",
+            "ping",
+            "referrerpolicy",
+            "rel",
+            "target",
+            "type",
+        ]),
+        "button" => Some(&[
+            "command",
+            "commandfor",
+            "disabled",
+            "form",
+            "formaction",
+            "formenctype",
+            "formmethod",
+            "formnovalidate",
+            "formtarget",
+            "name",
+            "popovertarget",
+            "popovertargetaction",
+            "type",
+            "value",
+        ]),
+        "input" => Some(&[
+            "accept",
+            "alt",
+            "autocomplete",
+            "capture",
+            "checked",
+            "dirname",
+            "disabled",
+            "form",
+            "formaction",
+            "formenctype",
+            "formmethod",
+            "formnovalidate",
+            "formtarget",
+            "height",
+            "list",
+            "max",
+            "maxlength",
+            "min",
+            "minlength",
+            "multiple",
+            "name",
+            "pattern",
+            "placeholder",
+            "readonly",
+            "required",
+            "size",
+            "src",
+            "step",
+            "type",
+            "value",
+            "width",
+        ]),
+        _ => None,
+    }
+}
+
+fn is_global_html_attribute(name: &str) -> bool {
+    matches!(
+        name,
+        "accesskey"
+            | "autocapitalize"
+            | "autofocus"
+            | "class"
+            | "contenteditable"
+            | "dir"
+            | "draggable"
+            | "enterkeyhint"
+            | "hidden"
+            | "id"
+            | "inert"
+            | "inputmode"
+            | "is"
+            | "itemid"
+            | "itemprop"
+            | "itemref"
+            | "itemscope"
+            | "itemtype"
+            | "lang"
+            | "nonce"
+            | "part"
+            | "popover"
+            | "slot"
+            | "spellcheck"
+            | "style"
+            | "tabindex"
+            | "title"
+            | "translate"
+    )
+}
+
+fn is_data_html_attribute(name: &str) -> bool {
+    name.starts_with("data-") && name.len() > "data-".len()
+}
+
+fn is_aria_html_attribute(name: &str) -> bool {
+    name.starts_with("aria-") && name.len() > "aria-".len()
+}
+
+fn is_event_handler_html_attribute(name: &str) -> bool {
+    name.starts_with("on") && name.len() > "on".len()
+}
+
+fn is_framework_html_attribute(raw_name: &str) -> bool {
+    raw_name.starts_with("v-")
+        || raw_name.starts_with(':')
+        || raw_name.starts_with('@')
+        || raw_name.starts_with("x-")
+        || raw_name.starts_with("hx-")
+        || raw_name.starts_with("ng-")
+        || raw_name.starts_with("phx-")
+        || raw_name.starts_with("turbo-")
+}
+
+fn is_custom_html_element(name: &str) -> bool {
+    name.contains('-')
+}
+
+fn unknown_attribute_typo_candidate(raw_name: &str) -> Option<&'static str> {
+    match normalized_html_attribute_typo_key(raw_name).as_str() {
+        "arialabel" => Some("aria-label"),
+        "autocomplete" => Some("autocomplete"),
+        "formaction" => Some("formaction"),
+        "formmethod" => Some("formmethod"),
+        "formtarget" => Some("formtarget"),
+        "maxlength" => Some("maxlength"),
+        "minlength" => Some("minlength"),
+        "readonly" => Some("readonly"),
+        "tabindex" => Some("tabindex"),
+        _ => None,
+    }
+}
+
+fn attribute_has_typo_shape(raw_name: &str) -> bool {
+    raw_name.contains('-') || raw_name.contains('_') || is_mixed_case(raw_name)
+}
+
+fn is_mixed_case(raw_name: &str) -> bool {
+    raw_name.chars().any(|ch| ch.is_ascii_lowercase())
+        && raw_name.chars().any(|ch| ch.is_ascii_uppercase())
+}
+
+fn normalized_html_attribute_typo_key(raw_name: &str) -> String {
+    raw_name
+        .chars()
+        .filter(|ch| *ch != '-' && *ch != '_')
+        .flat_map(char::to_lowercase)
+        .collect()
 }
 
 fn skip_html_attribute_spacing(raw: &str, mut cursor: usize) -> usize {

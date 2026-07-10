@@ -199,20 +199,20 @@ fn does_not_report_duplicate_html_attributes_when_tag_contains_erb() {
 
 #[test]
 fn reports_invalid_html_boolean_attribute_values() {
-    let diagnostics = lint(r#"<button disabled="false" checked="checked" hidden>Save</button>"#);
+    let diagnostics = lint(r#"<input disabled="false" checked="checked" hidden>"#);
 
     assert_eq!(
         diagnostics,
         vec![
             Diagnostic::located(
                 "invalid HTML boolean attribute value `disabled=\"false\"`",
-                SourceLocation { line: 1, column: 9 }
+                SourceLocation { line: 1, column: 8 }
             ),
             Diagnostic::located(
                 "redundant HTML boolean attribute value `checked=\"checked\"`",
                 SourceLocation {
                     line: 1,
-                    column: 26
+                    column: 25
                 }
             )
         ]
@@ -253,6 +253,101 @@ fn reports_non_double_quoted_html_attribute_values() {
             )
         ]
     );
+}
+
+#[test]
+fn reports_unknown_html_attributes_on_initial_supported_tags() {
+    let diagnostics = lint(
+        r#"<input name="email" auto-complete="email">
+<a href="/home" targt="_blank">Home</a>
+<button tab-index="0" onclick="save()">Save</button>"#,
+    );
+
+    assert_eq!(
+        diagnostics,
+        vec![
+            Diagnostic::located_with_severity(
+                "unknown HTML attribute `auto-complete`; did you mean `autocomplete`?",
+                SourceLocation {
+                    line: 1,
+                    column: 21
+                },
+                DiagnosticSeverity::Warning
+            ),
+            Diagnostic::located_with_severity(
+                "unknown HTML attribute `targt`",
+                SourceLocation {
+                    line: 2,
+                    column: 17
+                },
+                DiagnosticSeverity::Warning
+            ),
+            Diagnostic::located_with_severity(
+                "unknown HTML attribute `tab-index`; did you mean `tabindex`?",
+                SourceLocation { line: 3, column: 9 },
+                DiagnosticSeverity::Warning
+            )
+        ]
+    );
+}
+
+#[test]
+fn allows_global_framework_and_custom_attributes() {
+    let diagnostics = lint(
+        r#"<input id="email" class="field" data-controller="form" aria-label="Email" v-model="email" x-ref="email" hx-post="/users" phx-click="save">
+<my-input tab-index="0" custom-prop="value"></my-input>"#,
+    );
+
+    assert_eq!(diagnostics, Vec::new());
+}
+
+#[test]
+fn reports_camel_case_attribute_typos() {
+    let diagnostics = lint(r#"<button tabIndex="0">Open</button><input maxLength="20">"#);
+
+    assert_eq!(
+        diagnostics,
+        vec![
+            Diagnostic::located_with_severity(
+                "unknown HTML attribute `tabIndex`; did you mean `tabindex`?",
+                SourceLocation { line: 1, column: 9 },
+                DiagnosticSeverity::Warning
+            ),
+            Diagnostic::located_with_severity(
+                "unknown HTML attribute `maxLength`; did you mean `maxlength`?",
+                SourceLocation {
+                    line: 1,
+                    column: 42
+                },
+                DiagnosticSeverity::Warning
+            )
+        ]
+    );
+}
+
+#[test]
+fn skips_unknown_html_attributes_when_tag_contains_erb() {
+    let diagnostics = lint(
+        r#"<input <%= field_options %> auto-complete="email"><a <%= link_options %> targt="_blank">Home</a>"#,
+    );
+
+    assert_eq!(diagnostics, Vec::new());
+}
+
+#[test]
+fn respects_disabled_unknown_html_attribute_rule() {
+    let diagnostics = lint_with_options(
+        r#"<input auto-complete="email">"#,
+        LintOptions {
+            rules: LintRules {
+                no_unknown_html_attribute: false,
+                ..LintRules::default()
+            },
+            ..LintOptions::default()
+        },
+    );
+
+    assert_eq!(diagnostics, Vec::new());
 }
 
 #[test]
@@ -569,7 +664,7 @@ fn respects_disabled_duplicate_html_attribute_rule() {
 #[test]
 fn respects_disabled_invalid_html_boolean_attribute_rule() {
     let diagnostics = lint_with_options(
-        r#"<button disabled="false" checked="checked">Save</button>"#,
+        r#"<input disabled="false" checked="checked">"#,
         LintOptions {
             rules: LintRules {
                 no_invalid_html_boolean_attribute: false,

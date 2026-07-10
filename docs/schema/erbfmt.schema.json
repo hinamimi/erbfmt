@@ -101,6 +101,9 @@
             "noSelfClosingHtmlTag": {
               "enum": ["off", "warn", "error"]
             },
+            "noUnknownHtmlAttribute": {
+              "enum": ["off", "warn", "error"]
+            },
             "unsupportedErbBlockStarter": {
               "enum": ["off", "warn", "error"]
             }

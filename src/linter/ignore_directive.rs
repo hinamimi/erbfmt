@@ -80,6 +80,8 @@ fn diagnostic_rule_id(message: &str) -> Option<&'static str> {
         Some("noNonDoubleQuotedHtmlAttributeValue")
     } else if message.starts_with("self-closing HTML tag") {
         Some("noSelfClosingHtmlTag")
+    } else if message.starts_with("unknown HTML attribute") {
+        Some("noUnknownHtmlAttribute")
     } else if message.starts_with("unsupported ERB block starter") {
         Some("unsupportedErbBlockStarter")
     } else {

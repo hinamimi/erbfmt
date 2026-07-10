@@ -45,6 +45,7 @@ const DEFAULT_CONFIG: &str = r#"{
       "noInvalidHtmlNesting": "error",
       "noNonDoubleQuotedHtmlAttributeValue": "error",
       "noSelfClosingHtmlTag": "error",
+      "noUnknownHtmlAttribute": "warn",
       "unsupportedErbBlockStarter": "error"
     }
   },
