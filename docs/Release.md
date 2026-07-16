@@ -186,13 +186,13 @@ Keep these files in the release verification surface:
 
 ## Versioning
 
-The repository is currently set to `0.3.0` for the next release.
+The repository is currently set to `0.3.1` for the next release.
 Earlier milestone work used the fixed development version `0.0.0-dev`, and the
 first public prerelease used `0.1.0`.
 
 The canonical CLI version is read from `Cargo.toml`. Ruby gem and VSCode
 versions are checked against it by `scripts/version.rb`.
-For stable versions such as `0.3.0`, Cargo, RubyGems, VSCode, Git tags, and
+For stable versions such as `0.3.1`, Cargo, RubyGems, VSCode, Git tags, and
 release assets use the same version string. For prerelease versions, RubyGems
 normalizes hyphen separators to dots; for example, `0.3.1-dev` becomes
 `0.3.1.dev` in gem metadata and `.gem` filenames.
@@ -250,7 +250,7 @@ Download the gem assets from the draft or published GitHub Release:
 
 ```bash
 mkdir -p release-assets
-gh release download v0.3.0 \
+gh release download v0.3.1 \
   --pattern '*.gem' \
   --dir release-assets
 ```
@@ -259,7 +259,7 @@ Validate the asset set without publishing:
 
 ```bash
 scripts/publish-rubygems.sh \
-  --version 0.3.0 \
+  --version 0.3.1 \
   --asset-dir release-assets \
   --dry-run
 ```
@@ -268,7 +268,7 @@ Publish the fallback gem and all four platform gems:
 
 ```bash
 scripts/publish-rubygems.sh \
-  --version 0.3.0 \
+  --version 0.3.1 \
   --asset-dir release-assets \
   --yes
 ```
@@ -281,8 +281,8 @@ The script expects exactly these RubyGems assets for the version:
 - `erbfmt-${ruby_gem_version}-arm64-darwin.gem`
 - `erbfmt-${ruby_gem_version}-x64-mingw-ucrt.gem`
 
-For example, `--version 0.3.0` expects RubyGems assets named with
-`0.3.0`.
+For example, `--version 0.3.1` expects RubyGems assets named with
+`0.3.1`.
 
 If a release version was already partially published to RubyGems.org before the
 fallback gem existed, do not rerun the full publish script for the already
@@ -306,10 +306,10 @@ bundle exec erbfmt --version
 For the next release:
 
 ```bash
-ruby scripts/version.rb set 0.3.0
-ruby scripts/version.rb verify 0.3.0
+ruby scripts/version.rb set 0.3.1
+ruby scripts/version.rb verify 0.3.1
 # Run the release verification commands above, then commit.
-git tag -a v0.3.0 -m "erbfmt 0.3.0"
+git tag -a v0.3.1 -m "erbfmt 0.3.1"
 git push origin main
-git push origin v0.3.0
+git push origin v0.3.1
 ```
