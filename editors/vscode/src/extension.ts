@@ -39,6 +39,7 @@ type ExecResult = {
 
 type ExecOptions = {
   cwd: string;
+  input: string;
 };
 
 export function activate(context: vscode.ExtensionContext): void {
@@ -48,7 +49,9 @@ export function activate(context: vscode.ExtensionContext): void {
     async provideDocumentFormattingEdits(document, _options, token) {
       const formatted = await formatDocument(document, token);
 
-      return [vscode.TextEdit.replace(fullDocumentRange(document), formatted)];
+      return formatted === document.getText()
+        ? []
+        : [vscode.TextEdit.replace(fullDocumentRange(document), formatted)];
     },
   };
 
@@ -64,6 +67,9 @@ export function activate(context: vscode.ExtensionContext): void {
 
       try {
         const formatted = await formatDocument(editor.document, createNullToken());
+        if (formatted === editor.document.getText()) {
+          return;
+        }
         await editor.edit((edit) => {
           edit.replace(fullDocumentRange(editor.document), formatted);
         });
@@ -212,23 +218,18 @@ async function formatDocument(
 
   const context = await getCommandContext(document);
 
-  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "erbfmt-vscode-"));
-  const tempFile = path.join(tempDir, path.basename(document.uri.fsPath));
-
-  try {
-    await fs.writeFile(tempFile, document.getText(), "utf8");
-
-    const args = await buildErbfmtArgs(context, document, [tempFile]);
-
-    const result = await execFile(context.command, args, { cwd: context.cwd }, token);
-    if (result.exitCode !== 0) {
-      throw new Error(formatFailureMessage(context, args, result));
-    }
-
-    return result.stdout;
-  } finally {
-    await fs.rm(tempDir, { recursive: true, force: true });
+  const args = await buildErbfmtArgs(context, document, ["--stdin-filepath", document.uri.fsPath]);
+  const result = await execFile(
+    context.command,
+    args,
+    { cwd: context.cwd, input: document.getText() },
+    token,
+  );
+  if (result.exitCode !== 0) {
+    throw new Error(formatFailureMessage(context, args, result));
   }
+
+  return result.stdout;
 }
 
 async function refreshDiagnostics(
@@ -274,19 +275,22 @@ async function lintDocument(
   token: vscode.CancellationToken,
 ): Promise<vscode.Diagnostic[]> {
   const context = await getCommandContext(document);
-  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "erbfmt-vscode-"));
-  const tempFile = path.join(tempDir, path.basename(document.uri.fsPath));
 
   try {
-    await fs.writeFile(tempFile, document.getText(), "utf8");
     const args = await buildErbfmtArgs(context, document, [
       "--lint",
       "--lint-format",
       "plain",
-      tempFile,
+      "--stdin-filepath",
+      document.uri.fsPath,
     ]);
-    const result = await execFile(context.command, args, { cwd: context.cwd }, token);
-    const parsedDiagnostics = parseDiagnostics(document, tempFile, result.stderr);
+    const result = await execFile(
+      context.command,
+      args,
+      { cwd: context.cwd, input: document.getText() },
+      token,
+    );
+    const parsedDiagnostics = parseDiagnostics(document, document.uri.fsPath, result.stderr);
 
     if (parsedDiagnostics.length > 0) {
       return parsedDiagnostics;
@@ -311,8 +315,6 @@ async function lintDocument(
         vscode.DiagnosticSeverity.Error,
       ),
     ];
-  } finally {
-    await fs.rm(tempDir, { recursive: true, force: true });
   }
 }
 
@@ -330,14 +332,18 @@ async function collectFormatDiagnostics(
   }
 
   const context = await getCommandContext(document);
-  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "erbfmt-vscode-"));
-  const tempFile = path.join(tempDir, path.basename(document.uri.fsPath));
 
   try {
-    await fs.writeFile(tempFile, document.getText(), "utf8");
-
-    const args = await buildErbfmtArgs(context, document, [tempFile]);
-    const result = await execFile(context.command, args, { cwd: context.cwd }, token);
+    const args = await buildErbfmtArgs(context, document, [
+      "--stdin-filepath",
+      document.uri.fsPath,
+    ]);
+    const result = await execFile(
+      context.command,
+      args,
+      { cwd: context.cwd, input: document.getText() },
+      token,
+    );
 
     if (result.exitCode !== 0) {
       if (!options.reportExecutionErrors) {
@@ -366,8 +372,6 @@ async function collectFormatDiagnostics(
         vscode.DiagnosticSeverity.Error,
       ),
     ];
-  } finally {
-    await fs.rm(tempDir, { recursive: true, force: true });
   }
 }
 
@@ -835,6 +839,10 @@ function execFile(
         });
       },
     );
+
+    // A command that exits before reading stdin may close the pipe early.
+    child.stdin?.on("error", () => {});
+    child.stdin?.end(options.input, "utf8");
 
     token.onCancellationRequested(() => {
       child.kill();

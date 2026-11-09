@@ -1,13 +1,119 @@
 use std::{
     ffi::{OsStr, OsString},
     fs,
+    io::Write,
     path::PathBuf,
-    process::{Command, Output},
+    process::{Command, Output, Stdio},
     time::{SystemTime, UNIX_EPOCH},
 };
 
 const UNFORMATTED: &str = "<div>\n<p>Hello</p>\n</div>\n";
 const FORMATTED: &str = "<div>\n  <p>Hello</p>\n</div>\n";
+
+#[test]
+fn stdin_formats_unsaved_content_using_original_path() {
+    let dir = TestDir::new("stdin_format");
+    dir.write(
+        "erbfmt.json",
+        r#"{"files":{"includes":["app/views/**/*.html.erb","!app/views/generated/**"]}}"#,
+    );
+    let file = dir.write("app/views/show.html.erb", "<p>On disk</p>\n");
+    let output = run_stdin(
+        &dir.path,
+        &["--stdin-filepath", file.to_str().unwrap()],
+        UNFORMATTED,
+    );
+
+    assert_success(&output);
+    assert_eq!(stdout(&output), FORMATTED);
+    assert_eq!(stderr(&output), "");
+    assert_eq!(fs::read_to_string(file).unwrap(), "<p>On disk</p>\n");
+}
+
+#[test]
+fn stdin_preserves_files_excluded_by_positive_or_negative_patterns() {
+    let dir = TestDir::new("stdin_excluded");
+    dir.write(
+        "erbfmt.json",
+        r#"{"files":{"includes":["app/views/**/*.html.erb","!app/views/generated/**"]}}"#,
+    );
+    // The paths need not exist: the source comes from an unsaved editor buffer.
+    for file in ["tmp/show.html.erb", "app/views/generated/show.html.erb"] {
+        let path = dir.path.join(file);
+        let output = run_stdin(
+            &dir.path,
+            &["--stdin-filepath", path.to_str().unwrap()],
+            UNFORMATTED,
+        );
+        assert_success(&output);
+        assert_eq!(stdout(&output), UNFORMATTED);
+        assert_eq!(stderr(&output), "");
+
+        for mode in ["--lint", "--check", "--assist"] {
+            let output = run_stdin(
+                &dir.path,
+                &[mode, "--stdin-filepath", path.to_str().unwrap()],
+                "<% if user %>\n",
+            );
+            assert_success(&output);
+            assert_eq!(stdout(&output), "");
+            assert_eq!(stderr(&output), "");
+        }
+    }
+}
+
+#[test]
+fn stdin_lint_reports_original_path() {
+    let dir = TestDir::new("stdin_lint");
+    let output = run_stdin(
+        &dir.path,
+        &[
+            "--lint",
+            "--lint-format",
+            "plain",
+            "--stdin-filepath",
+            "input.html.erb",
+        ],
+        "<% while user %>\n",
+    );
+    assert_failure(&output);
+    assert_eq!(
+        stderr(&output),
+        "input.html.erb: unsupported ERB block starter `while` at line 1, column 1\n"
+    );
+}
+
+#[test]
+fn stdin_rejects_disk_inputs_and_write_mode() {
+    let dir = TestDir::new("stdin_conflicts");
+    for argument in ["--write", "other.html.erb"] {
+        let output = run_stdin(
+            &dir.path,
+            &["--stdin-filepath", "input.html.erb", argument],
+            "",
+        );
+        assert_failure(&output);
+        assert!(stderr(&output).contains("cannot be used with"));
+    }
+}
+
+fn run_stdin(directory: &PathBuf, args: &[&str], content: &str) -> Output {
+    let mut child = Command::new(env!("CARGO_BIN_EXE_erbfmt"))
+        .current_dir(directory)
+        .args(args)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap();
+    child
+        .stdin
+        .take()
+        .unwrap()
+        .write_all(content.as_bytes())
+        .unwrap();
+    child.wait_with_output().unwrap()
+}
 
 #[test]
 fn version_reports_crate_version() {

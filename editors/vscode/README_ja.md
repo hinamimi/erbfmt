@@ -17,6 +17,10 @@
 ためのextensionです。Railsの `*.html.erb` template向けに、formatとlintの処理はCLIに
 集約されるため、command line、CI、editorで同じ結果を得られます。
 
+手動format・保存時format・diagnosticsは、元のファイルパスで `files.includes` を
+判定します。未保存の内容は標準入力で渡すため、設定するCLIには
+`--stdin-filepath` のサポートが必要です。
+
 > [!IMPORTANT]
 > 現在のextensionは `erbfmt` binaryを同梱またはdownloadしません。formatする前に
 > CLIを別途installするか、`bundle exec erbfmt` のようなproject-local commandを

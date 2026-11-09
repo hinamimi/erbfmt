@@ -84,6 +84,20 @@ For a single file:
 bundle exec erbfmt --write app/views/users/show.html.erb
 ```
 
+## Process editor buffers
+
+Use `--stdin-filepath PATH` to read source from standard input while using the
+original file path for `files.includes` matching and diagnostic locations:
+
+```bash
+erbfmt --stdin-filepath app/views/users/show.html.erb < buffer.html.erb
+erbfmt --lint --lint-format json --stdin-filepath app/views/users/show.html.erb < buffer.html.erb
+```
+
+The path does not need to exist. Excluded files return the input unchanged in
+format mode and produce no diagnostics in lint or check mode. This option
+cannot be combined with file arguments or `--write`.
+
 ## Apply assist actions when requested
 
 Only apply assist actions when the user asks for these safe mechanical edits:

@@ -19,6 +19,10 @@ This extension adds editor integration for the fast Rust-based
 `*.html.erb` templates and keeps formatting and linting in the CLI, so
 command-line, CI, and editor results stay consistent.
 
+Formatting (including format on save) and diagnostics respect `files.includes`
+using the document's original path. Unsaved content is passed through stdin;
+the configured CLI must support `--stdin-filepath`.
+
 > [!IMPORTANT]
 > This extension does not bundle or download the `erbfmt` binary yet. Install
 > the CLI separately, or configure `erbfmt.command` to run your project-local
