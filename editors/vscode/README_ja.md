@@ -17,6 +17,10 @@
 ためのextensionです。Railsの `*.html.erb` template向けに、formatとlintの処理はCLIに
 集約されるため、command line、CI、editorで同じ結果を得られます。
 
+手動format・保存時format・diagnosticsは、元のファイルパスで `files.includes` を
+判定します。未保存の内容は標準入力で渡すため、設定するCLIには
+`--stdin-filepath` のサポートが必要です。
+
 > [!IMPORTANT]
 > 現在のextensionは `erbfmt` binaryを同梱またはdownloadしません。formatする前に
 > CLIを別途installするか、`bundle exec erbfmt` のようなproject-local commandを
@@ -62,7 +66,7 @@ extensionにprojectで固定したcommandを使うよう設定します。
 手元でglobal commandとして使いたい場合は、RubyGemを直接installします。
 
 ```bash
-gem install erbfmt -v 0.3.1
+gem install erbfmt -v 0.3.2
 erbfmt --version
 ```
 
@@ -71,7 +75,7 @@ formatter versionを固定できるBundlerを優先してください。
 
 ### GitHub Release Binary
 
-[v0.3.1 GitHub Release](https://github.com/hinamimi/erbfmt/releases/tag/v0.3.1)から
+[v0.3.2 GitHub Release](https://github.com/hinamimi/erbfmt/releases/tag/v0.3.2)から
 CLIをdownloadして展開し、`erbfmt` または `erbfmt.exe` を `PATH` に配置します。
 
 ### Cargo
@@ -79,7 +83,7 @@ CLIをdownloadして展開し、`erbfmt` または `erbfmt.exe` を `PATH` に�
 Rust toolchainがある場合はtagged sourceからinstallできます。
 
 ```bash
-cargo install --git https://github.com/hinamimi/erbfmt --tag v0.3.1 --locked
+cargo install --git https://github.com/hinamimi/erbfmt --tag v0.3.2 --locked
 erbfmt --version
 ```
 

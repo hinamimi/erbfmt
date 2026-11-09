@@ -9,6 +9,7 @@ use anyhow::{Context, Result, bail};
 use clap::{ArgGroup, Parser, ValueEnum};
 use std::ffi::OsString;
 use std::fs;
+use std::io::{self, Read};
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 use syntax::{erb as lexer, template as mixed_parser};
@@ -79,6 +80,14 @@ struct Args {
     #[arg(value_name = "FILE")]
     files: Vec<PathBuf>,
 
+    #[arg(
+        long,
+        value_name = "PATH",
+        conflicts_with_all = ["files", "write"],
+        help = "Read source from stdin, using PATH for file selection and diagnostics"
+    )]
+    stdin_filepath: Option<PathBuf>,
+
     #[arg(long, help = "Write formatted output back to files")]
     write: bool,
 
@@ -138,7 +147,7 @@ fn main() -> Result<ExitCode> {
 
     let args = Args::parse();
 
-    if args.files.is_empty() {
+    if args.files.is_empty() && args.stdin_filepath.is_none() {
         bail!("at least one file is required unless a subcommand is used");
     }
 
@@ -164,6 +173,25 @@ fn main() -> Result<ExitCode> {
     }
 
     let config = config::Config::load(args.config.as_deref())?;
+    if let Some(file) = &args.stdin_filepath {
+        let mut content = String::new();
+        io::stdin()
+            .read_to_string(&mut content)
+            .context("failed to read stdin")?;
+        let status = if config.includes_file(file) {
+            run_content(&args, &config, file, &content)?
+        } else {
+            if !args.check && !args.lint && !args.assist {
+                print!("{content}");
+            }
+            FileStatus::Passed
+        };
+        return Ok(if status == FileStatus::Passed {
+            ExitCode::SUCCESS
+        } else {
+            ExitCode::FAILURE
+        });
+    }
     let files = expand_input_files(&args.files, &config)?;
 
     let mut failed = false;
@@ -281,16 +309,24 @@ enum FileStatus {
 fn run_file(args: &Args, config: &config::Config, file: &Path) -> Result<FileStatus> {
     let content =
         fs::read_to_string(file).with_context(|| format!("failed to read `{}`", file.display()))?;
+    run_content(args, config, file, &content)
+}
 
+fn run_content(
+    args: &Args,
+    config: &config::Config,
+    file: &Path,
+    content: &str,
+) -> Result<FileStatus> {
     if args.lint {
-        return run_lint(file, &content, config, args.lint_format);
+        return run_lint(file, content, config, args.lint_format);
     }
 
     if args.assist {
-        return run_assist(file, &content, config, args);
+        return run_assist(file, content, config, args);
     }
 
-    let formatted = format_content(file, &content, config)?;
+    let formatted = format_content(file, content, config)?;
 
     if args.write {
         fs::write(file, formatted)
@@ -301,7 +337,6 @@ fn run_file(args: &Args, config: &config::Config, file: &Path) -> Result<FileSta
 
     if args.check {
         return Ok(if formatted == content {
-            println!("{}: file is formatted.", file.display());
             FileStatus::Passed
         } else {
             eprintln!("{}: file is not formatted.", file.display());
@@ -309,7 +344,7 @@ fn run_file(args: &Args, config: &config::Config, file: &Path) -> Result<FileSta
         });
     }
 
-    if args.files.len() == 1 {
+    if args.files.len() == 1 || args.stdin_filepath.is_some() {
         print!("{formatted}");
         return Ok(FileStatus::Passed);
     }
@@ -333,7 +368,6 @@ fn run_assist(
 
     if args.write {
         if actions.is_empty() {
-            println!("{}: no assist actions found.", file.display());
             return Ok(FileStatus::Passed);
         }
 
@@ -359,7 +393,6 @@ fn run_assist(
 
 fn print_plain_assist_actions(file: &Path, content: &str, actions: &[assist::AssistAction]) {
     if actions.is_empty() {
-        println!("{}: no assist actions found.", file.display());
         return;
     }
 
@@ -428,12 +461,6 @@ fn run_lint(
     let diagnostics = linter::lint_with_options(content, config.lint_options());
 
     if diagnostics.is_empty() {
-        if lint_format == LintFormat::Json {
-            print_json_lint_diagnostics(file, &diagnostics)?;
-            return Ok(FileStatus::Passed);
-        }
-
-        println!("{}: no lint issues found.", file.display());
         return Ok(FileStatus::Passed);
     }
 

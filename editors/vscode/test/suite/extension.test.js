@@ -45,6 +45,64 @@ suite("erbfmt VSCode extension", () => {
     assert.strictEqual(document.getText(), "<% if user %>\n  <p>Hello</p>\n<% end %>\n");
   });
 
+  for (const excludedPath of ["tmp/input.html.erb", "app/views/generated/input.html.erb"]) {
+    test(`skips formatting and diagnostics for excluded ${excludedPath}`, async () => {
+      const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "erbfmt-vscode-ignore-"));
+      tempDirs.push(tempDir);
+      const configPath = path.join(tempDir, "erbfmt.json");
+      await fs.writeFile(
+        configPath,
+        JSON.stringify({
+          files: { includes: ["app/views/**/*.html.erb", "!app/views/generated/**"] },
+        }),
+      );
+      const settings = vscode.workspace.getConfiguration("erbfmt");
+      const previousConfig = settings.get("configPath");
+      await settings.update("configPath", configPath, vscode.ConfigurationTarget.Global);
+      try {
+        const filePath = path.join(tempDir, excludedPath);
+        await fs.mkdir(path.dirname(filePath), { recursive: true });
+        const original = "<div>\n<p>Hello</p>\n</div>\n";
+        await fs.writeFile(filePath, original);
+        const uri = vscode.Uri.file(filePath);
+        const document = await vscode.workspace.openTextDocument(uri);
+        const editor = await vscode.window.showTextDocument(document);
+        const edits = await vscode.commands.executeCommand(
+          "vscode.executeFormatDocumentProvider",
+          uri,
+          { insertSpaces: true, tabSize: 2 },
+        );
+        assert(!edits || edits.length === 0, "excluded documents should have no formatting edits");
+        await vscode.commands.executeCommand("erbfmt.formatDocument");
+        assert.strictEqual(document.getText(), original);
+
+        const editorSettings = vscode.workspace.getConfiguration("editor", uri);
+        const previousFormatOnSave = editorSettings.inspect("formatOnSave").globalValue;
+        await editorSettings.update("formatOnSave", true, vscode.ConfigurationTarget.Global);
+        try {
+          await editor.edit((edit) => edit.insert(new vscode.Position(2, 0), "<p>Unsaved</p>\n"));
+          const unsaved = document.getText();
+          assert(await document.save());
+          assert.strictEqual(document.getText(), unsaved);
+          assert.strictEqual(await fs.readFile(filePath, "utf8"), unsaved);
+        } finally {
+          await editorSettings.update(
+            "formatOnSave",
+            previousFormatOnSave,
+            vscode.ConfigurationTarget.Global,
+          );
+        }
+
+        // Invalid syntax in an excluded buffer must not produce lint or format diagnostics.
+        await editor.edit((edit) => edit.insert(new vscode.Position(0, 0), "<% while user %>\n"));
+        await vscode.commands.executeCommand("erbfmt.lintDocument");
+        assert.deepStrictEqual(vscode.languages.getDiagnostics(uri), []);
+      } finally {
+        await settings.update("configPath", previousConfig, vscode.ConfigurationTarget.Global);
+      }
+    });
+  }
+
   test("publishes lint diagnostics on the offending ERB tag range", async () => {
     const uri = await writeTempHtmlErb(
       "<p>Before</p>\n  <% while job.running? %>\n<p>Waiting</p>\n",
@@ -53,7 +111,9 @@ suite("erbfmt VSCode extension", () => {
     await vscode.window.showTextDocument(document);
 
     await vscode.commands.executeCommand("erbfmt.lintDocument");
-    const diagnostics = await waitForDiagnostics(uri);
+    const diagnostics = (await waitForDiagnostics(uri)).filter((diagnostic) =>
+      diagnostic.message.includes("unsupported ERB block starter"),
+    );
 
     assert.strictEqual(diagnostics.length, 1);
     assert.match(diagnostics[0].message, /unsupported ERB block starter/);

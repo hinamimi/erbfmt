@@ -19,6 +19,10 @@ This extension adds editor integration for the fast Rust-based
 `*.html.erb` templates and keeps formatting and linting in the CLI, so
 command-line, CI, and editor results stay consistent.
 
+Formatting (including format on save) and diagnostics respect `files.includes`
+using the document's original path. Unsaved content is passed through stdin;
+the configured CLI must support `--stdin-filepath`.
+
 > [!IMPORTANT]
 > This extension does not bundle or download the `erbfmt` binary yet. Install
 > the CLI separately, or configure `erbfmt.command` to run your project-local
@@ -65,7 +69,7 @@ Configure the extension to use the project-pinned command:
 For a global local command, install the RubyGem directly:
 
 ```bash
-gem install erbfmt -v 0.3.1
+gem install erbfmt -v 0.3.2
 erbfmt --version
 ```
 
@@ -76,7 +80,7 @@ pins the formatter version.
 ### GitHub Release Binary
 
 Download the CLI from the
-[v0.3.1 GitHub Release](https://github.com/hinamimi/erbfmt/releases/tag/v0.3.1),
+[v0.3.2 GitHub Release](https://github.com/hinamimi/erbfmt/releases/tag/v0.3.2),
 extract it, and place `erbfmt` or `erbfmt.exe` on your `PATH`.
 
 ### Cargo
@@ -84,7 +88,7 @@ extract it, and place `erbfmt` or `erbfmt.exe` on your `PATH`.
 With a Rust toolchain, install the tagged source directly:
 
 ```bash
-cargo install --git https://github.com/hinamimi/erbfmt --tag v0.3.1 --locked
+cargo install --git https://github.com/hinamimi/erbfmt --tag v0.3.2 --locked
 erbfmt --version
 ```
 
