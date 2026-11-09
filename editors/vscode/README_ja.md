@@ -66,7 +66,7 @@ extensionにprojectで固定したcommandを使うよう設定します。
 手元でglobal commandとして使いたい場合は、RubyGemを直接installします。
 
 ```bash
-gem install erbfmt -v 0.3.1
+gem install erbfmt -v 0.3.2
 erbfmt --version
 ```
 
@@ -75,7 +75,7 @@ formatter versionを固定できるBundlerを優先してください。
 
 ### GitHub Release Binary
 
-[v0.3.1 GitHub Release](https://github.com/hinamimi/erbfmt/releases/tag/v0.3.1)から
+[v0.3.2 GitHub Release](https://github.com/hinamimi/erbfmt/releases/tag/v0.3.2)から
 CLIをdownloadして展開し、`erbfmt` または `erbfmt.exe` を `PATH` に配置します。
 
 ### Cargo
@@ -83,7 +83,7 @@ CLIをdownloadして展開し、`erbfmt` または `erbfmt.exe` を `PATH` に�
 Rust toolchainがある場合はtagged sourceからinstallできます。
 
 ```bash
-cargo install --git https://github.com/hinamimi/erbfmt --tag v0.3.1 --locked
+cargo install --git https://github.com/hinamimi/erbfmt --tag v0.3.2 --locked
 erbfmt --version
 ```
 
