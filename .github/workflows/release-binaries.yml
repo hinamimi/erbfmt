@@ -37,7 +37,7 @@ jobs:
             gem_platform: x86_64-darwin
             archive: tar.gz
             binary: erbfmt
-          - os: macos-14
+          - os: macos-15
             target: aarch64-apple-darwin
             gem_platform: arm64-darwin
             archive: tar.gz
