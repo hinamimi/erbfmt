@@ -114,7 +114,8 @@ erbfmt --lint app/views
 Lint output defaults to a human-readable format with source excerpts. Use
 `--lint-format plain` when a script needs the compact legacy line format, or
 `--lint-format json` when an AI agent or editor integration needs
-machine-readable diagnostics.
+machine-readable diagnostics. Like Biome, successful files are silent: only
+files with diagnostics are reported.
 
 `--write`, `--check`, and `--lint` are mutually exclusive. Check mode returns a
 nonzero status when formatting would change a file; lint mode does so when an

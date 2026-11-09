@@ -46,8 +46,8 @@ If the project does not use Bundler for erbfmt:
 erbfmt --lint --lint-format json app/views
 ```
 
-The JSON output is newline-delimited: one JSON object is printed for each
-processed file.
+The JSON output is newline-delimited: one JSON object is printed for each file
+with diagnostics. Files without diagnostics produce no output.
 
 ## Check formatting
 

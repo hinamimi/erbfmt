@@ -301,7 +301,6 @@ fn run_file(args: &Args, config: &config::Config, file: &Path) -> Result<FileSta
 
     if args.check {
         return Ok(if formatted == content {
-            println!("{}: file is formatted.", file.display());
             FileStatus::Passed
         } else {
             eprintln!("{}: file is not formatted.", file.display());
@@ -333,7 +332,6 @@ fn run_assist(
 
     if args.write {
         if actions.is_empty() {
-            println!("{}: no assist actions found.", file.display());
             return Ok(FileStatus::Passed);
         }
 
@@ -359,7 +357,6 @@ fn run_assist(
 
 fn print_plain_assist_actions(file: &Path, content: &str, actions: &[assist::AssistAction]) {
     if actions.is_empty() {
-        println!("{}: no assist actions found.", file.display());
         return;
     }
 
@@ -428,12 +425,6 @@ fn run_lint(
     let diagnostics = linter::lint_with_options(content, config.lint_options());
 
     if diagnostics.is_empty() {
-        if lint_format == LintFormat::Json {
-            print_json_lint_diagnostics(file, &diagnostics)?;
-            return Ok(FileStatus::Passed);
-        }
-
-        println!("{}: no lint issues found.", file.display());
         return Ok(FileStatus::Passed);
     }
 
