@@ -173,7 +173,23 @@ inside surrounding text, set it to `false` for that file or project to avoid
 adding a final newline to the rendered fragment.
 
 Use `erbfmt-ignore` comments when generated or third-party markup must be left
-untouched. See [Ignore Directives](docs/Ignore.md) for the supported syntax.
+untouched. Place the comment on its own line immediately before the target:
+
+```erb
+<!-- erbfmt-ignore format: preserve third-party markup -->
+<div   class="widget">
+    <span>Keep this indentation</span>
+</div>
+
+<%# erbfmt-ignore lint/noDeprecatedHtmlTag: legacy email markup %>
+<center>Email heading</center>
+```
+
+`format` preserves the next complete element or ERB block, including its
+indentation and spacing. `lint/<ruleName>` suppresses only that rule on the next
+physical line; `lint` suppresses all lint rules on that line. Use `all` to combine
+formatter preservation with lint suppression on the next line. See
+[Ignore Directives](docs/Ignore.md) for more examples and scope restrictions.
 
 ## VSCode
 

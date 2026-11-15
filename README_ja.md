@@ -163,7 +163,22 @@ indent style/width、HTML indentation、line width、line ending、lint ruleご�
 render結果へ含めたくない場合は、そのfileまたはprojectで `false` にしてください。
 
 生成されたmarkupや外部由来のmarkupを保持する場合は `erbfmt-ignore` commentを使えます。
-構文は [Ignore Directives](docs/Ignore.md) にまとめています。
+対象の直前の行に、commentを単独で記述します。
+
+```erb
+<!-- erbfmt-ignore format: preserve third-party markup -->
+<div   class="widget">
+    <span>Keep this indentation</span>
+</div>
+
+<%# erbfmt-ignore lint/noDeprecatedHtmlTag: legacy email markup %>
+<center>Email heading</center>
+```
+
+`format` は次の要素やERB block全体のindentと空白を保持します。
+`lint/<ruleName>` は直後の1行の指定ruleだけを、`lint` はその行の全lint ruleを抑制します。
+`all` はformatの保持と直後の1行のlint抑制を組み合わせます。
+詳しい使用例と適用条件は [Ignore Directives](docs/Ignore.md) を参照してください。
 
 ## VSCode
 
