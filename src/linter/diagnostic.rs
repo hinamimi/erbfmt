@@ -47,6 +47,47 @@ impl Diagnostic {
         }
     }
 
+    pub fn rule_id(&self) -> Option<&'static str> {
+        if self.message.starts_with("empty ERB branch") {
+            Some("emptyErbBranch")
+        } else if self.message.starts_with("empty ERB code tag")
+            || self.message.starts_with("empty ERB output tag")
+        {
+            Some("emptyErbCodeTag")
+        } else if self.message.starts_with("empty ERB control block") {
+            Some("emptyErbControlBlock")
+        } else if self.message.starts_with("deprecated HTML tag") {
+            Some("noDeprecatedHtmlTag")
+        } else if self.message.starts_with("deprecated HTML attribute") {
+            Some("noDeprecatedHtmlAttribute")
+        } else if self.message.starts_with("duplicate HTML attribute") {
+            Some("noDuplicateHtmlAttribute")
+        } else if self
+            .message
+            .starts_with("invalid HTML boolean attribute value")
+            || self
+                .message
+                .starts_with("redundant HTML boolean attribute value")
+        {
+            Some("noInvalidHtmlBooleanAttribute")
+        } else if self.message.starts_with("invalid HTML nesting") {
+            Some("noInvalidHtmlNesting")
+        } else if self
+            .message
+            .starts_with("HTML attribute value must use double quotes")
+        {
+            Some("noNonDoubleQuotedHtmlAttributeValue")
+        } else if self.message.starts_with("self-closing HTML tag") {
+            Some("noSelfClosingHtmlTag")
+        } else if self.message.starts_with("unknown HTML attribute") {
+            Some("noUnknownHtmlAttribute")
+        } else if self.message.starts_with("unsupported ERB block starter") {
+            Some("unsupportedErbBlockStarter")
+        } else {
+            None
+        }
+    }
+
     pub fn is_error(&self) -> bool {
         self.severity == DiagnosticSeverity::Error
     }

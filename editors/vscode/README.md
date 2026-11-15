@@ -38,6 +38,7 @@ the configured CLI must support `--stdin-filepath`.
 - Document formatting for the `html-erb` and `erb` language ids.
 - erbfmt lint diagnostics when a document is opened or saved.
 - Format diagnostics that warn when a document differs from erbfmt output.
+- Quick fixes for individual formatting changes, supported lint fixes, and local ignore comments.
 - ERB-safe `Ctrl+/` / `Cmd+/` comment toggling.
 - Automatic `erbfmt.json` discovery from the active file's directory.
 - Explicit CLI, arguments, and configuration path settings.
@@ -122,6 +123,30 @@ Diagnostics are enabled by default and update when an ERB document is opened or
 saved. Lint diagnostics come from `erbfmt --lint`; format diagnostics warn on
 lines that differ from erbfmt output. Use **erbfmt: Lint Document** to refresh
 them manually.
+
+## Quick fixes
+
+Place the cursor on an erbfmt diagnostic and press `Ctrl+.` (`Cmd+.` on macOS):
+
+- **Format this change** applies only that formatting difference.
+- Lint fixes use CLI assist actions: double quotes for attributes, self-closing
+  HTML tag correction, redundant boolean value removal, and empty ERB tag removal.
+- **Ignore … on this line** inserts an ERB comment for that lint rule on the next line.
+- **Ignore formatting for the next node** preserves the next HTML element or ERB
+  node, including its children.
+
+For example:
+
+```erb
+<%# erbfmt-ignore lint/noDeprecatedHtmlTag: intentionally preserved %>
+<center>Legacy markup</center>
+```
+
+Edit the reason in the comment as needed. Ignore actions are offered at supported
+node boundaries; parser errors cannot be suppressed. After editing a document,
+save it or run **erbfmt: Lint Document** to refresh diagnostics and available fixes.
+Lint quick fixes require a CLI that includes rule IDs in `--lint-format json`;
+when developing this extension, rebuild the CLI with `cargo build`.
 
 ## Using Bundler
 

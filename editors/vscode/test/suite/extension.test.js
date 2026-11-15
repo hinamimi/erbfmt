@@ -122,6 +122,138 @@ suite("erbfmt VSCode extension", () => {
     assert.strictEqual(diagnostics[0].range.end.line, 1);
     assert.strictEqual(diagnostics[0].range.end.character, 3);
   });
+  test("quick fix formats only the selected change", async () => {
+    const uri = await writeTempHtmlErb(
+      "<div>\n<p>First</p>\n</div>\n<hr>\n<div>\n<p>Second</p>\n</div>\n",
+    );
+    const document = await vscode.workspace.openTextDocument(uri);
+    await vscode.window.showTextDocument(document);
+    await vscode.commands.executeCommand("erbfmt.lintDocument");
+    const diagnostic = vscode.languages.getDiagnostics(uri).find((item) => item.code === "format");
+    assert(diagnostic);
+    const actions = await quickFixes(uri, diagnostic.range);
+    const fix = actions.find((action) => action.title === "erbfmt: Format this change");
+    assert(fix);
+    assert(await vscode.workspace.applyEdit(fix.edit));
+    assert.equal(
+      document.getText(),
+      "<div>\n  <p>First</p>\n</div>\n<hr>\n<div>\n<p>Second</p>\n</div>\n",
+    );
+  });
+
+  test("quick fix uses Rust assist edits with Unicode byte offsets", async () => {
+    const original = "<p>日本語😀</p>\n<input title='first'>\n<input title='second'>\n";
+    const uri = await writeTempHtmlErb(original);
+    const document = await vscode.workspace.openTextDocument(uri);
+    await vscode.window.showTextDocument(document);
+    await vscode.commands.executeCommand("erbfmt.lintDocument");
+    const diagnostic = vscode.languages
+      .getDiagnostics(uri)
+      .find((item) => item.code === "noNonDoubleQuotedHtmlAttributeValue");
+    assert(diagnostic);
+    const actions = await quickFixes(uri, diagnostic.range);
+    const fix = actions.find(
+      (action) => action.title.includes("double quote") || action.title.includes("double-quote"),
+    );
+    assert(fix, JSON.stringify(actions.map((action) => action.title)));
+    assert(await vscode.workspace.applyEdit(fix.edit));
+    assert.equal(document.getText(), original.replace("'first'", '"first"'));
+  });
+
+  test("quick fix ignores only the selected lint rule and line", async () => {
+    const uri = await writeTempHtmlErb("<center>First</center>\n<center>Second</center>\n");
+    const document = await vscode.workspace.openTextDocument(uri);
+    await vscode.window.showTextDocument(document);
+    await vscode.commands.executeCommand("erbfmt.lintDocument");
+    const diagnostic = vscode.languages
+      .getDiagnostics(uri)
+      .find((item) => item.code === "noDeprecatedHtmlTag");
+    assert(diagnostic);
+    const actions = await quickFixes(uri, diagnostic.range);
+    const ignore = actions.find(
+      (action) => action.title === "erbfmt: Ignore noDeprecatedHtmlTag on this line",
+    );
+    assert(ignore);
+    assert(await vscode.workspace.applyEdit(ignore.edit));
+    assert(document.getText().startsWith("<%# erbfmt-ignore lint/noDeprecatedHtmlTag:"));
+    await vscode.commands.executeCommand("erbfmt.lintDocument");
+    const remaining = vscode.languages
+      .getDiagnostics(uri)
+      .filter((item) => item.code === "noDeprecatedHtmlTag");
+    assert(remaining.length > 0);
+    assert(remaining.every((item) => item.range.start.line === 2));
+  });
+
+  test("quick fix ignores formatting for the next node", async () => {
+    const uri = await writeTempHtmlErb("<div>\n<p>Keep</p>\n</div>\n");
+    const document = await vscode.workspace.openTextDocument(uri);
+    await vscode.window.showTextDocument(document);
+    await vscode.commands.executeCommand("erbfmt.lintDocument");
+    const diagnostic = vscode.languages.getDiagnostics(uri).find((item) => item.code === "format");
+    assert(diagnostic);
+    const actions = await quickFixes(uri, diagnostic.range);
+    const ignore = actions.find(
+      (action) => action.title === "erbfmt: Ignore formatting for the next node",
+    );
+    assert(ignore);
+    assert(await vscode.workspace.applyEdit(ignore.edit));
+    await vscode.commands.executeCommand("erbfmt.formatDocument");
+    assert(document.getText().includes("\n<p>Keep</p>\n"));
+    await vscode.commands.executeCommand("erbfmt.lintDocument");
+    assert(!vscode.languages.getDiagnostics(uri).some((item) => item.code === "format"));
+  });
+
+  test("does not offer ignore for parser errors or inside multiline attributes", async () => {
+    for (const source of ["<div>\n", "<input\n  title='first'\n>\n"]) {
+      const uri = await writeTempHtmlErb(source);
+      const document = await vscode.workspace.openTextDocument(uri);
+      await vscode.window.showTextDocument(document);
+      await vscode.commands.executeCommand("erbfmt.lintDocument");
+      const actions = await quickFixes(uri, new vscode.Range(0, 0, document.lineCount, 0));
+      assert(
+        !actions.some((action) =>
+          action.title.startsWith(
+            source.startsWith("<input")
+              ? "erbfmt: Ignore noNonDoubleQuotedHtmlAttributeValue"
+              : "erbfmt: Ignore",
+          ),
+        ),
+      );
+    }
+  });
+
+  test("offers independent fix and ignore actions for empty ERB tags", async () => {
+    const uri = await writeTempHtmlErb("<% %>\n<p>Hello</p>\n");
+    const document = await vscode.workspace.openTextDocument(uri);
+    await vscode.window.showTextDocument(document);
+    await vscode.commands.executeCommand("erbfmt.lintDocument");
+    const diagnostic = vscode.languages
+      .getDiagnostics(uri)
+      .find((item) => item.code === "emptyErbCodeTag");
+    assert(diagnostic);
+    const actions = await quickFixes(uri, diagnostic.range);
+    assert(actions.some((action) => action.title === "erbfmt: Remove empty ERB tag"));
+    const ignore = actions.find(
+      (action) => action.title === "erbfmt: Ignore emptyErbCodeTag on this line",
+    );
+    assert(ignore);
+    assert(await vscode.workspace.applyEdit(ignore.edit));
+    await vscode.commands.executeCommand(ignore.command.command, ...ignore.command.arguments);
+    assert(!vscode.languages.getDiagnostics(uri).some((item) => item.code === "emptyErbCodeTag"));
+  });
+
+  test("does not offer fixes for stale diagnostics", async () => {
+    const uri = await writeTempHtmlErb("<div>\n<p>Hello</p>\n</div>\n");
+    const document = await vscode.workspace.openTextDocument(uri);
+    const editor = await vscode.window.showTextDocument(document);
+    await vscode.commands.executeCommand("erbfmt.lintDocument");
+    await editor.edit((edit) => edit.insert(new vscode.Position(0, 0), "\n"));
+    const actions = await quickFixes(uri, new vscode.Range(0, 0, 4, 0));
+    assert.deepEqual(
+      actions.filter((action) => action.title.startsWith("erbfmt:")),
+      [],
+    );
+  });
 });
 
 async function configureErbfmtCommand() {
@@ -168,4 +300,8 @@ function delay(ms) {
   return new Promise((resolve) => {
     setTimeout(resolve, ms);
   });
+}
+
+async function quickFixes(uri, range) {
+  return vscode.commands.executeCommand("vscode.executeCodeActionProvider", uri, range, "quickfix");
 }

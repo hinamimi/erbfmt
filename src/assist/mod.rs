@@ -228,7 +228,10 @@ fn collect_double_quote_attribute_assists(
         actions.push(AssistAction {
             id: USE_DOUBLE_QUOTED_ATTRIBUTES,
             title: "Use double quotes for HTML attribute value",
-            range,
+            range: TextRange {
+                start: tag_start + attribute.range.start,
+                end: tag_start + attribute.range.end,
+            },
             edit: TextEdit { range, replacement },
         });
     }

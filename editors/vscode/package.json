@@ -158,7 +158,7 @@
     "format": "biome format --write .",
     "lint": "biome lint .",
     "package": "vsce package --no-dependencies",
-    "test": "npm run check && npm run compile && node test/smoke.test.js && node test/comment.test.js && node test/command.test.js",
+    "test": "npm run check && npm run compile && node test/smoke.test.js && node test/comment.test.js && node test/command.test.js && node test/formatEdits.test.js",
     "test:host": "npm run compile && cargo build --manifest-path ../../Cargo.toml && node test/runTest.js",
     "vscode:prepublish": "npm run compile"
   },

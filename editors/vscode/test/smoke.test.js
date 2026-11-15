@@ -67,6 +67,6 @@ assert(extensionSource.includes("createOutputChannel"));
 assert(extensionSource.includes("setupHint"));
 assert(extensionSource.includes("toggleErbCommentLine"));
 assert(extensionSource.includes("DiagnosticSeverity.Warning"));
-assert(extensionSource.includes("warning: "));
+assert(extensionSource.includes("registerCodeActionsProvider"));
 
 console.log("VSCode extension smoke test passed.");

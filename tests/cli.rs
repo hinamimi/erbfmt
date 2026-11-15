@@ -569,6 +569,7 @@ fn lint_json_reports_diagnostics_with_locations() {
     let diagnostic = &value["diagnostics"][0];
     assert_eq!(diagnostic["severity"], "error");
     assert_eq!(diagnostic["message"], "duplicate HTML attribute `class`");
+    assert_eq!(diagnostic["rule"], "noDuplicateHtmlAttribute");
     assert_eq!(diagnostic["location"]["line"], 1);
     assert_eq!(diagnostic["location"]["column"], 32);
 }

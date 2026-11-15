@@ -31,9 +31,10 @@ fn is_lint_diagnostic_ignored(diagnostic: &Diagnostic, directives: &[LintIgnoreD
 
     directives.iter().any(|directive| {
         directive.target_line == location.line
-            && directive.rule.as_deref().is_none_or(|rule| {
-                diagnostic_rule_id(&diagnostic.message).is_some_and(|id| id == rule)
-            })
+            && directive
+                .rule
+                .as_deref()
+                .is_none_or(|rule| diagnostic.rule_id().is_some_and(|id| id == rule))
     })
 }
 
@@ -55,38 +56,4 @@ fn lint_ignore_directives(input: &str) -> Vec<LintIgnoreDirective> {
             })
         })
         .collect()
-}
-
-fn diagnostic_rule_id(message: &str) -> Option<&'static str> {
-    if message.starts_with("empty ERB branch") {
-        Some("emptyErbBranch")
-    } else if message.starts_with("empty ERB code tag")
-        || message.starts_with("empty ERB output tag")
-    {
-        Some("emptyErbCodeTag")
-    } else if message.starts_with("empty ERB control block") {
-        Some("emptyErbControlBlock")
-    } else if message.starts_with("deprecated HTML tag") {
-        Some("noDeprecatedHtmlTag")
-    } else if message.starts_with("deprecated HTML attribute") {
-        Some("noDeprecatedHtmlAttribute")
-    } else if message.starts_with("duplicate HTML attribute") {
-        Some("noDuplicateHtmlAttribute")
-    } else if message.starts_with("invalid HTML boolean attribute value")
-        || message.starts_with("redundant HTML boolean attribute value")
-    {
-        Some("noInvalidHtmlBooleanAttribute")
-    } else if message.starts_with("invalid HTML nesting") {
-        Some("noInvalidHtmlNesting")
-    } else if message.starts_with("HTML attribute value must use double quotes") {
-        Some("noNonDoubleQuotedHtmlAttributeValue")
-    } else if message.starts_with("self-closing HTML tag") {
-        Some("noSelfClosingHtmlTag")
-    } else if message.starts_with("unknown HTML attribute") {
-        Some("noUnknownHtmlAttribute")
-    } else if message.starts_with("unsupported ERB block starter") {
-        Some("unsupportedErbBlockStarter")
-    } else {
-        None
-    }
 }

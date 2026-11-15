@@ -521,6 +521,7 @@ fn print_json_lint_diagnostics(file: &Path, diagnostics: &[linter::Diagnostic]) 
             serde_json::json!({
                 "severity": lint_severity_label(diagnostic.severity),
                 "message": diagnostic.message,
+                "rule": diagnostic.rule_id(),
                 "location": location,
             })
         })

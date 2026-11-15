@@ -36,10 +36,31 @@
 - `html-erb` と `erb` language idのdocument formatting
 - documentを開いたときと保存したときのerbfmt lint diagnostics
 - erbfmtの出力と差がある行をwarnするformat diagnostics
+- 該当差分だけの整形、対応するlintの個別修正、局所的なignoreのクイックフィックス
 - ERBを安全に扱う `Ctrl+/` / `Cmd+/` comment toggle
 - active fileを起点にした `erbfmt.json` の自動検出
 - CLI、追加arguments、config pathの明示的な設定
 - 解決されたcommandとworking directoryを確認する `erbfmt: Show Command`
+
+## クイックフィックス
+
+診断が出ている箇所で `Ctrl+.`（macOSは `Cmd+.`）を押すと選択できます。
+
+- **Format this change**: 該当する整形差分だけを適用します。
+- lintの個別修正: 属性値の二重引用符化、HTML自己終了タグの修正、冗長なboolean属性値の除去、空のERBタグの削除に対応します。
+- **Ignore … on this line**: 次の行の該当ルールだけを無視するERBコメントを挿入します。
+- **Ignore formatting for the next node**: 次のHTML要素やERBノードを、子要素を含めて整形対象から除外します。
+
+```erb
+<%# erbfmt-ignore lint/noDeprecatedHtmlTag: intentionally preserved %>
+<center>Legacy markup</center>
+```
+
+コメント内の理由は必要に応じて書き換えてください。ignoreは対応するノードの境界で
+表示されます。構文エラーはignoreできません。編集後は保存するか **erbfmt: Lint Document**
+を実行すると診断と修正候補が更新されます。
+lintのクイックフィックスには `--lint-format json` にルールIDを含むCLIが必要です。
+このリポジトリで開発する場合は `cargo build` でCLIも再ビルドしてください。
 
 ## インストール
 
