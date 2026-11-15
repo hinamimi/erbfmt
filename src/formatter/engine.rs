@@ -648,6 +648,11 @@ impl<'a> Formatter<'a> {
             return;
         }
 
+        let line = if self.output.is_empty() && depth == 0 {
+            line.trim_end()
+        } else {
+            line.trim()
+        };
         self.output.push_str(&self.indent(depth));
         self.output.push_str(line);
         self.output.push_str(self.options.line_ending.as_str());

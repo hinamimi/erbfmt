@@ -34,7 +34,8 @@ erbfmt --assist --write app/views
 
 ## JSON Lint Output
 
-`--lint-format json` prints one JSON object per processed file. This makes the
+`--lint-format json` prints one JSON object per file with findings. Files without
+findings produce no record. This makes the
 output easy to consume as newline-delimited JSON for directory or multi-file
 runs.
 
@@ -42,7 +43,7 @@ runs.
 erbfmt --lint --lint-format json app/views
 ```
 
-Example output:
+Example output (additional editor metadata is omitted):
 
 ```json
 {
@@ -55,6 +56,7 @@ Example output:
   "diagnostics": [
     {
       "severity": "error",
+      "rule": "noDuplicateHtmlAttribute",
       "message": "duplicate HTML attribute `class`",
       "location": {
         "line": 1,
@@ -70,7 +72,9 @@ is found. Warning-only lint results still exit successfully.
 
 ## JSON Assist Output
 
-`--assist-format json` prints one JSON object per processed file:
+`--assist-format json` prints one JSON object per included file, even when there
+are no actions. Example for `<div class='card'></div>` (additional editor metadata
+is omitted):
 
 ```json
 {
@@ -81,13 +85,14 @@ is found. Warning-only lint results still exit successfully.
   "actions": [
     {
       "id": "html.useDoubleQuotedAttributes",
+      "rule": "noNonDoubleQuotedHtmlAttributeValue",
       "title": "Use double quotes for HTML attribute value",
       "location": {
         "line": 1,
-        "column": 12
+        "column": 6
       },
       "range": {
-        "start": 11,
+        "start": 5,
         "end": 17
       },
       "edit": {
@@ -112,5 +117,10 @@ Assist actions are suggestions unless `--assist --write` is used.
 - Prefer preserving complex Ruby expressions over rewriting them manually.
 - Use formatter or lint ignore directives only when the template is
   intentionally outside erbfmt's safe formatting or linting model.
+
+See [JsonInterface.md](JsonInterface.md) for field definitions, UTF-8 ranges,
+Unicode columns, error streams, exit statuses, and rule/action mappings. New
+editor metadata and structured syntax-error locations in that document are
+unreleased additions to the v0.3.3 interface.
 
 See [Ignore.md](Ignore.md) for ignore directives.

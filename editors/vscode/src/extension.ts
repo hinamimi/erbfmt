@@ -9,6 +9,8 @@ import { toggleErbCommentLine } from "./comment";
 import { formattingEdits } from "./formatEdits";
 
 const diagnosticVersions = new WeakMap<vscode.Diagnostic, number>();
+const diagnosticIgnoreEdits = new WeakMap<vscode.Diagnostic, CliTextEdit>();
+type CliTextEdit = { range: { start: number; end: number }; replacement: string };
 
 const FORMATTER_SELECTOR: vscode.DocumentFilter[] = [
   { scheme: "file", language: "erb" },
@@ -48,11 +50,44 @@ type ExecOptions = {
 export function activate(context: vscode.ExtensionContext): void {
   const diagnostics = vscode.languages.createDiagnosticCollection("erbfmt");
   const output = vscode.window.createOutputChannel("erbfmt");
+  const pending = new Map<string, ReturnType<typeof setTimeout>>();
+  const running = new Map<string, vscode.CancellationTokenSource>();
+  const refresh = async (document: vscode.TextDocument, delay = 0): Promise<void> => {
+    const key = document.uri.toString();
+    clearTimeout(pending.get(key));
+    running.get(key)?.cancel();
+    running.get(key)?.dispose();
+    if (!isSupportedDocument(document)) return;
+    const cancellation = new vscode.CancellationTokenSource();
+    running.set(key, cancellation);
+    pending.delete(key);
+    if (delay > 0) {
+      pending.set(
+        key,
+        setTimeout(() => {
+          pending.delete(key);
+          void refreshDiagnostics(document, diagnostics, cancellation.token);
+        }, delay),
+      );
+    } else {
+      await refreshDiagnostics(document, diagnostics, cancellation.token);
+    }
+  };
+  context.subscriptions.push({
+    dispose() {
+      for (const timer of pending.values()) clearTimeout(timer);
+      for (const cancellation of running.values()) {
+        cancellation.cancel();
+        cancellation.dispose();
+      }
+    },
+  });
   const provider: vscode.DocumentFormattingEditProvider = {
     async provideDocumentFormattingEdits(document, _options, token) {
+      const version = document.version;
       const formatted = await formatDocument(document, token);
 
-      return formatted === document.getText()
+      return document.version !== version || formatted === document.getText()
         ? []
         : [vscode.TextEdit.replace(fullDocumentRange(document), formatted)];
     },
@@ -74,8 +109,9 @@ export function activate(context: vscode.ExtensionContext): void {
       }
 
       try {
+        const version = editor.document.version;
         const formatted = await formatDocument(editor.document, createNullToken());
-        if (formatted === editor.document.getText()) {
+        if (editor.document.version !== version || formatted === editor.document.getText()) {
           return;
         }
         await editor.edit((edit) => {
@@ -85,12 +121,38 @@ export function activate(context: vscode.ExtensionContext): void {
         await vscode.window.showErrorMessage(errorMessage(error));
       }
     }),
+    vscode.commands.registerCommand(
+      "erbfmt.applyQuickFix",
+      async (
+        uri: vscode.Uri,
+        version: number,
+        edit: { start: number; end: number; replacement: string },
+      ) => {
+        const document = await vscode.workspace.openTextDocument(uri);
+        if (
+          !isSupportedDocument(document) ||
+          !vscode.workspace.isTrusted ||
+          document.version !== version ||
+          document.isClosed
+        )
+          return false;
+        const workspaceEdit = new vscode.WorkspaceEdit();
+        workspaceEdit.replace(
+          uri,
+          new vscode.Range(document.positionAt(edit.start), document.positionAt(edit.end)),
+          edit.replacement,
+        );
+        const applied = await vscode.workspace.applyEdit(workspaceEdit);
+        if (applied) await refresh(document);
+        return applied;
+      },
+    ),
     vscode.commands.registerCommand("erbfmt.lintDocument", async (uri?: vscode.Uri) => {
       const document = uri
         ? await vscode.workspace.openTextDocument(uri)
         : vscode.window.activeTextEditor?.document;
       if (!document) return;
-      await refreshDiagnostics(document, diagnostics, createNullToken());
+      await refresh(document);
     }),
     vscode.commands.registerCommand("erbfmt.showCommand", async () => {
       const editor = vscode.window.activeTextEditor;
@@ -143,26 +205,37 @@ export function activate(context: vscode.ExtensionContext): void {
       await toggleEditorComment(editor);
     }),
     vscode.workspace.onDidOpenTextDocument((document) => {
-      void refreshDiagnostics(document, diagnostics, createNullToken());
+      void refresh(document);
     }),
     vscode.workspace.onDidSaveTextDocument((document) => {
-      void refreshDiagnostics(document, diagnostics, createNullToken());
+      void refresh(document);
+    }),
+    vscode.workspace.onDidChangeTextDocument(({ document }) => {
+      diagnostics.delete(document.uri);
+      void refresh(document, 300);
     }),
     vscode.workspace.onDidCloseTextDocument((document) => {
+      const key = document.uri.toString();
+      clearTimeout(pending.get(key));
+      pending.delete(key);
+      running.get(key)?.cancel();
+      running.get(key)?.dispose();
+      running.delete(key);
       diagnostics.delete(document.uri);
     }),
   );
 
   for (const document of vscode.workspace.textDocuments) {
-    void refreshDiagnostics(document, diagnostics, createNullToken());
+    void refresh(document);
   }
 }
 
 type AssistAction = {
   id: string;
+  rule: string;
   title: string;
   range: { start: number; end: number };
-  edit: { range: { start: number; end: number }; replacement: string };
+  edit: CliTextEdit;
 };
 
 async function provideCodeActions(
@@ -182,6 +255,9 @@ async function provideCodeActions(
   );
   if (relevant.length === 0) return [];
   const actions: vscode.CodeAction[] = [];
+  const bytes = Buffer.from(source);
+  const bytePosition = (offset: number) =>
+    document.positionAt(bytes.subarray(0, offset).toString("utf8").length);
   const actionForEdit = (
     title: string,
     editRange: vscode.Range,
@@ -192,12 +268,18 @@ async function provideCodeActions(
     const action = new vscode.CodeAction(title, vscode.CodeActionKind.QuickFix);
     action.diagnostics = related;
     action.isPreferred = preferred;
-    action.edit = new vscode.WorkspaceEdit();
-    action.edit.replace(document.uri, editRange, replacement);
     action.command = {
-      command: "erbfmt.lintDocument",
-      title: "Refresh erbfmt diagnostics",
-      arguments: [document.uri],
+      command: "erbfmt.applyQuickFix",
+      title,
+      arguments: [
+        document.uri,
+        version,
+        {
+          start: document.offsetAt(editRange.start),
+          end: document.offsetAt(editRange.end),
+          replacement,
+        },
+      ],
     };
     actions.push(action);
   };
@@ -219,102 +301,98 @@ async function provideCodeActions(
       /* Execution failures are reported through diagnostics. */
     }
   }
-  const lintDiagnostics = relevant.filter((diagnostic) => diagnostic.code !== "format");
-  if (lintDiagnostics.length > 0) {
-    try {
-      const command = await getCommandContext(document);
-      const args = await buildErbfmtArgs(command, document, [
-        "--assist",
-        "--assist-format",
-        "json",
-        "--stdin-filepath",
-        document.uri.fsPath,
-      ]);
-      const result = await execFile(
-        command.command,
-        args,
-        { cwd: command.cwd, input: source },
-        token,
+  const ignoreKeys = new Set<string>();
+  for (const diagnostic of relevant) {
+    const edit = diagnosticIgnoreEdits.get(diagnostic);
+    const key = `${diagnostic.code}:${edit?.range.start}`;
+    if (edit && !ignoreKeys.has(key)) {
+      ignoreKeys.add(key);
+      actionForEdit(
+        `erbfmt: Ignore ${diagnostic.code} on this line`,
+        new vscode.Range(bytePosition(edit.range.start), bytePosition(edit.range.end)),
+        edit.replacement,
+        relevant.filter(
+          (item) =>
+            item.code === diagnostic.code &&
+            diagnosticIgnoreEdits.get(item)?.range.start === edit.range.start,
+        ),
       );
-      if (result.exitCode === 0) {
-        const payload = JSON.parse(result.stdout) as { actions: AssistAction[] };
-        const position = (offset: number) =>
-          document.positionAt(Buffer.from(source).subarray(0, offset).toString("utf8").length);
-        for (const assist of payload.actions) {
-          const target = new vscode.Range(position(assist.range.start), position(assist.range.end));
-          const rules: Record<string, string> = {
-            "html.useDoubleQuotedAttributes": "noNonDoubleQuotedHtmlAttributeValue",
-            "html.fixSelfClosingTags": "noSelfClosingHtmlTag",
-            "html.simplifyBooleanAttributes": "noInvalidHtmlBooleanAttribute",
-            "erb.removeEmptyTags": "emptyErbCodeTag",
-          };
-          const related = lintDiagnostics.filter(
-            (diagnostic) =>
-              diagnostic.code === rules[assist.id] && target.intersection(diagnostic.range),
-          );
-          if (related.length > 0 && target.intersection(range)) {
-            actionForEdit(
-              `erbfmt: ${assist.title}`,
-              new vscode.Range(position(assist.edit.range.start), position(assist.edit.range.end)),
-              assist.edit.replacement,
-              related,
-              true,
-            );
-          }
-        }
-      }
-    } catch {
-      /* Older CLI versions may not support assist output. */
     }
   }
-  const ignores = new Set<string>();
-  for (const diagnostic of relevant) {
-    const line = diagnostic.range.start.line;
-    const text = document.lineAt(line).text;
-    if (line > 0 && /erbfmt-ignore(?:-next-line)?\b/.test(document.lineAt(line - 1).text)) continue;
-    // Directives go before markup lines, rather than inside attribute continuations.
-    if (!/^\s*<(?:\/?[a-zA-Z]|%(?!#))/.test(text)) continue;
-    const selector = diagnostic.code === "format" ? "format" : `lint/${diagnostic.code}`;
-    const key = `${line}:${selector}`;
-    if (ignores.has(key)) continue;
-    ignores.add(key);
-    const indentation = text.match(/^\s*/)?.[0] ?? "";
-    const eol = document.eol === vscode.EndOfLine.CRLF ? "\r\n" : "\n";
-    const comment = `${indentation}<%# erbfmt-ignore ${selector}: intentionally preserved %>${eol}`;
-    if (selector === "format") {
-      // Only offer this when the formatter actually preserves the target node.
-      const offset = document.offsetAt(new vscode.Position(line, 0));
-      const candidate = source.slice(0, offset) + comment + source.slice(offset);
-      try {
-        const command = await getCommandContext(document);
-        const args = await buildErbfmtArgs(command, document, [
-          "--stdin-filepath",
-          document.uri.fsPath,
-        ]);
-        const result = await execFile(
-          command.command,
-          args,
-          { cwd: command.cwd, input: candidate },
-          token,
+  try {
+    const command = await getCommandContext(document);
+    const args = await buildErbfmtArgs(command, document, [
+      "--assist",
+      "--assist-format",
+      "json",
+      "--stdin-filepath",
+      document.uri.fsPath,
+    ]);
+    const result = await execFile(
+      command.command,
+      args,
+      { cwd: command.cwd, input: source },
+      token,
+    );
+    if (result.exitCode === 0 && result.stdout.trim()) {
+      const payload = JSON.parse(result.stdout) as {
+        actions: AssistAction[];
+        ignoreTargets?: {
+          line: number;
+          range: { start: number; end: number };
+          format: CliTextEdit | null;
+        }[];
+      };
+      for (const assist of payload.actions) {
+        const target = new vscode.Range(
+          bytePosition(assist.range.start),
+          bytePosition(assist.range.end),
         );
-        if (
-          result.exitCode !== 0 ||
-          !result.stdout.replaceAll("\r\n", "\n").includes(`${comment.trim()}\n${text}\n`)
-        )
-          continue;
-      } catch {
-        continue;
+        const related = relevant.filter(
+          (diagnostic) => diagnostic.code === assist.rule && target.intersection(diagnostic.range),
+        );
+        if (related.length > 0 && target.intersection(range))
+          actionForEdit(
+            `erbfmt: ${assist.title}`,
+            new vscode.Range(
+              bytePosition(assist.edit.range.start),
+              bytePosition(assist.edit.range.end),
+            ),
+            assist.edit.replacement,
+            related,
+            true,
+          );
+      }
+      const seen = new Set<number>();
+      for (const diagnostic of relevant.filter((item) => item.code === "format")) {
+        const lastLine =
+          diagnostic.range.end.line -
+          Number(
+            diagnostic.range.end.character === 0 &&
+              diagnostic.range.end.line > diagnostic.range.start.line,
+          );
+        const target = payload.ignoreTargets?.find(
+          (item) =>
+            item.format &&
+            item.line === diagnostic.range.start.line + 1 &&
+            bytePosition(item.range.end).line >= lastLine,
+        );
+        if (target?.format && !seen.has(target.line)) {
+          seen.add(target.line);
+          actionForEdit(
+            "erbfmt: Ignore formatting for the next node",
+            new vscode.Range(
+              bytePosition(target.format.range.start),
+              bytePosition(target.format.range.end),
+            ),
+            target.format.replacement,
+            [diagnostic],
+          );
+        }
       }
     }
-    const position = new vscode.Position(line, 0);
-    actionForEdit(
-      selector === "format"
-        ? "erbfmt: Ignore formatting for the next node"
-        : `erbfmt: Ignore ${diagnostic.code} on this line`,
-      new vscode.Range(position, position),
-      comment,
-      [diagnostic],
-    );
+  } catch {
+    /* Older CLI versions may not support assist output. */
   }
   return document.version === version && !token.isCancellationRequested ? actions : [];
 }
@@ -445,9 +523,8 @@ async function lintDocument(
   document: vscode.TextDocument,
   token: vscode.CancellationToken,
 ): Promise<vscode.Diagnostic[]> {
-  const context = await getCommandContext(document);
-
   try {
+    const context = await getCommandContext(document);
     const args = await buildErbfmtArgs(context, document, [
       "--lint",
       "--lint-format",
@@ -470,7 +547,8 @@ async function lintDocument(
       (item: {
         message: string;
         severity: string;
-        rule?: string;
+        rule?: string | null;
+        ignore?: CliTextEdit | null;
         location: { line: number; column: number } | null;
       }) => {
         const message = item.location
@@ -485,7 +563,8 @@ async function lintDocument(
               ? vscode.DiagnosticSeverity.Warning
               : vscode.DiagnosticSeverity.Error,
         );
-        diagnostic.code = item.rule;
+        diagnostic.code = item.rule ?? undefined;
+        if (item.ignore) diagnosticIgnoreEdits.set(diagnostic, item.ignore);
         return diagnostic;
       },
     );
@@ -529,9 +608,8 @@ async function collectFormatDiagnostics(
     return [];
   }
 
-  const context = await getCommandContext(document);
-
   try {
+    const context = await getCommandContext(document);
     const args = await buildErbfmtArgs(context, document, [
       "--stdin-filepath",
       document.uri.fsPath,
@@ -859,6 +937,16 @@ function execFile(
   token: vscode.CancellationToken,
 ): Promise<ExecResult> {
   return new Promise((resolve) => {
+    if (token.isCancellationRequested) {
+      resolve({
+        stdout: "",
+        stderr: "erbfmt formatting was cancelled.",
+        exitCode: 1,
+        errorMessage: undefined,
+      });
+      return;
+    }
+    let cancellation: vscode.Disposable | undefined;
     const child = childProcess.execFile(
       command,
       args,
@@ -871,6 +959,7 @@ function execFile(
         stdout: string | Buffer,
         stderr: string | Buffer,
       ) => {
+        cancellation?.dispose();
         resolve({
           stdout: stdout.toString(),
           stderr: stderr.toString(),
@@ -884,7 +973,7 @@ function execFile(
     child.stdin?.on("error", () => {});
     child.stdin?.end(options.input, "utf8");
 
-    token.onCancellationRequested(() => {
+    cancellation = token.onCancellationRequested(() => {
       child.kill();
       resolve({
         stdout: "",

@@ -15,14 +15,6 @@ pub enum DiagnosticSeverity {
 }
 
 impl Diagnostic {
-    pub(super) fn new(message: impl Into<String>) -> Self {
-        Self {
-            message: message.into(),
-            location: None,
-            severity: DiagnosticSeverity::Error,
-        }
-    }
-
     #[cfg(test)]
     pub(super) fn located(message: impl Into<String>, location: SourceLocation) -> Self {
         Self::located_with_severity(message, location, DiagnosticSeverity::Error)

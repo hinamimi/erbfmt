@@ -29,13 +29,21 @@ pub fn lint_with_options(input: &str, options: LintOptions) -> Vec<Diagnostic> {
     let tokens = match lexer::tokenize_with_spans(input) {
         Ok(tokens) => tokens,
         Err(error) => {
-            return vec![Diagnostic::new(error.to_string())];
+            return vec![Diagnostic::located_with_severity(
+                error.message(),
+                error.location(),
+                DiagnosticSeverity::Error,
+            )];
         }
     };
 
     match mixed_parser::parse_spanned_with_options(&tokens, options.parser) {
         Ok(_) => apply_lint_ignore_directives(input, lint_tokens(input, &tokens, options)),
-        Err(error) => vec![Diagnostic::new(error.to_string())],
+        Err(error) => vec![Diagnostic {
+            message: error.message(),
+            location: error.location(),
+            severity: DiagnosticSeverity::Error,
+        }],
     }
 }
 

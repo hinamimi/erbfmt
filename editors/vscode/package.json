@@ -134,7 +134,7 @@
         "erbfmt.lint.enabled": {
           "type": "boolean",
           "default": true,
-          "description": "Enable erbfmt diagnostics by running erbfmt --lint on open and save."
+          "description": "Enable erbfmt diagnostics by running erbfmt --lint on open, save, and after edits."
         },
         "erbfmt.formatDiagnostics.enabled": {
           "type": "boolean",
@@ -159,7 +159,7 @@
     "lint": "biome lint .",
     "package": "vsce package --no-dependencies",
     "test": "npm run check && npm run compile && node test/smoke.test.js && node test/comment.test.js && node test/command.test.js && node test/formatEdits.test.js",
-    "test:host": "npm run compile && cargo build --manifest-path ../../Cargo.toml && node test/runTest.js",
+    "test:host": "npm run compile && cargo build --locked --manifest-path ../../Cargo.toml && node test/runTest.js",
     "vscode:prepublish": "npm run compile"
   },
   "devDependencies": {

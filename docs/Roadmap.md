@@ -1,200 +1,188 @@
 # Roadmap
 
-この文書は、erbfmt の今後の実装方針を短く確認するためのロードマップです。
-完了済みの細かい作業ログは残さず、次に設計・実装する判断に必要な内容だけを置きます。
+更新日: 2026-11-16 / 基準バージョン: v0.3.3
 
-関連する詳細は専用ドキュメントを参照します。
+この文書は、現在できることと、次に設計・実装することを区別するための
+ロードマップです。リリース履歴やauditの作業ログは専用ドキュメントに残します。
+以下の優先順位は開発方針であり、リリース時期や次のバージョンへの搭載を約束するものではありません。
 
-- [Configuration.md](Configuration.md): `erbfmt.json`
-- [LintRules.md](LintRules.md): lint rule
-- [Ignore.md](Ignore.md): ignore directive
-- [Release.md](Release.md): release
-- [Distribution.md](Distribution.md): 配布方針
-- [RubyGem.md](RubyGem.md): Ruby gem
-- [VSCode.md](VSCode.md): VS Code extension
-- [AI.md](AI.md): AI agent 向け interface
-- [Development.md](Development.md): 開発用メモ
+## 今回の優先度1対応（未リリース）
+
+- formatter安全性: Forem / OpenStreetMapの990テンプレートを再走査し、
+  5ファイルで見つかった2種類のidempotency不具合を修正。通常・fragment許可の両方で
+  受理した全ファイルが安定。[監査結果と再実行手順](Audit20261116.md)を追加した。
+- Quick Fix: Rust由来のignore位置、連続ignoreによる抑制の合成、文書バージョンを確認する
+  適用処理、編集後の診断自動更新を実装。Extension Host testをCIに追加した。
+- JSON: 構文診断の構造化location、lintのignore編集、assistの対応ruleとignore候補を追加。
+  [JSON契約](JsonInterface.md)、対応表、Unicode / CRLF / error / streamの契約テストを追加した。
+
+以下の各項目は継続的な改善方針です。受理できない構文をすべて解消した、
+または実テンプレートの見た目をすべて検証済みという意味ではありません。
 
 ## 基本方針
 
 erbfmt は `*.html.erb` 向けの formatter / linter です。
+Prettier、Biome、dprint に近い編集体験を、ERB template に提供します。
 
-目標は、Prettier、Biome、dprint に近い体験を ERB template に提供することです。
+- formatter / linter / assist のengineはRustに置き、wrapperに構文処理を重複実装しない。
+- rendered HTMLの意味とRubyの実行内容を保持することを、整形範囲の広さより優先する。
+- 安全に判断できない構文は保持または診断し、対応範囲を広げる際はfixtureを先に追加する。
+- parser、formatter、linter、editor連携は、小さく分けて変更・検証する。
+- 設定・CLI・editorで同じルールと修正候補を使う。
 
-- formatter / linter engine は Rust に置く。
-- VS Code extension、Ruby gem、将来の npm package は薄い wrapper として扱う。
-- formatter は見た目のきれいさより、rendered HTML の意味を壊さないことを優先する。
-- 安全に判断できない Ruby / HTML / ERB は、無理に整形せず保持する。
-- 実テンプレートで見つかった危険な変更は fixture にして regression を防ぐ。
-- AI agent が使いやすいように、human-readable output と machine-readable output を分ける。
+## v0.3.3時点でできること
 
-## 現在の制約
+以下は導入予定ではなく、現在の実装です。実装済みであっても、対応構文や安全判定の拡張は継続します。
 
-- Ruby AST は formatter の安全判定に使い始めているが、Ruby 全体を完全に解析するものではない。
-- Ruby expression の folding は、構文的に安全に分割できる範囲だけ扱う。
-- CSS の `display` や Rails helper の semantic analysis はしない。
-- formatter が安全に判断できない領域は、整形しないか lint / diagnostic に寄せる。
-- VS Code extension は、現時点では erbfmt CLI を呼び出す wrapper として扱う。
-- crates.io、npm、Open VSX への公開はまだ必須ではない。
+| 領域 | 実装済みの内容 |
+| --- | --- |
+| HTML + ERBの解析 | ERB lexer、HTML tokenizer、mixed template parser。基本のERB制御構文を扱い、HTML optional closing tag / unbalanced fragmentは設定で許可できる。 |
+| formatter | indentation、attribute wrapping、ERB call wrapping、inline whitespaceやraw text領域の保持。unit / snapshot / idempotency testと実テンプレートauditのfixtureがある。 |
+| Rubyの安全判定 | 内部の部分的なRuby ASTと保守的なwrapping処理。helper名によるRails semantic analysisやRuby全体のpretty-printは行わない。 |
+| linter | 12ルール、ルール別severity設定、位置付き診断。HTML属性・nestingとERB構文に関する診断を提供する。 |
+| ignore | HTML / ERBコメントの `format`、`lint`、`lint/<rule>`、`all`。formatterは次のノード全体、lintは次の物理行が対象。 |
+| assist | 属性の二重引用符化、HTML自己終了タグ修正、冗長なboolean属性値の除去、空のERBタグ削除。候補のJSON出力と `--assist --write` が使える。 |
+| CLI / AI連携 | `--check`、`--write`、`--lint-format json`、`--assist-format json`、`--stdin-filepath`。複数ファイルのJSON出力はファイルごとに1行で返す。lint JSONには `rule` がある。 |
+| VS Code | 整形、診断、コメント切替、Bundler経由のCLI実行。v0.3.3で該当整形差分の適用、対応lintの個別修正、局所的なignoreのQuick Fixを追加した。 |
+| 配布 | v0.3.3をGitHub ReleasesとRubyGems.orgで公開済み。4プラットフォームのbinary / gem、Ruby fallback gem、VSIXを提供する。VSIXにはCLIを同梱しない。 |
 
-## Milestone A: formatter safety
-
-実テンプレートで design を壊しそうな formatter behavior を減らします。
-
-やること:
-
-- inline element と隣接 text の whitespace preservation を fixture で固定する。
-- `a`, `label`, `button`, `span`, `i`, `svg`, `math`, `pre`, `textarea`,
-  `script`, `style`, `contenteditable` 周辺の保護を維持する。
-- attribute 内 ERB、quoted / unquoted attribute、long class / style の折り返しを検証する。
-- cross-ERB-block HTML や fragment template は、無理に整形せず拒否または保持に倒す。
-- 実プロジェクト audit で見つかった危険な変更を、Roadmap ではなく test fixture に移す。
-
-完了条件:
-
-- inline whitespace semantic を変える regression が test で検出できる。
-- 実テンプレート sample に対する format が idempotent である。
-- safe に整形できるケースと保持するケースの境界が test で説明できる。
-
-## Milestone B: Ruby AST based wrapping
-
-Ruby AST を使って、ERB tag 内の helper call folding を安全に広げます。
-
-やること:
-
-- `render`, `form_with`, `link_to`, `image_tag`, `video_tag`,
-  `react_component`, `tag.*`, `content_tag` などの frequent helper call を安全に fold する。
-- receiver method call、keyword argument、array、hash、nested helper call を安全判定に使う。
-- modifier suffix、safe navigation、constant path、percent literal、splat 系引数を保持する。
-- assignment、multiple statements、top-level ternary、unsupported block parameter、
-  heredoc、slash regexp literal などは fold しない。
-- 出力生成は full AST pretty-printer にせず、当面は AST gate + conservative formatter とする。
-
-完了条件:
-
-- long ERB output が `lineWidth` を大きく超えにくくなる。
-- 折り返した ERB tag の indentation が一貫する。
-- Ruby semantic を変える変換をしないことが fixture で固定されている。
-
-## Milestone C: parser / syntax architecture
-
-HTML、ERB、Ruby、template parser の責務を整理し、今後の拡張で迷いにくくします。
-
-現方針:
+実装の配置は次のとおりです。
 
 - `src/syntax/erb/`: ERB lexer
-- `src/syntax/html/`: lightweight HTML tokenizer / tag utilities
+- `src/syntax/html/`: HTML tokenizer / tag utilities
 - `src/syntax/template/`: HTML + ERB mixed parser
-- `src/syntax/ruby/`: Ruby AST parser
-- `src/formatter/`: formatting policy and rendering
-- `src/linter/`: lint rule orchestration
-- `src/ignore/`: shared ignore directive parsing
+- `src/syntax/ruby/`: 安全判定用の部分的なRuby AST
+- `src/formatter/`: formatting policyと出力生成
+- `src/linter/`: ruleとdiagnostic
+- `src/assist/`: 修正候補とTextEdit
+- `src/ignore/`: 共通のignore directive解析
+- `editors/vscode/`: CLIを呼び出すeditor連携
 
-やること:
+## 優先度1: formatterの安全性（今回対応済み）
 
-- `src/syntax/template/` の parser body を必要に応じて分割する。
-- `src/linter/html_rules.rs` を rule domain ごとに分割する。
-- `src/main.rs` が肥大化したら CLI orchestration を `src/cli/` に切り出す。
+- [x] Forem / OpenStreetMapの990テンプレートを通常・fragment許可設定で再走査した。
+- [x] 5ファイルの不安定な整形を2種類の回帰テストへ縮小し、修正した。
+- [x] inline境界の空白保持とRubyチェーン継続indentの既存保護テストを維持した。
+- [x] 受理した全ファイルで2回目のformat差分が出ないことを確認した。
+- [x] fragment許可で新たに受理する6ファイルの境界を確認し、cross-ERB-branch HTMLは
+  両設定で拒否する契約テストを追加した。parserの受理範囲・既定値は変えていない。
+- [x] [監査結果](Audit20261116.md)と読み取り専用の再実行scriptを追加した。
 
-完了条件:
+継続方針:
 
-- syntax layer は formatter / linter の policy を持たない。
-- formatter / linter は syntax layer の AST / token を消費するだけにする。
-- 1000 行を超える巨大ファイルを作らない。
+- 別の実テンプレートやupstream更新を確認する際も、具体的なdiffからfixtureを追加する。
+- Ruby wrappingや受理構文を広げるときは、保持・拒否するケースも対で追加する。
+- idempotencyだけでrendered HTMLの同値性を保証したと扱わない。
 
-## Milestone D: linter quality
+## 優先度1: Quick Fixの改善（今回対応済み）
 
-HTML / ERB の lint を、実用上の発見力と誤検知の少なさの両方で改善します。
+- [x] ignoreの挿入位置をRustのtemplate nodeから生成するようにした。
+  複数行属性の途中、Ruby文字列、raw text内部、構文エラーには候補を出さない。
+- [x] 連続ignoreは同じ次のtarget行へ適用する契約にした。
+  別ルールやformatのignoreを追加しても既存の抑制を解除しない。
+- [x] Rustのrule / assist対応情報を使い、editor側のルール対応表を取り除いた。
+- [x] 編集で古い診断を破棄し、300msの待機後に再診断する。
+  古い処理はcancelし、保存・手動lint・修正適用後は即座に更新する。
+- [x] 修正適用時にも文書バージョンを確認し、古いメニューからの編集を拒否する。
+- [x] 隣接差分、挿入・削除、末尾改行、CRLF、日本語・絵文字のテストを追加した。
+- [x] 実CLIを使うExtension Host testをローカルで実行し、CIのLinux環境に
+  `xvfb-run`による実行を追加した。GitHub上の実行結果はpush後に確認する。
 
-やること:
+継続方針:
 
-- style / normalization 系の rule は、可能なら assist action として提供する。
-- HTML content model rule の range と message を改善する。
-- unquoted attribute、duplicate attribute、invalid nesting の例を増やす。
-- `input`, `a`, `button` など頻出tagから、unknown / typo HTML attribute
-  lintを段階的に追加する。
-- ignore directive と lint rule の相互作用を整理する。
-- rule severity / enable / disable の設定を見直す。
-- VS Code diagnostics で見たときの message を短くする。
+- 次の物理行というlint ignoreの契約は維持する。複数行属性の途中をignoreするには
+  別の対象範囲の設計が必要なので、現段階では候補を出さない。
+- 新しいQuick Fixも、文書更新中と複数診断がある状態で結合テストする。
 
-完了条件:
+## 優先度1: JSONと修正候補の契約（今回対応済み）
 
-- lint error の場所が editor 上で理解しやすい。
-- HTML-only rule と ERB-aware rule の責務が分かれている。
-- `samples/lint-next.html.erb` が lint rule の代表例として使える。
+- [x] [JsonInterface.md](JsonInterface.md)にフィールド、stream、exit status、
+  error時のstdout / stderr、rule / assist対応表、互換性方針をまとめた。
+- [x] `location`は1始まりのUnicode scalar位置、rangeは0始まり・終端を含まない
+  UTF-8 byte offsetとして明記し、VS CodeのUTF-16への変換をテストした。
+- [x] 構文診断の位置をJSONの構造化locationで返し、messageからの解析を不要にした。
+- [x] lintのignore編集と、assistの対応rule・ignore対象情報をJSONへ追加した。
+- [x] `AI.md`の例を現在のruleとassist対象rangeへ同期した。
+- [x] 複数file、severity、構文 / 設定 / I/O失敗、対象外file、Unicode / CRLF、
+  ignore合成についてCLI契約テストを追加した。
 
-## Milestone E: AI-friendly interface
+継続方針:
 
-Codex / Claude Code などの agent が、Rails view を安全に編集しやすい interface を整えます。
+- 追加フィールドを許容し、古いCLIには存在しない任意情報を利用側が扱える仕様にする。
+- rule / action ID、位置の単位、出力先、exit statusの変更には移行説明と契約テストを付ける。
+- 全失敗がJSONになるとは保証しない。構文診断と設定・実行エラーの出力を区別する。
 
-やること:
+## 優先度2: lint / assistの精度を改善する
 
-- `--lint-format json` の schema を安定させる。
-- parse / lint / format error の file、severity、message、line、column を維持する。
-- 複数 file 実行では agent が stream 処理しやすい出力形式を検討する。
-- hosted `commands.md` を短く保ち、agent が参照しやすい command example を整理する。
-- formatter ignore / lint ignore の使いどころを agent 向けに説明する。
+severity設定、duplicate attribute、boolean attribute、unknown attributeの初期実装は完了済みです。
+ルール数を増やす前に、現在のルールの誤検知と修正の安全性を改善します。
 
-完了条件:
+次にやること:
 
-- agent が JSON output から修正対象を特定できる。
-- AI 向け docs を読めば、Rails view 編集後に実行すべき command が分かる。
-- 人間向け CLI 出力と agent 向け JSON 出力が役割分担できている。
-
-## Milestone F: assist actions
-
-lint の一部を、安全な編集候補として提供します。
-
-方針:
-
-- linter は問題を知らせる。
-- assist は安全に適用できる `TextEdit` を返す。
-- correctness 系の rule は linter に残す。
-- style / normalization 系は assist に寄せる。
-- correctness かつ機械的に直せるものは、linter と assist の両方で扱う。
-
-現在の action:
-
-- `html.useDoubleQuotedAttributes`
-- `html.fixSelfClosingTags`
-- `html.simplifyBooleanAttributes`
-- `erb.removeEmptyTags`
-
-やること:
-
-- VS Code code action から assist を呼べるようにする。
-- `--assist-format json` の schema を AI / editor 向けに安定させる。
-- linter diagnostic と assist action の対応関係を docs にまとめる。
+- HTML content model、unknown / typo attribute、ERBを含む属性の具体例を増やし、
+  diagnosticの位置とmessageを改善する。
+- 現在の4種類のassistについて、適用前後の意味と、適用しない条件をfixtureで固定する。
+- lint ignoreで抑制した箇所とassist候補の関係を決め、CLIとeditorの挙動をそろえる。
+- 新規rule / assistは、実テンプレートの問題例、安全な編集範囲、既存ruleとの重複を
+  確認してから追加する。Rails helperの意味を推測するruleは対象にしない。
 
 完了条件:
 
-- `erbfmt --assist` で候補を確認できる。
-- `erbfmt --assist --write` で safe action を適用できる。
-- linter から移すべき rule と残すべき rule の境界が説明できる。
+- diagnosticと修正候補の対応が明確で、誤ったルールの修正を提示しない。
+- 追加したケースごとに検出・非検出と、修正する・保持するテストがある。
+- `samples/lint-next.html.erb` とruleドキュメントが実装に一致する。
 
-## Milestone G: editor / distribution UX
+## 優先度2: 導入とリリース運用を整える
 
-VS Code extension と配布経路を、普段使いしやすい状態に近づけます。
+GitHub Releases / RubyGems.org向けの配布は実装・運用済みです。
+次は導入時の迷いと手作業を減らします。
 
-やること:
+次にやること:
 
-- VS Code extension で platform binary を bundle / download するか判断する。
-- `erbfmt.command` による `bundle exec erbfmt` などの手動指定を維持する。
-- binary missing / permission error の message を改善する。
-- crates.io、npm、Open VSX へ公開するか判断する。
+- CLIとVSIXの対応バージョン、古いCLIで利用できないQuick Fix、
+  binary未導入・実行権限エラーの案内を整理する。
+- Ruby LSPとの併用時に、language ID、formatter選択、診断の役割を説明する。
+- Marketplaceの手動VSIX更新手順と、公開後にバージョンを確認する手順を文書化する。
+- Marketplace自動公開はTrusted Publishingなどの認証方式を検討し、
+  GitHub Release・RubyGems・Marketplaceそれぞれの公開完了を確認できるようにする。
+- CLIのbundle / downloadは、配布元、checksum検証、対応OS、更新・失敗時の挙動を
+  決めてから導入判断する。Bundlerで固定したCLIを選べる設定は維持する。
 
 完了条件:
 
-- Rails project では RubyGems + Bundler で導入しやすい。
-- VS Code では CLI の場所を説明しやすい。
-- 新しい registry に公開する場合の release checklist がある。
+- Rustをビルドしない利用者が、対応プラットフォームで導入できる。
+- release assetの作成、registryへの公開、インストール検証が区別された手順になっている。
+- 初回導入でも、使用中のCLIとextensionのバージョン・実行元を確認できる。
 
-## 後で考えること
+## 必要になった時点で行う整理・計測
 
-- full Ruby pretty-printer
-- Tree-sitter integration
-- LSP
-- Biome integration
-- formatter plugin API
-- autocorrect / assist action
-- Rails semantic lint
+独立した大規模リファクタリングを先行させず、変更する機能に合わせて分割します。
+
+- template parser、HTML lint rule、CLI orchestrationの責務が増えた箇所を分割する。
+  分割前後で受理構文、診断、format出力が変わらないことを確認する。
+- syntax層にformatter / linterのpolicyを持ち込まず、assistも共有の構文情報を使う。
+- 大きなテンプレートやディレクトリ実行で処理時間・メモリを計測し、
+  性能改善は再現できる計測結果に基づいて行う。
+
+## 当面の対象外
+
+- Ruby全体のpretty-printer / Rails semantic analysis
+- LSP、Tree-sitter導入、Biome integration、formatter plugin API
+- 利用上の必要性が確認できていないnpm wrapper、crates.io / Open VSX公開
+- correctnessを保証できない一括autocorrect
+
+既存のassistやVS Code Quick Fixは、この対象外には含めません。
+
+## 関連ドキュメント
+
+- [Configuration.md](Configuration.md): `erbfmt.json`
+- [LintRules.md](LintRules.md): lint rule
+- [Ignore.md](Ignore.md): ignore directive
+- [AI.md](AI.md): CLI / JSON interface
+- [JsonInterface.md](JsonInterface.md): JSON契約とrule / assist対応表
+- [VSCode.md](VSCode.md): editor連携
+- [Release.md](Release.md): release verification
+- [Distribution.md](Distribution.md): 配布方針
+- [RubyGem.md](RubyGem.md): Ruby wrapper
+- [ForemAudit.md](ForemAudit.md) / [OpenStreetMapWebsiteAudit.md](OpenStreetMapWebsiteAudit.md): 実テンプレートaudit
+- [Development.md](Development.md): 開発・構成

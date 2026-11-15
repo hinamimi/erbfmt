@@ -691,3 +691,24 @@ fn normalizes_existing_multiline_parenthesized_erb_output_arguments() {
         "<%= react_component(\n  \"ReactComponent\",\n  props: {\n    key1: \"value1\",\n    key2: \"value2\"\n  }\n) %>\n"
     );
 }
+
+#[test]
+fn audit_method_chain_continuations_are_idempotent() {
+    for input in [
+        "<%= render partial: \"menu\", collection: NavigationLink.where(id: navigation_ids).where.not(name: [\"Home\", \"Reading List\"]).ordered, as: :link %>\n",
+        "<%= pagination_item(paginator.newer_items_cursor && params.merge(:before => nil, :after => paginator.newer_items_cursor), t(:newer, :scope => translation_scope)) do %>\n<span>Next</span>\n<% end %>\n",
+        "<%= safe_join(@trace.tags.collect { |tag| link_to tag.name, :controller => \"traces\", :action => \"index\", :tag => tag.name, :id => nil }, \", \") %>\n",
+    ] {
+        let once = format_source(input);
+        assert_eq!(format_source(&once), once, "{input}");
+    }
+}
+
+#[test]
+fn audit_inline_text_after_multiline_strong_is_idempotent() {
+    let input = "<p><strong>\n<%= label %>\n</strong> <%= value %> &bull; <strong>\nName\n</strong> <%= other_value %></p>\n";
+    let once = format_source(input);
+    assert_eq!(format_source(&once), once);
+    assert!(once.contains("<%= value %> &bull;"));
+    assert!(once.contains("<%= other_value %>"));
+}

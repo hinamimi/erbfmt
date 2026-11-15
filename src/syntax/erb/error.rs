@@ -10,6 +10,13 @@ pub struct LexError {
 }
 
 impl LexError {
+    pub fn location(&self) -> SourceLocation {
+        self.location
+    }
+    pub fn message(&self) -> &str {
+        &self.message
+    }
+
     pub(super) fn unterminated_erb(input: &str, position: usize) -> Self {
         Self {
             position,

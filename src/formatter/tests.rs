@@ -976,3 +976,11 @@ fn real_template_audit_fixture() -> &'static str {
 fn formatter_ignore_fixture() -> &'static str {
     include_str!("../../samples/formatter-ignore-next.html.erb")
 }
+
+#[test]
+fn consecutive_lint_directives_do_not_displace_a_format_ignore() {
+    let input = "<%# erbfmt-ignore format: legacy spacing %>\n<%# erbfmt-ignore lint/noDeprecatedHtmlTag: legacy tag %>\n<center   title='name'>Legacy</center>\n";
+    let once = format_source(input);
+    assert_eq!(once, input);
+    assert_eq!(format_source(&once), once);
+}

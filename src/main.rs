@@ -385,7 +385,9 @@ fn run_assist(
 
     match args.assist_format {
         AssistFormat::Plain => print_plain_assist_actions(file, content, &actions),
-        AssistFormat::Json => print_json_assist_actions(file, content, &actions)?,
+        AssistFormat::Json => {
+            print_json_assist_actions(file, content, &actions, config.parser_options())?
+        }
     }
 
     Ok(FileStatus::Passed)
@@ -412,6 +414,7 @@ fn print_json_assist_actions(
     file: &Path,
     content: &str,
     actions: &[assist::AssistAction],
+    parser_options: mixed_parser::ParserOptions,
 ) -> Result<()> {
     let actions = actions
         .iter()
@@ -420,6 +423,7 @@ fn print_json_assist_actions(
 
             serde_json::json!({
                 "id": action.id,
+                "rule": action.rule_id(),
                 "title": action.title,
                 "location": {
                     "line": location.line,
@@ -446,6 +450,7 @@ fn print_json_assist_actions(
             "actions": actions.len(),
         },
         "actions": actions,
+        "ignoreTargets": ignore::ignore_targets(content, parser_options),
     });
 
     println!("{}", serde_json::to_string(&payload)?);
@@ -469,7 +474,9 @@ fn run_lint(
     match lint_format {
         LintFormat::Pretty => print_pretty_lint_diagnostics(file, content, &diagnostics),
         LintFormat::Plain => print_plain_lint_diagnostics(file, &diagnostics),
-        LintFormat::Json => print_json_lint_diagnostics(file, &diagnostics)?,
+        LintFormat::Json => {
+            print_json_lint_diagnostics(file, content, &diagnostics, config.parser_options())?
+        }
     }
 
     Ok(if has_errors {
@@ -495,7 +502,13 @@ fn print_plain_lint_diagnostics(file: &Path, diagnostics: &[linter::Diagnostic])
     }
 }
 
-fn print_json_lint_diagnostics(file: &Path, diagnostics: &[linter::Diagnostic]) -> Result<()> {
+fn print_json_lint_diagnostics(
+    file: &Path,
+    content: &str,
+    diagnostics: &[linter::Diagnostic],
+    parser_options: mixed_parser::ParserOptions,
+) -> Result<()> {
+    let targets = ignore::ignore_targets(content, parser_options);
     let errors = diagnostics
         .iter()
         .filter(|diagnostic| diagnostic.severity == linter::DiagnosticSeverity::Error)
@@ -522,6 +535,9 @@ fn print_json_lint_diagnostics(file: &Path, diagnostics: &[linter::Diagnostic]) 
                 "severity": lint_severity_label(diagnostic.severity),
                 "message": diagnostic.message,
                 "rule": diagnostic.rule_id(),
+                "ignore": diagnostic.rule_id().zip(diagnostic.location).and_then(|(rule, location)| {
+                    targets.iter().find(|target| target.line == location.line).map(|target| target.lint_edit(content, rule))
+                }),
                 "location": location,
             })
         })

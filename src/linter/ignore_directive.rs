@@ -39,8 +39,9 @@ fn is_lint_diagnostic_ignored(diagnostic: &Diagnostic, directives: &[LintIgnoreD
 }
 
 fn lint_ignore_directives(input: &str) -> Vec<LintIgnoreDirective> {
-    input
-        .lines()
+    let lines = input.lines().collect::<Vec<_>>();
+    lines
+        .iter()
         .enumerate()
         .filter_map(|(index, line)| {
             let directive = parse_ignore_directive(line)?;
@@ -51,7 +52,12 @@ fn lint_ignore_directives(input: &str) -> Vec<LintIgnoreDirective> {
             };
 
             Some(LintIgnoreDirective {
-                target_line: index + 2,
+                target_line: index
+                    + 2
+                    + lines[index + 1..]
+                        .iter()
+                        .take_while(|line| parse_ignore_directive(line).is_some())
+                        .count(),
                 rule,
             })
         })

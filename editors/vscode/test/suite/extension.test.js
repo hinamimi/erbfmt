@@ -134,7 +134,7 @@ suite("erbfmt VSCode extension", () => {
     const actions = await quickFixes(uri, diagnostic.range);
     const fix = actions.find((action) => action.title === "erbfmt: Format this change");
     assert(fix);
-    assert(await vscode.workspace.applyEdit(fix.edit));
+    assert(await applyQuickFix(fix));
     assert.equal(
       document.getText(),
       "<div>\n  <p>First</p>\n</div>\n<hr>\n<div>\n<p>Second</p>\n</div>\n",
@@ -156,7 +156,7 @@ suite("erbfmt VSCode extension", () => {
       (action) => action.title.includes("double quote") || action.title.includes("double-quote"),
     );
     assert(fix, JSON.stringify(actions.map((action) => action.title)));
-    assert(await vscode.workspace.applyEdit(fix.edit));
+    assert(await applyQuickFix(fix));
     assert.equal(document.getText(), original.replace("'first'", '"first"'));
   });
 
@@ -174,7 +174,7 @@ suite("erbfmt VSCode extension", () => {
       (action) => action.title === "erbfmt: Ignore noDeprecatedHtmlTag on this line",
     );
     assert(ignore);
-    assert(await vscode.workspace.applyEdit(ignore.edit));
+    assert(await applyQuickFix(ignore));
     assert(document.getText().startsWith("<%# erbfmt-ignore lint/noDeprecatedHtmlTag:"));
     await vscode.commands.executeCommand("erbfmt.lintDocument");
     const remaining = vscode.languages
@@ -196,7 +196,7 @@ suite("erbfmt VSCode extension", () => {
       (action) => action.title === "erbfmt: Ignore formatting for the next node",
     );
     assert(ignore);
-    assert(await vscode.workspace.applyEdit(ignore.edit));
+    assert(await applyQuickFix(ignore));
     await vscode.commands.executeCommand("erbfmt.formatDocument");
     assert(document.getText().includes("\n<p>Keep</p>\n"));
     await vscode.commands.executeCommand("erbfmt.lintDocument");
@@ -237,9 +237,115 @@ suite("erbfmt VSCode extension", () => {
       (action) => action.title === "erbfmt: Ignore emptyErbCodeTag on this line",
     );
     assert(ignore);
-    assert(await vscode.workspace.applyEdit(ignore.edit));
-    await vscode.commands.executeCommand(ignore.command.command, ...ignore.command.arguments);
+    assert(await applyQuickFix(ignore));
     assert(!vscode.languages.getDiagnostics(uri).some((item) => item.code === "emptyErbCodeTag"));
+  });
+
+  test("stale menu actions cannot edit a changed document", async () => {
+    const uri = await writeTempHtmlErb("<div>\n<p>Hello</p>\n</div>\n");
+    const document = await vscode.workspace.openTextDocument(uri);
+    const editor = await vscode.window.showTextDocument(document);
+    await vscode.commands.executeCommand("erbfmt.lintDocument");
+    const diagnostic = vscode.languages.getDiagnostics(uri).find((item) => item.code === "format");
+    const fix = (await quickFixes(uri, diagnostic.range)).find(
+      (action) => action.title === "erbfmt: Format this change",
+    );
+    assert(fix);
+    await editor.edit((edit) => edit.insert(new vscode.Position(0, 0), "<hr>\n"));
+    const changed = document.getText();
+    assert.equal(await applyQuickFix(fix), false);
+    assert.equal(document.getText(), changed);
+    await waitUntil(() =>
+      vscode.languages.getDiagnostics(uri).some((item) => item.code === "format"),
+    );
+    const fresh = vscode.languages.getDiagnostics(uri).find((item) => item.code === "format");
+    assert(
+      (await quickFixes(uri, fresh.range)).some(
+        (action) => action.title === "erbfmt: Format this change",
+      ),
+    );
+  });
+
+  test("deduplicates the same rule ignore on one line", async () => {
+    const uri = await writeTempHtmlErb("<center><font>Legacy</font></center>\n");
+    const document = await vscode.workspace.openTextDocument(uri);
+    await vscode.window.showTextDocument(document);
+    await vscode.commands.executeCommand("erbfmt.lintDocument");
+    const actions = await quickFixes(uri, new vscode.Range(0, 0, 0, 45));
+    assert.equal(
+      actions.filter((action) => action.title === "erbfmt: Ignore noDeprecatedHtmlTag on this line")
+        .length,
+      1,
+    );
+  });
+
+  test("adding a rule ignore preserves an existing rule ignore", async () => {
+    const original =
+      "<%# erbfmt-ignore lint/noDeprecatedHtmlTag: legacy %>\n<center title='value'>Legacy</center>\n";
+    const uri = await writeTempHtmlErb(original);
+    const document = await vscode.workspace.openTextDocument(uri);
+    await vscode.window.showTextDocument(document);
+    await vscode.commands.executeCommand("erbfmt.lintDocument");
+    const diagnostic = vscode.languages
+      .getDiagnostics(uri)
+      .find((item) => item.code === "noNonDoubleQuotedHtmlAttributeValue");
+    assert(diagnostic);
+    const action = (await quickFixes(uri, diagnostic.range)).find(
+      (item) => item.title === "erbfmt: Ignore noNonDoubleQuotedHtmlAttributeValue on this line",
+    );
+    assert(action);
+    assert(await applyQuickFix(action));
+    const diagnostics = vscode.languages.getDiagnostics(uri);
+    assert(
+      !diagnostics.some(
+        (item) =>
+          item.code === "noDeprecatedHtmlTag" ||
+          item.code === "noNonDoubleQuotedHtmlAttributeValue",
+      ),
+    );
+    assert(document.getText().includes("legacy %>"));
+  });
+
+  test("does not insert ignore comments inside raw text or multiline Ruby strings", async () => {
+    for (const original of [
+      '<script>\nconst html = "<center>Legacy</center>";\n</script>\n',
+      '<% value = "\n<center>Legacy</center>\n" %>\n',
+    ]) {
+      const uri = await writeTempHtmlErb(original);
+      const document = await vscode.workspace.openTextDocument(uri);
+      await vscode.window.showTextDocument(document);
+      await vscode.commands.executeCommand("erbfmt.lintDocument");
+      const actions = await quickFixes(uri, new vscode.Range(1, 0, 1, 30));
+      assert(!actions.some((action) => action.title.startsWith("erbfmt: Ignore")));
+    }
+  });
+
+  test("individual formatting preserves CRLF and other changes", async () => {
+    const original =
+      "<div>\r\n<p>日本語😀</p>\r\n</div>\r\n<hr>\r\n<div>\r\n<p>Second</p>\r\n</div>\r\n";
+    const uri = await writeTempHtmlErb(original);
+    const tempDir = path.dirname(uri.fsPath);
+    const config = path.join(tempDir, "erbfmt.json");
+    await fs.writeFile(config, JSON.stringify({ formatter: { lineEnding: "crlf" } }));
+    const settings = vscode.workspace.getConfiguration("erbfmt");
+    const previous = settings.get("configPath");
+    await settings.update("configPath", config, vscode.ConfigurationTarget.Global);
+    try {
+      const document = await vscode.workspace.openTextDocument(uri);
+      await vscode.window.showTextDocument(document);
+      await vscode.commands.executeCommand("erbfmt.lintDocument");
+      const diagnostic = vscode.languages
+        .getDiagnostics(uri)
+        .find((item) => item.code === "format");
+      const fix = (await quickFixes(uri, diagnostic.range)).find(
+        (action) => action.title === "erbfmt: Format this change",
+      );
+      assert(fix);
+      assert(await applyQuickFix(fix));
+      assert.equal(document.getText(), original.replace("<p>日本語😀", "  <p>日本語😀"));
+    } finally {
+      await settings.update("configPath", previous, vscode.ConfigurationTarget.Global);
+    }
   });
 
   test("does not offer fixes for stale diagnostics", async () => {
@@ -304,4 +410,16 @@ function delay(ms) {
 
 async function quickFixes(uri, range) {
   return vscode.commands.executeCommand("vscode.executeCodeActionProvider", uri, range, "quickfix");
+}
+
+async function applyQuickFix(action) {
+  return vscode.commands.executeCommand(action.command.command, ...action.command.arguments);
+}
+
+async function waitUntil(predicate) {
+  for (let attempt = 0; attempt < 40; attempt += 1) {
+    if (predicate()) return;
+    await delay(100);
+  }
+  assert(predicate(), "timed out waiting for diagnostics");
 }
