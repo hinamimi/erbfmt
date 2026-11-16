@@ -24,8 +24,8 @@ first-party VSCode extension.
 > Review formatting diffs before committing them and pin an exact version in
 > automated environments.
 
-> erbfmt is currently in pre-release development. Version `0.3.3` is available
-> through RubyGems.org and GitHub Releases.
+> erbfmt is currently in pre-release development. This checkout targets version `0.3.4`.
+> Its installation examples apply once that release is published.
 
 ## Install
 
@@ -46,7 +46,7 @@ bundle exec erbfmt --write app/views/users/show.html.erb
 For a global local command, install the RubyGem directly:
 
 ```bash
-gem install erbfmt -v 0.3.3
+gem install erbfmt -v 0.3.4
 erbfmt --version
 ```
 
@@ -55,7 +55,7 @@ project use because it pins the formatter version.
 
 Alternative installation methods are still available. Download a standalone
 archive from the
-[v0.3.3 release](https://github.com/hinamimi/erbfmt/releases/tag/v0.3.3), extract
+[v0.3.4 release](https://github.com/hinamimi/erbfmt/releases/tag/v0.3.4), extract
 it, and place `erbfmt` or `erbfmt.exe` on your `PATH`.
 
 - Linux x64: `x86_64-unknown-linux-gnu`
@@ -66,11 +66,30 @@ it, and place `erbfmt` or `erbfmt.exe` on your `PATH`.
 With a Rust toolchain, install the tagged source directly from GitHub:
 
 ```bash
-cargo install --git https://github.com/hinamimi/erbfmt --tag v0.3.3 --locked
+cargo install --git https://github.com/hinamimi/erbfmt --tag v0.3.4 --locked
 ```
 
 See [Ruby Gem Wrapper](docs/RubyGem.md#installing-from-a-gemfile) for Bundler,
 global gem installation, and platform notes.
+
+## Agent Skill
+
+Install the erbfmt workflow for your coding agent:
+
+```bash
+npx skills add hinamimi/erbfmt
+```
+
+To select this skill explicitly, use `--skill erbfmt`. For example, to install it
+for Codex in the current project:
+
+```bash
+npx skills add hinamimi/erbfmt --skill erbfmt --agent codex
+```
+
+The skill helps agents check and edit HTML+ERB templates using your project's
+CLI and configuration. It does not install erbfmt itself. See
+[AI Agent Usage](docs/AI.md) for scope, version pinning, and local testing.
 
 ## Quick Start
 

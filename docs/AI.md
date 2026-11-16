@@ -9,6 +9,46 @@ The hosted command reference for agents is also distributed as Markdown:
 https://hinamimi.github.io/erbfmt/commands.md
 ```
 
+## Install the agent skill
+
+The repository provides `skills/erbfmt/SKILL.md`, discoverable by the
+[skills CLI](https://github.com/vercel-labs/skills):
+
+```bash
+npx skills add hinamimi/erbfmt
+npx skills add hinamimi/erbfmt --skill erbfmt --agent codex
+```
+
+The first command lets you select your agent interactively. The second selects
+Codex for the current project; use `--agent claude-code` for Claude Code. Add `--global` when you want a user-wide skill;
+otherwise installation is project-local. The skill does not install the erbfmt
+CLI or change the project's Gemfile/configuration.
+
+Once the release tag is published, pin the skill's source independently of the
+CLI version when reproducibility matters:
+
+```bash
+npx skills add hinamimi/erbfmt@v0.3.4 --skill erbfmt
+```
+
+Before the skill is pushed to GitHub, test discovery from this checkout:
+
+```bash
+npx skills add . --list
+```
+
+To test installation, run the following from a disposable project directory,
+using the absolute path of your checkout:
+
+```bash
+npx skills add /path/to/erbfmt --skill erbfmt --agent codex --copy --yes
+```
+
+The installed skill is self-contained and does not depend on files outside its
+folder. CI checks discovery and installs a copy into a temporary project to
+catch packaging errors. Repository-sourced installation becomes available after
+these files are pushed; the pinned command additionally requires the release tag.
+
 ## Recommended Workflow
 
 After editing Rails ERB templates, run:
@@ -121,6 +161,6 @@ Assist actions are suggestions unless `--assist --write` is used.
 See [JsonInterface.md](JsonInterface.md) for field definitions, UTF-8 ranges,
 Unicode columns, error streams, exit statuses, and rule/action mappings. New
 editor metadata and structured syntax-error locations in that document are
-unreleased additions to the v0.3.3 interface.
+v0.3.4 additions; older CLIs may omit these fields.
 
 See [Ignore.md](Ignore.md) for ignore directives.

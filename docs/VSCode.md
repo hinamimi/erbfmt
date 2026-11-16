@@ -132,13 +132,13 @@ Install it locally:
 From the repository root:
 
 ```bash
-code --install-extension editors/vscode/erbfmt-vscode-0.3.3.vsix
+code --install-extension editors/vscode/erbfmt-vscode-0.3.4.vsix
 ```
 
 From `editors/vscode`:
 
 ```bash
-code --install-extension erbfmt-vscode-0.3.3.vsix
+code --install-extension erbfmt-vscode-0.3.4.vsix
 ```
 
 The package includes the compiled extension JavaScript in `out/`, but it does
@@ -179,7 +179,7 @@ The first-party VSCode extension still needs:
   locally, based on the shared Rust binary release strategy.
 - clearer behavior when Ruby LSP is also installed.
 
-## Quick Fix lifecycle (unreleased)
+## Quick Fix lifecycle (v0.3.4+)
 
 The extension uses the CLI's structured rule IDs, assist rules and byte ranges,
 and ignore edits described in [JsonInterface.md](JsonInterface.md). It does not

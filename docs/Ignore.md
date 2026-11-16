@@ -15,7 +15,7 @@ rendered HTML.
 | `lint/<ruleName>` | Suppresses only the named lint rule on the next physical line. |
 | `all` | Combines `format` preservation with `lint` suppression on the next physical line. |
 
-## Consecutive Directives (Unreleased)
+## Consecutive Directives (v0.3.4+)
 
 Consecutive standalone ignore directives apply to the same following target
 line. This allows editor quick fixes to add a rule or formatting ignore without

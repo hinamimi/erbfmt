@@ -1,7 +1,6 @@
 # JSON Interface
 
-This is the CLI contract for editor integrations and agents. The additions in
-this working tree are unreleased: structured syntax-error locations, lint
+This is the CLI contract for editor integrations and agents. The v0.3.4 additions are: structured syntax-error locations, lint
 `ignore` edits, assist `rule` IDs, and `ignoreTargets`. Clients must tolerate
 missing optional fields when running an older CLI.
 
