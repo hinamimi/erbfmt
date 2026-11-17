@@ -94,6 +94,14 @@ Archive names:
 Each archive should have a sibling `.sha256` file. Public releases should use
 the same artifact names that the manual release-binary workflow produces.
 
+### Agent Skill
+
+The repository distributes the erbfmt agent workflow from
+`skills/erbfmt/SKILL.md` through `npx skills add hinamimi/erbfmt`. This is an
+instruction package, separate from CLI installation and the deferred npm wrapper.
+It uses the existing Rust CLI, including Bundler-pinned installations. See
+[AI.md](AI.md) for agent selection, release pinning, and local verification.
+
 ### npm Wrapper
 
 Status: deferred beyond `0.1.0`.

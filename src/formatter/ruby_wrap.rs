@@ -526,7 +526,17 @@ fn common_argument_indent(lines: &[&str]) -> usize {
             .min();
 
         if let Some(indent) = skipped_first {
-            return indent;
+            // A generated method chain has an extra continuation indent. Keep
+            // it on subsequent passes instead of treating it as the baseline.
+            let chain = lines.iter().skip(1).all(|line| {
+                let line = line.trim();
+                line.starts_with('.') || line.starts_with("&.")
+            });
+            return if chain {
+                indent.saturating_sub(2)
+            } else {
+                indent
+            };
         }
     }
 

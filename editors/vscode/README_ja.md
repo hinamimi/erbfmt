@@ -34,7 +34,7 @@
 
 - `*.html.erb` 向けのHTML/ERB syntax highlighting
 - `html-erb` と `erb` language idのdocument formatting
-- documentを開いたときと保存したときのerbfmt lint diagnostics
+- documentを開いたとき、保存したとき、編集後のerbfmt lint diagnostics
 - erbfmtの出力と差がある行をwarnするformat diagnostics
 - 該当差分だけの整形、対応するlintの個別修正、局所的なignoreのクイックフィックス
 - ERBを安全に扱う `Ctrl+/` / `Cmd+/` comment toggle
@@ -57,8 +57,9 @@
 ```
 
 コメント内の理由は必要に応じて書き換えてください。ignoreは対応するノードの境界で
-表示されます。構文エラーはignoreできません。編集後は保存するか **erbfmt: Lint Document**
-を実行すると診断と修正候補が更新されます。
+表示されます。構文エラーはignoreできません。編集後は短い待機時間で診断と修正候補が自動更新されます。
+保存または **erbfmt: Lint Document** で即座に更新できます。
+ignoreコメントは連続して追加でき、既存ルールの抑制も維持されます。
 lintのクイックフィックスには `--lint-format json` にルールIDを含むCLIが必要です。
 このリポジトリで開発する場合は `cargo build` でCLIも再ビルドしてください。
 
@@ -87,7 +88,7 @@ extensionにprojectで固定したcommandを使うよう設定します。
 手元でglobal commandとして使いたい場合は、RubyGemを直接installします。
 
 ```bash
-gem install erbfmt -v 0.3.3
+gem install erbfmt -v 0.3.4
 erbfmt --version
 ```
 
@@ -96,7 +97,7 @@ formatter versionを固定できるBundlerを優先してください。
 
 ### GitHub Release Binary
 
-[v0.3.3 GitHub Release](https://github.com/hinamimi/erbfmt/releases/tag/v0.3.3)から
+[v0.3.4 GitHub Release](https://github.com/hinamimi/erbfmt/releases/tag/v0.3.4)から
 CLIをdownloadして展開し、`erbfmt` または `erbfmt.exe` を `PATH` に配置します。
 
 ### Cargo
@@ -104,7 +105,7 @@ CLIをdownloadして展開し、`erbfmt` または `erbfmt.exe` を `PATH` に�
 Rust toolchainがある場合はtagged sourceからinstallできます。
 
 ```bash
-cargo install --git https://github.com/hinamimi/erbfmt --tag v0.3.3 --locked
+cargo install --git https://github.com/hinamimi/erbfmt --tag v0.3.4 --locked
 erbfmt --version
 ```
 
@@ -133,7 +134,7 @@ erbfmt init
 extensionはactive documentからfilesystem rootへ向かって `erbfmt.json`を検索します。
 workspaceでconfig fileを明示する必要がある場合のみ `erbfmt.configPath`を使います。
 
-diagnosticsはdefaultで有効で、ERB documentを開いたときと保存したときに更新されます。
+diagnosticsはdefaultで有効で、ERB documentを開いたとき、保存したとき、編集後に更新されます。
 lint diagnosticsは `erbfmt --lint` から生成し、format diagnosticsはerbfmtの出力と差が
 ある行をwarningとして表示します。手動実行には **erbfmt: Lint Document** を使います。
 
@@ -167,7 +168,7 @@ Bundlerが見つけられます。
 | `erbfmt.command` | `erbfmt` | `bundle exec erbfmt` など、erbfmtを実行するcommandです。 |
 | `erbfmt.arguments` | `[]` | `erbfmt.command` の後ろに追加するargumentsです。 |
 | `erbfmt.configPath` | empty | 特定の `erbfmt.json`を指定します。 |
-| `erbfmt.lint.enabled` | `true` | open/save時にdiagnosticsを表示します。 |
+| `erbfmt.lint.enabled` | `true` | open/save時と編集後にdiagnosticsを表示します。 |
 | `erbfmt.formatDiagnostics.enabled` | `true` | documentが未formatの場合にwarningを表示します。 |
 
 file pathより前に常に渡したい追加flagがある場合は `erbfmt.arguments`を使います。

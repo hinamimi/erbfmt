@@ -30,16 +30,28 @@ pub struct AssistAction {
     pub edit: TextEdit,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
 pub struct TextRange {
     pub start: usize,
     pub end: usize,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 pub struct TextEdit {
     pub range: TextRange,
     pub replacement: String,
+}
+
+impl AssistAction {
+    pub fn rule_id(&self) -> &'static str {
+        match self.id {
+            USE_DOUBLE_QUOTED_ATTRIBUTES => "noNonDoubleQuotedHtmlAttributeValue",
+            FIX_SELF_CLOSING_TAGS => "noSelfClosingHtmlTag",
+            SIMPLIFY_BOOLEAN_ATTRIBUTES => "noInvalidHtmlBooleanAttribute",
+            REMOVE_EMPTY_ERB_TAGS => "emptyErbCodeTag",
+            _ => unreachable!("unknown assist action"),
+        }
+    }
 }
 
 pub fn assist(input: &str, options: &AssistOptions) -> Vec<AssistAction> {

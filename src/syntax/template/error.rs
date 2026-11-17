@@ -71,26 +71,31 @@ pub struct LocatedParseError {
     pub(super) location: Option<SourceLocation>,
 }
 
-impl fmt::Display for LocatedParseError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let Some(location) = self.location else {
-            return write!(f, "{}", self.error);
-        };
-
+impl LocatedParseError {
+    pub fn location(&self) -> Option<SourceLocation> {
+        self.location
+    }
+    pub fn message(&self) -> String {
         match &self.error {
             ParseError::UnexpectedErbBlockEnd { code, .. } => {
-                write!(f, "unexpected ERB block end `{code}` at {location}")
+                format!("unexpected ERB block end `{code}`")
             }
             ParseError::UnexpectedErbBranch { code, .. } => {
-                write!(f, "unexpected ERB branch `{code}` at {location}")
+                format!("unexpected ERB branch `{code}`")
             }
-            ParseError::UnclosedErbBlock { code, .. } => {
-                write!(f, "unclosed ERB block `{code}` at {location}")
-            }
-            ParseError::UnexpectedHtmlCloseTag { .. }
-            | ParseError::MismatchedHtmlCloseTag { .. }
-            | ParseError::UnclosedHtmlTag { .. } => write!(f, "{} at {location}", self.error),
+            ParseError::UnclosedErbBlock { code, .. } => format!("unclosed ERB block `{code}`"),
+            _ => self.error.to_string(),
         }
+    }
+}
+
+impl fmt::Display for LocatedParseError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.message())?;
+        if let Some(location) = self.location {
+            write!(f, " at {location}")?;
+        }
+        Ok(())
     }
 }
 

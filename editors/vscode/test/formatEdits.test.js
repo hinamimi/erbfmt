@@ -29,3 +29,29 @@ assert.equal(
 );
 assert.deepEqual(formattingEdits(after, after), []);
 console.log("Formatting edit tests passed.");
+
+// Exercise resynchronization beyond its lookahead, repeated lines, adjacent
+// changes, CRLF, and EOF changes without permitting overlapping edits.
+const samples = [
+  "",
+  "a",
+  "a\n",
+  "a\r\n",
+  "a\nb\nc\n",
+  "a\na\na\n",
+  "日本語😀\r\nend",
+  `${"same\n".repeat(30)}last\n`,
+];
+for (const source of samples) {
+  for (const formatted of samples) {
+    const changes = formattingEdits(source, formatted);
+    for (let index = 1; index < changes.length; index += 1) {
+      assert(changes[index - 1].end <= changes[index].start);
+    }
+    let applied = source;
+    for (const edit of [...changes].reverse()) {
+      applied = applied.slice(0, edit.start) + edit.replacement + applied.slice(edit.end);
+    }
+    assert.equal(applied, formatted);
+  }
+}

@@ -28,9 +28,9 @@ fn collect_formatter_ignore_ranges(
                     IgnoreSelector::Format | IgnoreSelector::All
                 )
             })
-            && let Some(target) = nodes[index + 1..]
-                .iter()
-                .find(|candidate| !is_whitespace_node(candidate))
+            && let Some(target) = nodes[index + 1..].iter().find(|candidate| {
+                !is_whitespace_node(candidate) && !is_ignore_comment(candidate, source)
+            })
             && let Some(target_range) = target.source_range()
             && let Some(preserved_range) =
                 formatter_ignore_line_range(source, directive_range, target_range)
@@ -64,6 +64,14 @@ fn collect_formatter_ignore_ranges(
     }
 }
 
+fn is_ignore_comment(node: &Node, source: &str) -> bool {
+    is_comment_node(node)
+        && node
+            .source_range()
+            .and_then(|range| source.get(range.start..range.end))
+            .is_some_and(|raw| parse_ignore_directive(raw).is_some())
+}
+
 fn is_comment_node(node: &Node) -> bool {
     matches!(node.unspanned(), Node::HtmlComment(_) | Node::ErbComment(_))
 }
@@ -93,15 +101,20 @@ fn formatter_ignore_line_range(
 
     let between = &source[directive.end..target.start];
     let newline = between.find('\n')?;
-    if !between[..newline].chars().all(is_horizontal_whitespace)
-        || !between[newline + 1..]
-            .chars()
-            .all(is_indentation_whitespace)
+    if !between[..newline].chars().all(is_horizontal_whitespace) {
+        return None;
+    }
+    let remaining = &between[newline + 1..];
+    let mut lines = remaining.split('\n').collect::<Vec<_>>();
+    let indentation = lines.pop()?;
+    if !indentation.chars().all(is_indentation_whitespace)
+        || !lines
+            .iter()
+            .all(|line| parse_ignore_directive(line).is_some())
     {
         return None;
     }
-
-    let target_line_start = directive.end + newline + 1;
+    let target_line_start = target.start - indentation.len();
     let after_target = &source[target.end..];
     let target_line_end = if let Some(newline) = after_target.find('\n') {
         if !after_target[..newline]

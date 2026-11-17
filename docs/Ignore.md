@@ -3,7 +3,7 @@
 erbfmt supports lint and formatter ignore directives in HTML comments and ERB
 comments.
 
-Place the directive on its own line immediately before the target, without a
+Place the directive (or consecutive directives) on its own line immediately before the target, without a
 blank line between them. HTML comments (`<!-- ... -->`) and ERB comments
 (`<%# ... %>`) accept the same selectors. ERB comments do not appear in the
 rendered HTML.
@@ -14,6 +14,24 @@ rendered HTML.
 | `lint` | Suppresses all lint diagnostics located on the next physical line. |
 | `lint/<ruleName>` | Suppresses only the named lint rule on the next physical line. |
 | `all` | Combines `format` preservation with `lint` suppression on the next physical line. |
+
+## Consecutive Directives (v0.3.4+)
+
+Consecutive standalone ignore directives apply to the same following target
+line. This allows editor quick fixes to add a rule or formatting ignore without
+removing an existing suppression or broadening it to every lint rule:
+
+```erb
+<%# erbfmt-ignore lint/noDeprecatedHtmlTag: legacy email markup %>
+<%# erbfmt-ignore lint/noNonDoubleQuotedHtmlAttributeValue: upstream attribute %>
+<%# erbfmt-ignore format: preserve upstream spacing %>
+<center title='legacy'>Keep this</center>
+```
+
+The directives must be consecutive, with no blank line or unrelated comment in
+between. For a multiline target, lint suppression still applies only to its
+first physical line; formatting preservation covers the full node. Parser errors
+cannot be suppressed. Lint ignores do not disable CLI assist actions.
 
 ## Ignore All Lint Rules On The Next Line
 

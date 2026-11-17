@@ -26,7 +26,7 @@ The extension:
 - contributes a `html-erb` language id for `*.html.erb`.
 - contributes TextMate syntax highlighting for HTML plus ERB tags.
 - registers a document formatter for both `erb` and `html-erb`.
-- publishes diagnostics by invoking `erbfmt --lint` on open and save.
+- publishes diagnostics by invoking `erbfmt --lint` on open, save, and after edits.
 - publishes warning diagnostics for lines that differ from erbfmt output.
 - invokes the configured `erbfmt` command and uses stdout as the formatted
   document.
@@ -132,13 +132,13 @@ Install it locally:
 From the repository root:
 
 ```bash
-code --install-extension editors/vscode/erbfmt-vscode-0.3.3.vsix
+code --install-extension editors/vscode/erbfmt-vscode-0.3.4.vsix
 ```
 
 From `editors/vscode`:
 
 ```bash
-code --install-extension erbfmt-vscode-0.3.3.vsix
+code --install-extension erbfmt-vscode-0.3.4.vsix
 ```
 
 The package includes the compiled extension JavaScript in `out/`, but it does
@@ -178,3 +178,21 @@ The first-party VSCode extension still needs:
 - a binary distribution or download story for users who do not build erbfmt
   locally, based on the shared Rust binary release strategy.
 - clearer behavior when Ruby LSP is also installed.
+
+## Quick Fix lifecycle (v0.3.4+)
+
+The extension uses the CLI's structured rule IDs, assist rules and byte ranges,
+and ignore edits described in [JsonInterface.md](JsonInterface.md). It does not
+infer insertion positions by matching source lines with a regular expression.
+Multiline attribute continuations, raw text and Ruby strings are excluded from
+ignore insertion; consecutive directives preserve existing suppressions.
+
+Edits invalidate old diagnostics immediately. After a 300 ms debounce the
+extension refreshes them from the current buffer, cancelling superseded work.
+Open/save and manual lint also refresh diagnostics. Quick Fix commands verify
+the document version again at application time, so a previously opened menu
+cannot apply its edit after the document changes.
+
+Extension Host tests run in CI under `xvfb-run` against the real Rust CLI. Locally,
+`npm run test:host --prefix editors/vscode` requires a working display or virtual
+display; the runner clears `ELECTRON_RUN_AS_NODE` before launching VS Code.

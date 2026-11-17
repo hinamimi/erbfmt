@@ -36,7 +36,7 @@ the configured CLI must support `--stdin-filepath`.
 
 - HTML and ERB syntax highlighting for `*.html.erb` files.
 - Document formatting for the `html-erb` and `erb` language ids.
-- erbfmt lint diagnostics when a document is opened or saved.
+- erbfmt lint diagnostics on open, save, and after edits.
 - Format diagnostics that warn when a document differs from erbfmt output.
 - Quick fixes for individual formatting changes, supported lint fixes, and local ignore comments.
 - ERB-safe `Ctrl+/` / `Cmd+/` comment toggling.
@@ -70,7 +70,7 @@ Configure the extension to use the project-pinned command:
 For a global local command, install the RubyGem directly:
 
 ```bash
-gem install erbfmt -v 0.3.3
+gem install erbfmt -v 0.3.4
 erbfmt --version
 ```
 
@@ -81,7 +81,7 @@ pins the formatter version.
 ### GitHub Release Binary
 
 Download the CLI from the
-[v0.3.3 GitHub Release](https://github.com/hinamimi/erbfmt/releases/tag/v0.3.3),
+[v0.3.4 GitHub Release](https://github.com/hinamimi/erbfmt/releases/tag/v0.3.4),
 extract it, and place `erbfmt` or `erbfmt.exe` on your `PATH`.
 
 ### Cargo
@@ -89,7 +89,7 @@ extract it, and place `erbfmt` or `erbfmt.exe` on your `PATH`.
 With a Rust toolchain, install the tagged source directly:
 
 ```bash
-cargo install --git https://github.com/hinamimi/erbfmt --tag v0.3.3 --locked
+cargo install --git https://github.com/hinamimi/erbfmt --tag v0.3.4 --locked
 erbfmt --version
 ```
 
@@ -119,8 +119,8 @@ The extension searches for `erbfmt.json` from the active document toward the
 filesystem root. Use `erbfmt.configPath` only when a workspace needs an
 explicit configuration file.
 
-Diagnostics are enabled by default and update when an ERB document is opened or
-saved. Lint diagnostics come from `erbfmt --lint`; format diagnostics warn on
+Diagnostics are enabled by default and update on open, save, and after a short
+delay following edits. Lint diagnostics come from `erbfmt --lint`; format diagnostics warn on
 lines that differ from erbfmt output. Use **erbfmt: Lint Document** to refresh
 them manually.
 
@@ -142,9 +142,11 @@ For example:
 <center>Legacy markup</center>
 ```
 
-Edit the reason in the comment as needed. Ignore actions are offered at supported
+Edit the reason in the comment as needed. Consecutive ignore directives preserve
+existing rule suppressions. Ignore actions are offered at supported
 node boundaries; parser errors cannot be suppressed. After editing a document,
-save it or run **erbfmt: Lint Document** to refresh diagnostics and available fixes.
+diagnostics refresh automatically after a short delay. Save or run
+**erbfmt: Lint Document** for an immediate refresh.
 Lint quick fixes require a CLI that includes rule IDs in `--lint-format json`;
 when developing this extension, rebuild the CLI with `cargo build`.
 
@@ -178,7 +180,7 @@ can find the project's `Gemfile` in that directory or a parent.
 | `erbfmt.command` | `erbfmt` | Command used to run erbfmt, such as `bundle exec erbfmt`. |
 | `erbfmt.arguments` | `[]` | Additional arguments inserted after `erbfmt.command`. |
 | `erbfmt.configPath` | empty | Optional path to a specific `erbfmt.json`. |
-| `erbfmt.lint.enabled` | `true` | Publish diagnostics on open and save. |
+| `erbfmt.lint.enabled` | `true` | Publish diagnostics on open, save, and after edits. |
 | `erbfmt.formatDiagnostics.enabled` | `true` | Warn when the document is not formatted. |
 
 Use `erbfmt.arguments` for extra flags that should always be passed before the

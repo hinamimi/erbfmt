@@ -14,7 +14,10 @@ fn reports_unterminated_erb_tag() {
 
     assert_eq!(
         diagnostics,
-        vec![Diagnostic::new("unterminated ERB tag at line 1, column 6")]
+        vec![Diagnostic::located(
+            "unterminated ERB tag",
+            SourceLocation { line: 1, column: 6 }
+        )]
     );
 }
 
@@ -24,8 +27,9 @@ fn reports_unexpected_block_end() {
 
     assert_eq!(
         diagnostics,
-        vec![Diagnostic::new(
-            "unexpected ERB block end `end` at line 1, column 1"
+        vec![Diagnostic::located(
+            "unexpected ERB block end `end`",
+            SourceLocation { line: 1, column: 1 }
         )]
     );
 }
@@ -36,8 +40,9 @@ fn reports_unclosed_block() {
 
     assert_eq!(
         diagnostics,
-        vec![Diagnostic::new(
-            "unclosed ERB block `if user` at line 1, column 1"
+        vec![Diagnostic::located(
+            "unclosed ERB block `if user`",
+            SourceLocation { line: 1, column: 1 }
         )]
     );
 }
@@ -48,8 +53,12 @@ fn reports_unbalanced_html_tags() {
 
     assert_eq!(
         diagnostics,
-        vec![Diagnostic::new(
-            "mismatched HTML close tag `</div>`, expected `</span>` at line 1, column 17"
+        vec![Diagnostic::located(
+            "mismatched HTML close tag `</div>`, expected `</span>`",
+            SourceLocation {
+                line: 1,
+                column: 17
+            }
         )]
     );
 }

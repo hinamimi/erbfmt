@@ -22,8 +22,8 @@ first-party VSCode extensionから利用できます。
 > 後方互換性なく変更される可能性があります。format差分を確認してからcommitし、
 > 自動実行する環境ではversionを固定してください。
 
-> erbfmtは現在プレリリース開発中です。Version `0.3.3`をRubyGems.orgと
-> GitHub Releasesで公開しています。
+> erbfmtは現在プレリリース開発中です。このcheckoutは次回リリースの `0.3.4` 向けです。
+> 以下のインストール例は、そのリリースの公開後に利用できます。
 
 ## インストール
 
@@ -44,7 +44,7 @@ bundle exec erbfmt --write app/views/users/show.html.erb
 手元でglobal commandとして使いたい場合は、RubyGemを直接installします。
 
 ```bash
-gem install erbfmt -v 0.3.3
+gem install erbfmt -v 0.3.4
 erbfmt --version
 ```
 
@@ -52,7 +52,7 @@ global installは試用には便利ですが、projectではformatter versionを
 優先してください。
 
 その他のinstall方法も利用できます。
-[v0.3.3 release](https://github.com/hinamimi/erbfmt/releases/tag/v0.3.3)から
+[v0.3.4 release](https://github.com/hinamimi/erbfmt/releases/tag/v0.3.4)から
 利用するplatformのarchiveをdownloadして展開し、`erbfmt`または `erbfmt.exe`を
 `PATH`へ配置します。
 
@@ -64,11 +64,30 @@ global installは試用には便利ですが、projectではformatter versionを
 Rust toolchainがある場合は、tagged sourceをGitHubから直接installできます。
 
 ```bash
-cargo install --git https://github.com/hinamimi/erbfmt --tag v0.3.3 --locked
+cargo install --git https://github.com/hinamimi/erbfmt --tag v0.3.4 --locked
 ```
 
 Bundler、global gem install、platformごとの注意点は
 [Ruby Gem Wrapper](docs/RubyGem.md#installing-from-a-gemfile)にまとめています。
+
+## エージェント向けスキル
+
+コーディングエージェントにerbfmtの使い方を導入できます。
+
+```bash
+npx skills add hinamimi/erbfmt
+```
+
+スキルを明示的に選ぶ場合は `--skill erbfmt` を付けます。例えば、現在のプロジェクトの
+Codex向けにインストールする場合:
+
+```bash
+npx skills add hinamimi/erbfmt --skill erbfmt --agent codex
+```
+
+既存のCLI・設定を使い、HTML+ERBの検証・修正を進めるスキルです。
+CLI本体は別途インストールしてください。バージョンの固定やローカルでの検証は
+[AI Agent Usage](docs/AI.md)を参照してください。
 
 ## クイックスタート
 
