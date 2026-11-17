@@ -217,6 +217,12 @@ npm run package --prefix editors/vscode
 See [VSCode.md](VSCode.md) for Extension Development Host, local VSIX, and
 binary resolution details.
 
+## Developer Experience Research
+
+- [BiomeExperienceReview.md](BiomeExperienceReview.md): comparison with Biome 2.6.8,
+  CLI smoke checks, and proposed priorities for Rails onboarding, editor setup,
+  and CI.
+
 ## Release Work
 
 - [Release.md](Release.md): release verification and version tooling
